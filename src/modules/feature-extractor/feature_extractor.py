@@ -1,5 +1,5 @@
 from trainer_feature_task import TrainerFeatureTask
-from feature_extractor_detector import FeatureExtractorDetector
+#from feature_extractor_detector import FeatureExtractorDetector
 
 
 class FeatureExtractor:
@@ -46,19 +46,6 @@ class FeatureExtractor:
         return features
 
 a = FeatureExtractor("../configs/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN.yaml")
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-#models = a.extract_detector_features_from_updated_RPN()
-=======
 models = a.extract_detector_features_from_updated_RPN()
->>>>>>> Initial feature-extractor scripts
-=======
-#models = a.extract_detector_features_from_updated_RPN()
->>>>>>> Minor changes
-=======
-models = a.extract_detector_features_from_updated_RPN()
->>>>>>> Initial feature-extractor scripts
-
 models = a.train_model_on_feature_task()
 print(models)
