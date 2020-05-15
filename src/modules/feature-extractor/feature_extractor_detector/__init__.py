@@ -1,0 +1,1 @@
+from .extract_features_detector import FeatureExtractorDetector
