@@ -14,9 +14,5 @@ class FeatureExtractorAbstract(ABC):
         pass
 
     @abstractmethod
-    def testFeatureExtractor(self, dataset) -> None:
-        pass
-
-    @abstractmethod
     def extractFeatures(self, dataset) -> None:
         pass
