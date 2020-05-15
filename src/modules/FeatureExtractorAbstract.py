@@ -10,11 +10,11 @@ class FeatureExtractorAbstract(ABC):
         pass
 
     @abstractmethod
-    def trainFeatureExtractor(self) -> None:
+    def trainFeatureExtractor(self, dataset) -> None:
         pass
 
     @abstractmethod
-    def testFeatureExtractor(self) -> None:
+    def testFeatureExtractor(self, dataset) -> None:
         pass
 
     @abstractmethod
