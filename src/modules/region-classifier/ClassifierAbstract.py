@@ -6,7 +6,7 @@ class RegionClassifierAbstract(ABC):
         pass
 
     @abstractmethod
-    def trainClassifier(self, dataset) -> None:
+    def train(self, dataset) -> None:
         pass
 
     @abstractmethod

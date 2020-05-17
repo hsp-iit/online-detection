@@ -11,7 +11,7 @@ class RegionClassifierAbstract(ca.ClassifierAbstract):
     def __init__(self):
         pass
 
-    def trainClassifier(self, dataset, opts):
+    def train(self, dataset, opts):
         kernel = None
         if opts.kernel_type == 'gauss':
             kernel = kernels.GaussianKernel(sigma=opts.sigma)
