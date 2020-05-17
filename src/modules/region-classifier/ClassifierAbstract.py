@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class RegionClassifierAbstract(ABC):
+class ClassifierAbstract(ABC):
     def __init__(self):
         pass
 

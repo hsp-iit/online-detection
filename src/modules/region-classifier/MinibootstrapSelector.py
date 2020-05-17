@@ -4,22 +4,31 @@ import os
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 import NegativeSelectorAbstract as nsA
-from scipy.io import loadmat
-
+import h5py
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
     def __init__(self, iterations, batch_size):
         self.iterations = iterations
         self.batch_size = batch_size
 
-    def selectNegatives(self, dataset):
-        negatives_file = self.experiment_name + '_negatives%fx%f'.format(self.iterations, self.batch_size)
-        negatives_file = self.experiment_name + '_negatives%fx%f'.format(self.iterations, self.batch_size)
+    def selectNegatives(self, dataset, experiment_name, opts):
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
+        negatives_file = experiment_name + '_negatives{}x{}.mat'.format(self.iterations, self.batch_size)
         try:
-            negatives = loadmat(negatives_file)
+            mat_negatives = h5py.File('/home/elisa/Repos/python-online-detection/Data/feat_cache/test_classifier/test_classifier_negatives10x2000.mat', 'r')
+            X_neg = mat_negatives['X_neg']
+            mat_negatives[mat_negatives[X_neg[0, 0]][0, 0]] # Shape: (2048, 1994)
+            negatives = []
+            for i in range(opts['num_classes'] ):
+                tmp = []
+                for j in range(self.iterations):
+                    tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()]) # Shape: (2048, 1994)
+                negatives.append(tmp)
+
         except:
             print('To implement selectNegatives in MinibootstrapSelector')
             negatives = None
+
         return negatives
 
     def setIterations(self, iterations) -> None:
