@@ -1,13 +1,24 @@
 from trainer_feature_task import TrainerFeatureTask
-#from feature_extractor_detector import FeatureExtractorDetector
+from feature_extractor_detector import FeatureExtractorDetector
+from feature_extractor_loader import LoaderFeatureExtractor
+
+from src.modules.FeatureExtractorAbstract import FeatureExtractorAbstract
 
 
-class FeatureExtractor:
+class FeatureExtractor(FeatureExtractorAbstract):
     def __init__(self, cfg_path_feature_task=None, cfg_path_target_task=None):
         self.cfg_path_feature_task = cfg_path_feature_task
         self.cfg_path_target_task = cfg_path_target_task
 
-    def train_model_on_feature_task(self):
+    def loadFeatureExtractor(self):
+        loader = LoaderFeatureExtractor(self.cfg_path_feature_task)
+        try:
+            loader()
+        except OSError:
+            print('Feature extractor not found. \n'
+                  'Feature extractor will be trained from scratch.')
+
+    def trainFeatureExtractor(self):
         # call class to train from scratch a model on the feature task
         trainer = TrainerFeatureTask(self.cfg_path_feature_task)
         models = trainer()
@@ -20,6 +31,7 @@ class FeatureExtractor:
 
         return model   #or return path to models if they are saved somewhere and maybe some metrics such as mAP
 
+    """
     def select_feature_extractor(self, models):
         # evaluate models computed by train_model_on_feature_task, maybe using some metrics learning
         model = []
@@ -31,21 +43,17 @@ class FeatureExtractor:
         features = []
 
         return features
-
-    def extract_detector_features_from_feature_task_RPN(self):
+    """
+    def extractFeatures(self):
         # call class to extract detector features:
-        features = []
-
-        return features
-
-    def extract_detector_features_from_updated_RPN(self):
-        # call class to extract detector features embedding rpn update:
-        feature_extractor = FeatureExtractorDetector(self.cfg_path_feature_task)#TODO change path to target task
+        feature_extractor = FeatureExtractorDetector(self.cfg_path_target_task)
         features = feature_extractor()
 
         return features
+    """
+    def extract_detector_features_from_updated_RPN(self):
+        # call class to extract detector features embedding rpn update:
+        features = []
 
-a = FeatureExtractor("../configs/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN.yaml")
-models = a.extract_detector_features_from_updated_RPN()
-models = a.train_model_on_feature_task()
-print(models)
+        return features
+    """
