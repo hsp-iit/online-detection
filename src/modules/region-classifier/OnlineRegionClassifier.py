@@ -3,12 +3,12 @@ import os
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
-# sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 
 import RegionClassifierAbstract as rcA
-# from utils import computeFeatStatistics, zScores
+from utils import computeFeatStatistics, zScores
 from scipy import stats
-from scipy.io import loadmat
+import h5py
 
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
@@ -16,10 +16,15 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
     def loadRegionClassifier(self) -> None:
         pass
 
-    def selectPositives(self, dataset):
-        positives_file = self.experiment_name + '_positives.mat'
+    def selectPositives(self, dataset, opts):
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+        positives_file = os.path.join(feat_path, self.experiment_name + '_positives.mat')
         try:
-            positives = loadmat(positives_file)
+            mat_positives = h5py.File(positives_file, 'r')
+            X_pos = mat_positives['X_pos']
+            positives = []
+            for i in range(opts['num_classes']):
+                positives.append(mat_positives[X_pos[0, i]][()].transpose())
         except:
             print('To implement selectPositives in OnlineRegionClassifier')
             positives = None
@@ -40,13 +45,12 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
     def trainRegionClassifier(self, dataset, opts):
 
         negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
-        positives = self.selectPositives(dataset)
+        positives = self.selectPositives(dataset, opts)
 
-        # [mean, mean_norm] = computeFeatStatistics(positives, negatives)
-        # positives.feat = zScores(positives.feat, mean, mean_norm)
-        # negatives.feat = zScores(negatives.feat, mean, mean_norm)
-        positives.feat = stats.zscore(positives.feat)
-        negatives.feat = stats.zscore(negatives.feat)
+        mean, std, mean_norm = computeFeatStatistics(positives, negatives)
+        for i in range(opts['num_classes']):
+            positives[i] = zScores(positives[i], mean, mean_norm)
+            negatives[i] = zScores(negatives[i], mean, mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives, opts)
 

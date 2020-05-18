@@ -2,7 +2,6 @@ import sys
 import os
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
-# sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, '..', '..', 'external', 'FALKON-master', 'falkon')))
 from falkon import Falkon, kernels
 import ClassifierAbstract as ca
 
