@@ -138,3 +138,13 @@ dmypy.json
 cython_debug/
 
 .idea
+
+
+# pytorch/python/numpy formats
+*.pth
+*.pkl
+*.npy
+
+# mat files
+*.mat
+

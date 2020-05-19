@@ -1,12 +1,12 @@
 import torch
-from maskrcnn_benchmark.config import cfg
+from maskrcnn_pytorch.benchmark.config import cfg
 import errno
 import os
 
 class LoaderFeatureExtractor:
-    def __init__(self, cfg_path_feature_task=None):
+    def __init__(self, cfg_path_target_task=None):
 
-        self.config_file = cfg_path_feature_task
+        self.config_file = cfg_path_target_task
         self.cfg = cfg.clone()
 
     def __call__(self):
@@ -16,8 +16,11 @@ class LoaderFeatureExtractor:
         self.cfg.merge_from_file(self.config_file)
         self.cfg.freeze()
         try:
-            print(self.cfg.MODEL.WEIGHT)
-            torch.load(self.cfg.MODEL.WEIGHT)
+            pretrained_model = torch.load(self.cfg.MODEL.PRETRAINED_DETECTION_WEIGHTS)
+            torch.save(pretrained_model, "pretrained_feature_extractor.pth")
+            print(self.cfg.MODEL.PRETRAINED_DETECTION_WEIGHTS, "saved in pretrained_feature_extractor.pth.")
         except OSError:
-            raise FileNotFoundError(
-                errno.ENOENT, os.strerror(errno.ENOENT), (self.cfg.MODEL.WEIGHT))
+            try:
+                torch.load("pretrained_feature_extractor.pth")
+            except OSError:
+                raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT))

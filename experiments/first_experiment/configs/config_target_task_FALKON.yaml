@@ -1,8 +1,8 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments_FALKON/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_target_task_FALKON_no_FPN"
+OUTPUT_DIR: "features"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task/model_0109876/model_0109876_feature_task.pth"
+  WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/pretrained_feature_extractor.pth"
   #BACKBONE:
   #  CONV_BODY: "R-50-FPN"
   #RESNETS:
@@ -26,7 +26,7 @@ MODEL:
   #  PREDICTOR: "FPNPredictor"
   MASK_ON: False
 DATASETS:
-  TRAIN: ("icubworld_id_30objects_train_target_task",)
+  TRAIN: ("icubworld_id_30objects_train_val_target_task",)
   TEST: ("icubworld_id_30objects_test_target_task",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.5
@@ -46,3 +46,4 @@ SOLVER:
   CHECKPOINT_PERIOD: 3988
 TEST:
   IMS_PER_BATCH: 1
+FEATURES_FORMAT: '.pkl'

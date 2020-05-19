@@ -1,3 +1,5 @@
+import os
+import errno
 from trainer_feature_task import TrainerFeatureTask
 from feature_extractor_detector import FeatureExtractorDetector
 from feature_extractor_loader import LoaderFeatureExtractor
@@ -11,26 +13,27 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.cfg_path_target_task = cfg_path_target_task
 
     def loadFeatureExtractor(self):
-        loader = LoaderFeatureExtractor(self.cfg_path_feature_task)
+        loader = LoaderFeatureExtractor(self.cfg_path_target_task)
         try:
             loader()
         except OSError:
-            print('Feature extractor not found. \n'
-                  'Feature extractor will be trained from scratch.')
+            print('Feature extractor not found.')
+            raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT))
 
     def trainFeatureExtractor(self):
         # call class to train from scratch a model on the feature task
         trainer = TrainerFeatureTask(self.cfg_path_feature_task)
-        models = trainer()
+        trainer()
 
         # maybe this part can be included in the training class
+        """
         if len(models) == 0:
             model = models[0]
         else:
             model = self.select_feature_extractor(models)
 
         return model   #or return path to models if they are saved somewhere and maybe some metrics such as mAP
-
+        """
     """
     def select_feature_extractor(self, models):
         # evaluate models computed by train_model_on_feature_task, maybe using some metrics learning

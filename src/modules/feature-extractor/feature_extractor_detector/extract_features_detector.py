@@ -13,7 +13,8 @@ import argparse
 import os
 
 import torch
-from maskrcnn_benchmark.config import cfg
+#from maskrcnn_benchmark.config import cfg
+from maskrcnn_pytorch.benchmark.config import cfg
 
 from maskrcnn_pytorch.benchmark.data import make_data_loader
 # from maskrcnn_benchmark.data import make_data_loader
@@ -28,8 +29,9 @@ from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
-from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor import inference
+from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor_new import inference
 
+import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
 # and enable mixed-precision via apex.amp
 try:
@@ -49,9 +51,8 @@ class FeatureExtractorDetector:
         self.load_parameters()
 
     def __call__(self):
-        model = self.train()
+        self.train()
 
-        return model
 
     def load_parameters(self):
         if self.distributed:
@@ -62,6 +63,7 @@ class FeatureExtractorDetector:
             synchronize()
         self.cfg.merge_from_file(self.config_file)
         self.cfg.freeze()
+        self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)
 
@@ -114,29 +116,40 @@ class FeatureExtractorDetector:
         iou_types = ("bbox",)
         torch.cuda.empty_cache()  # TODO check if it helps
 
-        output_folders = [None] * len(self.cfg.DATASETS.TEST)
-        dataset_names = self.cfg.DATASETS.TEST
+        output_folders = [None] * (len(self.cfg.DATASETS.TRAIN) + len(self.cfg.DATASETS.TEST))
+        dataset_names = []
+        for elem in self.cfg.DATASETS.TRAIN:
+            dataset_names.append(elem)
+        for elem in self.cfg.DATASETS.TEST:
+            dataset_names.append(elem)
+
         if cfg.OUTPUT_DIR:
             for idx, dataset_name in enumerate(dataset_names):
-                output_folder = os.path.join(self.cfg.OUTPUT_DIR, "features_detector", dataset_name)
+                output_folder = os.path.join(self.cfg.OUTPUT_DIR, dataset_name)
                 mkdir(output_folder)
                 output_folders[idx] = output_folder
 
-        data_loaders_val = make_data_loader(self.cfg, is_train=False, is_distributed=self.distributed,
-                                            is_final_test=True, is_target_task=self.is_target_task)
+        data_loaders = make_data_loader(self.cfg, is_train=True, is_distributed=self.distributed,
+                                            is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
+        data_loaders_test = make_data_loader(self.cfg, is_train=False, is_distributed=self.distributed,
+                                            is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
+        for elem in data_loaders_test:
+            data_loaders.append(elem)
 
-        for output_folder, dataset_name, data_loader_val in zip(output_folders, dataset_names, data_loaders_val):
+        for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
                 self.cfg,
                 model,
-                data_loader_val,
+                data_loader,
                 dataset_name=dataset_name,
                 iou_types=iou_types,
                 box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
                 device=cfg.MODEL.DEVICE,
-                expected_results=cfg.TEST.EXPECTED_RESULTS,
-                expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
                 output_folder=output_folder,
-                draw_preds=False,
+                is_target_task=self.is_target_task,
+                icwt_21_objs=self.icwt_21_objs
             )
             synchronize()
+
+        logger = logging.getLogger("maskrcnn_benchmark")
+        logger.handlers=[]

@@ -1,7 +1,9 @@
 import os
 import sys
 
+
 basedir = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', 'src', 'modules', 'feature-extractor')))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', 'src', 'modules', 'region-classifier')))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', 'src', 'modules', 'region-refiner')))
@@ -11,14 +13,17 @@ from feature_extractor import FeatureExtractor
 #import region_refiner
 
 ## Experiment configuration
-a = FeatureExtractor('configs/config_feature_task.yaml', 'configs/config_target_task_FALKON.yaml')
+feature_extractor = FeatureExtractor('configs/config_feature_task.yaml', 'configs/config_target_task_FALKON.yaml')
 
 ## Retrieve feature extractor (either by loading it or by training it)
-a.loadFeatureExtractor()
-a.trainFeatureExtractor()
+try:
+    feature_extractor.loadFeatureExtractor()
+except OSError:
+    print('Feature extractor will be trained from scratch.')
+    feature_extractor.trainFeatureExtractor()
 
 ## Extract features for the train/val/test sets
-a.extractFeatures()
+feature_extractor.extractFeatures()
 
 ## Train region refiner
 

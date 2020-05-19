@@ -1,5 +1,5 @@
 OUTPUT_DIR: "feature_extractor"
-PATHS_CATALOG: "/home/federico/Desktop/initial_material_IIT/online-object-segmentation/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
+PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
@@ -41,8 +41,8 @@ SOLVER:
   BASE_LR: 0.001
   WEIGHT_DECAY: 0.0001
   STEPS: (219752,) # 8 epochs
-  MAX_ITER: 329628 #12 epochs
-  CHECKPOINT_PERIOD: 27469
-  TEST_PERIOD: 27469 # 1 epoch
+  MAX_ITER: 50#329628 #12 epochs
+  CHECKPOINT_PERIOD: 500#27469
+  TEST_PERIOD: 500#27469 # 1 epoch
 TEST:
   IMS_PER_BATCH: 1

@@ -16,6 +16,7 @@ from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
+import logging
 
 # See if we can use apex.DistributedDataParallel instead of the torch default,
 # and enable mixed-precision via apex.amp
@@ -35,9 +36,7 @@ class TrainerFeatureTask:
         self.load_parameters()
 
     def __call__(self):
-        model = self.train()
-
-        return model
+        self.train()
 
     def load_parameters(self):
         if self.distributed:
@@ -124,4 +123,9 @@ class TrainerFeatureTask:
             is_target_task=self.is_target_task
         )
 
-        return model
+        final_model = torch.load(os.path.join(output_dir, "model_final.pth"))
+        torch.save(final_model, "pretrained_feature_extractor.pth")
+        print("model_final.pth saved in pretrained_feature_extractor.pth.")
+
+        logger = logging.getLogger("maskrcnn_benchmark")
+        logger.handlers=[]
