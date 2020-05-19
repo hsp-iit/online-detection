@@ -4,13 +4,14 @@ basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 from falkon import Falkon, kernels
 import ClassifierAbstract as ca
+import torch
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
     def __init__(self):
         pass
 
-    def train(self, dataset, opts):
+    def train(self, X_np, y_np, opts):
         kernel = None
         if opts['kernel_type'] == 'gauss':
             kernel = kernels.GaussianKernel(sigma=opts['sigma'])
@@ -23,27 +24,32 @@ class FALKONWrapper(ca.ClassifierAbstract):
                         kernel=kernel,
                         la=opts['lambda'],
                         M=opts['M'],
+                        use_cpu=True
+                        # use_display_gpu=True,
+                        # gpu_use_processes=False,
+                        # inter_type=torch.float32,
+                        # final_type=torch.float32
                     )
         else:
             print('Kernel is None in trainRegionClassifier function')
             sys.exit(0)
 
         if model is not None:
-            model.fit(dataset['x_train'], dataset['y_train'])
+            X = torch.from_numpy(X_np)
+            y = torch.from_numpy(y_np).to(torch.float32)
+            model.fit(X, y)
         else:
             print('Model is None in trainRegionClassifier function')
             sys.exit(0)
 
         return model
 
-    def predict(self, dataset, model, mode='test'):
-        predictions = None
-        if mode == 'test':
-            predictions = model.predict(dataset['x_test'], dataset['y_test'])
-        elif mode == 'val':
-            predictions = model.predict(dataset['x_val'], dataset['y_val'])
+    def predict(self, model, X_np, y=None):
+        X = torch.from_numpy(X_np)
+        if y is not None:
+            predictions = model.predict(X, y)
         else:
-            print('Unknown modality in predict function. Returning None predictions')
+            predictions = model.predict(X)
 
         return predictions
 

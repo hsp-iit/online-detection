@@ -11,11 +11,11 @@ import MinibootstrapSelector as ms
 # Experiment configuration
 experiment_name = 'test_classifier'
 classifier = falkon.FALKONWrapper()
-negative_selector = ms.MinibootstrapSelector(10, 2000)
+negative_selector = ms.MinibootstrapSelector(10, 2000, -0.9, -0.7)
 regionClassifier = ocr.OnlineRegionClassifier(experiment_name, classifier, negative_selector)
 opts = dict()
 opts['kernel_type'] = 'gauss'
-opts['num_classes'] = 30
+opts['num_classes'] = 1
 
 # Retrieve feature extractor (either by loading it or by training it)
 print('Skip retriever feature extractor')

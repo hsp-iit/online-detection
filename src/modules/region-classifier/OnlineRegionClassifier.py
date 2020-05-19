@@ -9,6 +9,8 @@ import RegionClassifierAbstract as rcA
 from utils import computeFeatStatistics, zScores
 from scipy import stats
 import h5py
+import numpy as np
+import torch
 
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
@@ -31,15 +33,43 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         return positives
 
+    def updateModel(self, cache, opts):
+
+        X_neg = cache['neg']
+        X_pos = cache['pos']
+        num_neg = len(X_neg)
+        num_pos = len(X_pos)
+        X = np.vstack((X_pos, X_neg))
+        y = np.vstack((np.transpose(np.ones(num_pos)[np.newaxis]), -np.transpose(np.ones(num_neg)[np.newaxis])))
+
+        return self.classifier.train(X, y, opts)
+
     def trainWithMinibootstrap(self, negatives, positives, opts):
-        print('To implement trainWithMinibootstrap in OnlineRegionClassifier')
+        iterations = self.negative_selector.iterations
+        caches = []
+        model = []
+        for i in range(opts['num_classes']):
+            first_time = True
+            for j in range(iterations):
+                if first_time:
+                    dataset = {}
+                    dataset['pos'] = positives[i]
+                    dataset['neg'] = negatives[i][j]
+                    caches.append(dataset)
+                    model.append(None)
+                    first_time = False
+                else:
+                    neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
+                    hard_idx = np.argwhere(neg_pred < self.negative_selector.neg_hard_thresh)
+                    caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx.numpy()[0]]))
 
-        # Concatenate postives and negatives samples
-        dataset = dict()
-        dataset['x_train'] = [positives.feat, negatives.feat]
-        dataset['y_train'] = [positives.label, negatives.label]
+                model[i] = self.updateModel(caches[i], opts)
+                neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
-        model = self.classifier.train(dataset, opts)
+                easy_idx = np.argwhere(neg_pred > self.negative_selector.neg_easy_thresh)
+                caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+        model_name = 'model_' + self.experiment_name
+        torch.save(model, model_name)
         return model
 
     def trainRegionClassifier(self, dataset, opts):

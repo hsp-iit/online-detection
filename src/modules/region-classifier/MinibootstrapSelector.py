@@ -8,9 +8,11 @@ import h5py
 
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
-    def __init__(self, iterations, batch_size):
+    def __init__(self, iterations, batch_size, neg_easy_thresh, neg_hard_thresh):
         self.iterations = iterations
         self.batch_size = batch_size
+        self.neg_easy_thresh = neg_easy_thresh
+        self.neg_hard_thresh = neg_hard_thresh
 
     def selectNegatives(self, dataset, experiment_name, opts):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
