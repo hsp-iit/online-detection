@@ -89,8 +89,61 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
     def crossValRegionClassifier(self, dataset):
         pass
 
-    def testRegionClassifier(self, dataset) -> None:
-        pass
+    def loadFeature(self, feat_path, img, type='mat'):
+        feat_file = None
+        if type == 'mat':
+            file_name = img + '.mat'
+            feat_file = h5py.File(os.path.join(feat_path, file_name), 'r')
+        else:
+            print('Unrecognized type file: {}'.format(type))
+
+        return feat_file
+
+    def testRegionClassifier(self, model, imset_path, opts):
+        # What do we need?
+        # X list of images of the test set
+        # X where to find features
+        # - where to find annotations
+        # X Falkon model to test
+        # - max_per_set and max_per_image (?)
+        # - La threshold per le predizioni dove avviene?
+        # - Nel matlab ogni classificatore dava la propria predizione per ogni box e
+        #   tutte queste predizioni venivano fornite al devkit nella forma aboxes{i}{j} i-esima immagine j-esima classe.
+        #   In questo caso come funziona?
+
+        # Options setting
+        with open(imset_path, 'r') as f:
+            path_list = f.readlines()
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+
+        # Loop on the dataset:
+        # - Retrieve feature
+        # - Normalize feature
+        # - For each class
+        # -- Test of the model
+        # -- Storage of the predictions in mask r-cnn format
+        # -- Processing of the predictions (?)
+        thresh = 0
+        predictions = {}
+        for i in range(len(path_list)):
+            l = self.loadFeature(feat_path, path_list[i])
+            if l is not None:
+                X_test = l['feat']
+                for c in range(opts['num_classes']):
+                    boxes = l['boxes']
+                    pred = self.classifier.predict(model[i], X_test)
+                    I = np.nonzero(l['gt'] == 0 & pred > thresh)
+                    boxes = boxes(I)
+                    scores = pred(I)
+                    # Concatenate obtained predictions with the old ones
+
+            else:
+                print('None feature loaded. Skipping image {}.'.format(path_list[i]))
+
+        # Evaluation of the prediction using Mask R-CNN evaluation function
+        result = 0
+
+        return result
 
     def predict(self, dataset) -> None:
         pass

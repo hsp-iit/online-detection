@@ -18,7 +18,6 @@ class FALKONWrapper(ca.ClassifierAbstract):
         else:
             print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
-        model = None
         if kernel is not None:
             model = Falkon(
                         kernel=kernel,

@@ -48,7 +48,7 @@ print('Skip Test region refiner on validation set')
 print('Skip saving model')
 
 # Test the best model (on the test set)
-results = regionClassifier.testRegionClassifier(dataset)
+results = regionClassifier.testRegionClassifier(model, dataset, opts)
 
 # Test region refiner (on test set)
 print('Skip Test region refiner on test set')
