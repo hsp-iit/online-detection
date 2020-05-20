@@ -18,7 +18,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
     def loadRegionClassifier(self) -> None:
         pass
 
-    def selectPositives(self, dataset, opts):
+    def selectPositives(self, imset_path, opts):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
         positives_file = os.path.join(feat_path, self.experiment_name + '_positives.mat')
         try:
@@ -29,7 +29,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 positives.append(mat_positives[X_pos[0, i]][()].transpose())
         except:
             print('To implement selectPositives in OnlineRegionClassifier')
-            positives = None
+            with open(imset_path, 'r') as f:
+                path_list = f.readlines()
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+            for i in range(len(path_list)):
+                l = self.loadFeature(feat_path, path_list[i])
 
         return positives
 

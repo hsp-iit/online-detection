@@ -1,6 +1,6 @@
 import math
 import numpy as np
-import statistics
+import os
 
 def computeFeatStatistics(positives, negatives, num_samples=4000):
     print('To implement computeFeatStatistics in utils')
@@ -33,3 +33,16 @@ def zScores(feat, mean, mean_norm, target_norm=20):
     feat = feat - mean
     feat = np.multiply(feat, (target_norm / mean_norm))
     return feat
+
+
+def loadFeature(feat_path, file_name, type='mat'):
+    file_path_noExt = os.path.join(feat_path, file_name)
+    if type=='mat':
+        import scipy.io
+        file_path = file_path_noExt + '.mat'
+        feature = scipy.io.loadmat(file_path)
+    else:
+        print('Unrecognized feature type: {}'.format(type))
+        feature = None
+
+    return feature

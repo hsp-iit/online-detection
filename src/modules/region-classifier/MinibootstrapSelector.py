@@ -3,9 +3,12 @@ import os
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
+
 import NegativeSelectorAbstract as nsA
 import h5py
 import numpy as np
+from utils import loadFeature
 
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
@@ -57,7 +60,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
 
             negatives = []
             for i in range(len(path_list)):
-                l = self.loadFeature(feat_path, path_list[i])
+                l = loadFeature(feat_path, path_list[i], feat_type)
                 if l is not None:
                     for c in range(opts['num_classes']):
                         if sum(keep_doing[c, :]) > 0:
@@ -81,6 +84,8 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                     kept = kept + end_interval
                                 else:
                                     keep_doing[c, b] = 0
+            if feat_type == 'mat':
+                print('Unimplemented negatives saving')
         return negatives
 
     def setIterations(self, iterations) -> None:
