@@ -15,19 +15,24 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         self.neg_easy_thresh = neg_easy_thresh
         self.neg_hard_thresh = neg_hard_thresh
 
-    def selectNegatives(self, imset_path, experiment_name, opts, neg_ovr_thresh=0.3, max_regions=300):
+    def selectNegatives(self, imset_path, experiment_name, opts, neg_ovr_thresh=0.3, max_regions=300, feat_type='mat'):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
-        negatives_file = os.path.join(feat_path, experiment_name + '_negatives{}x{}.mat'.format(self.iterations, self.batch_size))
+        negatives_file = os.path.join(feat_path, experiment_name + '_negatives{}x{}'.format(self.iterations,
+                                                                                            self.batch_size))
         try:
-            mat_negatives = h5py.File(negatives_file, 'r')
-            X_neg = mat_negatives['X_neg']
-            mat_negatives[mat_negatives[X_neg[0, 0]][0, 0]] # Shape: (2048, 1994)
-            negatives = []
-            for i in range(opts['num_classes'] ):
-                tmp = []
-                for j in range(self.iterations):
-                    tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose()) # Shape: (2048, 1994)
-                negatives.append(tmp)
+            if feat_type == 'mat':
+                negatives_file = negatives_file + '.mat'
+                mat_negatives = h5py.File(negatives_file, 'r')
+                X_neg = mat_negatives['X_neg']
+                negatives = []
+                for i in range(opts['num_classes'] ):
+                    tmp = []
+                    for j in range(self.iterations):
+                        tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose())
+                    negatives.append(tmp)
+            else:
+                print('Unrecognized type of feature file')
+                negatives = None
         except:
             print('To implement selectNegatives in MinibootstrapSelector')
             # Initialize variables and parameters like neg_ovr_thresh=0.3
@@ -76,7 +81,6 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                     kept = kept + end_interval
                                 else:
                                     keep_doing[c, b] = 0
-
         return negatives
 
     def setIterations(self, iterations) -> None:
