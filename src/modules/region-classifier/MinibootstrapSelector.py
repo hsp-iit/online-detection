@@ -15,7 +15,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         self.neg_easy_thresh = neg_easy_thresh
         self.neg_hard_thresh = neg_hard_thresh
 
-    def selectNegatives(self, imset_path, experiment_name, opts, neg_ovr_thresh=0.3):
+    def selectNegatives(self, imset_path, experiment_name, opts, neg_ovr_thresh=0.3, max_regions=300):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
         negatives_file = os.path.join(feat_path, experiment_name + '_negatives{}x{}.mat'.format(self.iterations, self.batch_size))
         try:
@@ -38,19 +38,44 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             # -- Find regions that match neg_ovr_thresh condition and pick randomly the decided number
             # -- Set keep_per_batch
             # -- For each batch
-            # --- Concatenate the chosen regions to the current batch accounting for all the special cases
-            negatives = []
+            # --- Concatenate the chosen regions to the current batch, accounting for all the special cases
             with open(imset_path, 'r') as f:
                 path_list = f.readlines()
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
+
+            # Number of regions to keep from image for each class
+            keep_from_image = np.ceil((self.batch_size*self.iterations)/len(path_list))
+            keep_from_image = min(max(keep_from_image, 1), max_regions)
+
+            # Vector to track done batches and classes
+            keep_doing = np.ones(opts['num_classes'], len(self.iterations))
+
+            negatives = []
             for i in range(len(path_list)):
                 l = self.loadFeature(feat_path, path_list[i])
                 if l is not None:
                     for c in range(opts['num_classes']):
-                        I = np.nonzero(l['overlap'][:, c] > neg_ovr_thresh)
-                        # idx = np.random.randint() ------------- HERE
-
-            negatives = None
+                        if sum(keep_doing[c, :]) > 0:
+                            I = np.nonzero(l['overlap'][:, c] > neg_ovr_thresh)
+                            idx = np.random.choice(I, max(len(I), keep_from_image), replace=False)
+                            keep_per_batch = np.ceil(len(idx)/len(self.iterations))
+                            kept = 0
+                            for b in range(len(self.iterations)):
+                                if kept >= len(idx):
+                                    break
+                                if len(negatives[c][b]) < self.batch_size:
+                                    end_interval = max(kept + min(keep_per_batch, len(self.batch_size) - len(negatives[c][b])),
+                                                       len(idx))
+                                    new_idx = I[idx[np.arange(kept, end_interval)]]
+                                    if len(negatives) < c + 1:
+                                        negatives.append([])
+                                    if len(negatives[c]) < b + 1:
+                                        negatives[c].append(l['feat'][new_idx, :])
+                                    else:
+                                        negatives[c][b] = np.vstack(negatives[c][b], l['feat'][new_idx, :])
+                                    kept = kept + end_interval
+                                else:
+                                    keep_doing[c, b] = 0
 
         return negatives
 
