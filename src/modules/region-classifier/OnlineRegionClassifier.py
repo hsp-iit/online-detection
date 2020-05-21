@@ -6,11 +6,11 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 
 import RegionClassifierAbstract as rcA
-from utils import computeFeatStatistics, zScores
-from scipy import stats
+from utils import computeFeatStatistics, zScores, loadFeature
 import h5py
 import numpy as np
 import torch
+from maskrcnn_benchmark.structures.bounding_box import BoxList
 
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
@@ -28,12 +28,17 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             for i in range(opts['num_classes']):
                 positives.append(mat_positives[X_pos[0, i]][()].transpose())
         except:
-            print('To implement selectPositives in OnlineRegionClassifier')
             with open(imset_path, 'r') as f:
                 path_list = f.readlines()
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
             for i in range(len(path_list)):
-                l = self.loadFeature(feat_path, path_list[i])
+                l = loadFeature(feat_path, path_list[i])
+                for c in opts['num_classes']:
+                    if len(positives) < c + 1:
+                        positives.append(0)  # Initialization for class c-th
+                    sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1 INDEXING
+                    if len(sel):
+                        positives[c] = np.vstack(positives[c], l['feat'][sel, :])
 
         return positives
 
@@ -53,6 +58,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         caches = []
         model = []
         for i in range(opts['num_classes']):
+            print('----------- Training Class number {} -----------'.format(i))
             first_time = True
             for j in range(iterations):
                 if first_time:
@@ -84,7 +90,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         mean, std, mean_norm = computeFeatStatistics(positives, negatives)
         for i in range(opts['num_classes']):
             positives[i] = zScores(positives[i], mean, mean_norm)
-            negatives[i] = zScores(negatives[i], mean, mean_norm)
+            for j in range(len(negatives[i])):
+               negatives[i][j] = zScores(negatives[i][j], mean, mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives, opts)
 
@@ -111,6 +118,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         # X Falkon model to test
         # - max_per_set and max_per_image (?)
         # - La threshold per le predizioni dove avviene?
+        # (https://github.com/fedeceola/online-object-segmentation/blob/33ab5c3d4986d1a0785c8ad7cfae8657f73670dd/maskrcnn_pytorch/benchmark/modeling/roi_heads/box_head/inference.py)
         # - Nel matlab ogni classificatore dava la propria predizione per ogni box e
         #   tutte queste predizioni venivano fornite al devkit nella forma aboxes{i}{j} i-esima immagine j-esima classe.
         #   In questo caso come funziona?
@@ -127,27 +135,28 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         # -- Test of the model
         # -- Storage of the predictions in mask r-cnn format
         # -- Processing of the predictions (?)
-        thresh = 0
-        predictions = {}
+        # thresh = 0
+        predictions = []
+        # scores = np.zeros((len(boxes), opts['num_classes']))
         for i in range(len(path_list)):
-            l = self.loadFeature(feat_path, path_list[i])
+            l = loadFeature(feat_path, path_list[i].rstrip())
             if l is not None:
-                X_test = l['feat']
+                print('Processing image {}'.format(path_list[i]))
+                I = np.nonzero(l['gt'] == 0)
+                boxes = l['boxes'][I, :][0]
+                X_test = l['feat'][I, :][0]
+                scores = np.zeros((len(boxes), opts['num_classes']))
                 for c in range(opts['num_classes']):
-                    boxes = l['boxes']
-                    pred = self.classifier.predict(model[i], X_test)
-                    I = np.nonzero(l['gt'] == 0 & pred > thresh)
-                    boxes = boxes(I)
-                    scores = pred(I)
-                    # Concatenate obtained predictions with the old ones
+                    pred = self.classifier.predict(model[c], X_test)
+                    scores[:, c] = np.squeeze(pred.numpy())
 
+                b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
+                b.add_field("scores", torch.from_numpy(np.float32(scores)))
+                predictions.append(b)
             else:
                 print('None feature loaded. Skipping image {}.'.format(path_list[i]))
 
-        # Evaluation of the prediction using Mask R-CNN evaluation function
-        result = 0
-
-        return result
+        return scores, boxes, predictions
 
     def predict(self, dataset) -> None:
         pass

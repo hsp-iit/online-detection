@@ -2,6 +2,7 @@ import math
 import numpy as np
 import os
 
+
 def computeFeatStatistics(positives, negatives, num_samples=4000):
     print('To implement computeFeatStatistics in utils')
     pos_fraction = 1/10
@@ -37,7 +38,7 @@ def zScores(feat, mean, mean_norm, target_norm=20):
 
 def loadFeature(feat_path, file_name, type='mat'):
     file_path_noExt = os.path.join(feat_path, file_name)
-    if type=='mat':
+    if type == 'mat':
         import scipy.io
         file_path = file_path_noExt + '.mat'
         feature = scipy.io.loadmat(file_path)

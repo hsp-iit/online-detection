@@ -10,15 +10,15 @@ import OnlineDetectionPostProcessor as odp
 
 class AccuracyEvaluator():
     def __init__(self, score_thresh=0.05, nms=0.3, detections_per_img=100, cls_agnostic_bbox_reg=True):
-        self.post_processor = odp.OnlineDeectionPostProcessor(score_thresh=score_thresh, nms=nms,
+        self.post_processor = odp.OnlineDetectionPostProcessor(score_thresh=score_thresh, nms=nms,
                                                               detections_per_img=detections_per_img,
                                                               cls_agnostic_bbox_reg=cls_agnostic_bbox_reg)
 
-    def evaluate(self, dataset, scores, boxes, predictions, output_folder,
+    def evaluate(self, dataset, scores, boxes, predictions, opts,
                  box_only=False, iou_types=("bbox",), expected_results=(), draw_preds=False,
                  expected_results_sigma_tol=4, is_target_task=False, icwt_21_objs=False):
 
-        predictions = self.post_processor((scores, boxes), predictions)
+        predictions = self.post_processor(predictions, opts['num_classes'])
 
         extra_args = dict(
             box_only=box_only,
@@ -32,5 +32,5 @@ class AccuracyEvaluator():
 
         return evaluate(dataset=dataset,
                         predictions=predictions,
-                        output_folder=output_folder,
+                        output_folder=opts['output_folder'],
                         **extra_args)
