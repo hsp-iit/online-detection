@@ -25,7 +25,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             mat_positives = h5py.File(positives_file, 'r')
             X_pos = mat_positives['X_pos']
             positives = []
-            for i in range(opts['num_classes']):
+            for i in range(opts['num_classes']-1):
                 positives.append(mat_positives[X_pos[0, i]][()].transpose())
         except:
             with open(imset_path, 'r') as f:
@@ -36,7 +36,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 for c in opts['num_classes']:
                     if len(positives) < c + 1:
                         positives.append(0)  # Initialization for class c-th
-                    sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1 INDEXING
+                    sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
+                                                            # INDEXING Moreover class 0 is bkg
                     if len(sel):
                         positives[c] = np.vstack(positives[c], l['feat'][sel, :])
 
@@ -57,8 +58,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         iterations = self.negative_selector.iterations
         caches = []
         model = []
-        for i in range(opts['num_classes']):
-            print('----------- Training Class number {} -----------'.format(i))
+        for i in range(opts['num_classes']-1):
+            print('---------------------- Training Class number {} ----------------------'.format(i))
             first_time = True
             for j in range(iterations):
                 if first_time:
@@ -70,14 +71,18 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     first_time = False
                 else:
                     neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
-                    hard_idx = np.argwhere(neg_pred < self.negative_selector.neg_hard_thresh)
-                    caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx.numpy()[0]]))
+                    hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
+                    caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
+                    print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
+                print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
                 model[i] = self.updateModel(caches[i], opts)
                 neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
-                easy_idx = np.argwhere(neg_pred > self.negative_selector.neg_easy_thresh)
+                easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
                 caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+                print('Removed {} easy negatives. {} Remaining'.format(len(easy_idx), len(caches[i]['neg'])))
+
         model_name = 'model_' + self.experiment_name
         torch.save(model, model_name)
         return model
@@ -87,11 +92,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
         positives = self.selectPositives(dataset, opts)
 
-        mean, std, mean_norm = computeFeatStatistics(positives, negatives)
-        for i in range(opts['num_classes']):
-            positives[i] = zScores(positives[i], mean, mean_norm)
+        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives)
+        for i in range(opts['num_classes']-1):
+            positives[i] = zScores(positives[i], self.mean, self.mean_norm)
             for j in range(len(negatives[i])):
-               negatives[i][j] = zScores(negatives[i][j], mean, mean_norm)
+               negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives, opts)
 
@@ -145,10 +150,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 I = np.nonzero(l['gt'] == 0)
                 boxes = l['boxes'][I, :][0]
                 X_test = l['feat'][I, :][0]
-                scores = np.zeros((len(boxes), opts['num_classes']))
-                for c in range(opts['num_classes']):
+                X_test = zScores(X_test, self.mean, self.mean_norm)
+                scores = - np.ones((len(boxes), opts['num_classes']))
+                for c in range(0, opts['num_classes']-1):
                     pred = self.classifier.predict(model[c], X_test)
-                    scores[:, c] = np.squeeze(pred.numpy())
+                    scores[:, c+1] = np.squeeze(pred.numpy())
 
                 b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
                 b.add_field("scores", torch.from_numpy(np.float32(scores)))

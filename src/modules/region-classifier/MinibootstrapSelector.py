@@ -28,7 +28,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                 mat_negatives = h5py.File(negatives_file, 'r')
                 X_neg = mat_negatives['X_neg']
                 negatives = []
-                for i in range(opts['num_classes'] ):
+                for i in range(opts['num_classes'] -1):
                     tmp = []
                     for j in range(self.iterations):
                         tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose())

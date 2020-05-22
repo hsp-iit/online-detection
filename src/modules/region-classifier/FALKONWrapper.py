@@ -19,15 +19,16 @@ class FALKONWrapper(ca.ClassifierAbstract):
             print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
         if kernel is not None:
+            nyst_centers = min(opts['M'], len(X_np))
             model = Falkon(
                         kernel=kernel,
                         la=opts['lambda'],
-                        M=opts['M'],
-                        use_cpu=True
-                        # use_display_gpu=True,
-                        # gpu_use_processes=False,
-                        # inter_type=torch.float32,
-                        # final_type=torch.float32
+                        M=nyst_centers,
+                        # use_cpu=True
+                        use_display_gpu=True,
+                        gpu_use_processes=False,
+                        inter_type=torch.float32,
+                        final_type=torch.float32
                     )
         else:
             print('Kernel is None in trainRegionClassifier function')

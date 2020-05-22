@@ -73,7 +73,7 @@ class OnlineDetectionPostProcessor(PostProcessor):
         # Apply threshold on detection probabilities and apply NMS
         # Skip j = 0, because it's the background class
         inds_all = scores > self.score_thresh
-        for j in range(0, num_classes):
+        for j in range(1, num_classes):
             inds = inds_all[:, j].nonzero().squeeze(1)
             scores_j = scores[inds, j]
             boxes_j = boxes[inds, j * 4 : (j + 1) * 4]
