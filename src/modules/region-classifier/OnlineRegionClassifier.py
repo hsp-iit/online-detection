@@ -95,8 +95,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
     def trainRegionClassifier(self, dataset, opts):
         # Still to implement early stopping of negatives selection
-        positives = self.selectPositives(dataset, opts)
         negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
+        positives = self.selectPositives(dataset, opts)
 
         self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives)
         for i in range(opts['num_classes']-1):

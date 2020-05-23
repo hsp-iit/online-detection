@@ -21,12 +21,14 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         self.neg_hard_thresh = neg_hard_thresh
 
     def selectNegatives(self, imset_path, experiment_name, opts, neg_ovr_thresh=0.3, max_regions=300, feat_type='mat'):
+        print('Selecting negatives from the {} dataset.'.format(imset_path))
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
         negatives_file = os.path.join(feat_path, experiment_name + '_negatives{}x{}'.format(self.iterations,
                                                                                             self.batch_size))
         try:
             if feat_type == 'mat':
                 negatives_file = negatives_file + '.mat'
+                print('Trying to load negative samples from {}'.format(negatives_file))
                 mat_negatives = h5py.File(negatives_file, 'r')
                 X_neg = mat_negatives['X_neg']
                 negatives = []
@@ -39,7 +41,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                 print('Unrecognized type of feature file')
                 negatives = None
         except:
-            print('To implement selectNegatives in MinibootstrapSelector')
+            print('Loading failed. Starting negatives computation')
             # Initialize variables and parameters like neg_ovr_thresh=0.3
             # Compute how many to pick from each image for each class
             # For each image in the train set
