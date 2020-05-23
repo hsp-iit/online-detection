@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 from utils import loadFeature
 import torch
+import ntpath
 
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
@@ -50,7 +51,9 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             # --- Concatenate the chosen regions to the current batch, accounting for all the special cases
             with open(imset_path, 'r') as f:
                 path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
+            folder_name = os.path.splitext(ntpath.basename(imset_path))[0]
+
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', folder_name)
 
             # Number of regions to keep from image for each class
             keep_from_image = int(np.ceil((self.batch_size*self.iterations)/len(path_list)))
