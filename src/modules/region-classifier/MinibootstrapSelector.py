@@ -66,6 +66,8 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
 
             negatives = []
             for i in range(len(path_list)):
+                if sum(sum(keep_doing)) == 0:
+                    break
                 l = loadFeature(feat_path, path_list[i].rstrip(), feat_type)
                 print('{}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
                 if l is not None:

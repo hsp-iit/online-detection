@@ -4,7 +4,7 @@ import os
 
 
 def computeFeatStatistics(positives, negatives, num_samples=4000):
-    print('To implement computeFeatStatistics in utils')
+    print('Computing features statistics')
     pos_fraction = 1/10
     neg_fraction = 9/10
     num_classes = len(positives)
@@ -27,10 +27,12 @@ def computeFeatStatistics(positives, negatives, num_samples=4000):
     mean = np.mean(sampled_X, axis=0)
     std = np.std(sampled_X, axis=0)
     mean_norm = np.mean(ns)
+    print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean, std, mean_norm))
     return mean, std, mean_norm
 
 
 def zScores(feat, mean, mean_norm, target_norm=20):
+    print('Normalizing features.')
     feat = feat - mean
     feat = np.multiply(feat, (target_norm / mean_norm))
     return feat

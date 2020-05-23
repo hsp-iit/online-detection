@@ -12,6 +12,7 @@ import numpy as np
 import torch
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 import ntpath
+import time
 
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
@@ -64,6 +65,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         iterations = self.negative_selector.iterations
         caches = []
         model = []
+        t = time.time()
         for i in range(opts['num_classes']-1):
             print('---------------------- Training Class number {} ----------------------'.format(i))
             first_time = True
@@ -89,11 +91,14 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
                 print('Removed {} easy negatives. {} Remaining'.format(len(easy_idx), len(caches[i]['neg'])))
 
+        training_time = time.time() - t
+        print('Online Classifier trained in {} seconds'.format(training_time))
         model_name = 'model_' + self.experiment_name
         torch.save(model, model_name)
         return model
 
     def trainRegionClassifier(self, dataset, opts):
+        print('Training Online Region Classifier')
         # Still to implement early stopping of negatives selection
         negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
         positives = self.selectPositives(dataset, opts)
@@ -122,52 +127,38 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         return feat_file
 
     def testRegionClassifier(self, model, imset_path, opts):
-        # What do we need?
-        # X list of images of the test set
-        # X where to find features
-        # - where to find annotations
-        # X Falkon model to test
-        # - max_per_set and max_per_image (?)
-        # - La threshold per le predizioni dove avviene?
-        # (https://github.com/fedeceola/online-object-segmentation/blob/33ab5c3d4986d1a0785c8ad7cfae8657f73670dd/maskrcnn_pytorch/benchmark/modeling/roi_heads/box_head/inference.py)
-        # - Nel matlab ogni classificatore dava la propria predizione per ogni box e
-        #   tutte queste predizioni venivano fornite al devkit nella forma aboxes{i}{j} i-esima immagine j-esima classe.
-        #   In questo caso come funziona?
-
-        # Options setting
+        print('Online Region Classifier testing')
         with open(imset_path, 'r') as f:
             path_list = f.readlines()
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
 
-        # Loop on the dataset:
-        # - Retrieve feature
-        # - Normalize feature
-        # - For each class
-        # -- Test of the model
-        # -- Storage of the predictions in mask r-cnn format
-        # -- Processing of the predictions (?)
-        # thresh = 0
         predictions = []
         # scores = np.zeros((len(boxes), opts['num_classes']))
+        total_testing_time = 0
         for i in range(len(path_list)):
+            print('Testing {}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
             l = loadFeature(feat_path, path_list[i].rstrip())
             if l is not None:
                 print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)
                 boxes = l['boxes'][I, :][0]
                 X_test = l['feat'][I, :][0]
+                t0 = time.time()
                 X_test = zScores(X_test, self.mean, self.mean_norm)
                 scores = - np.ones((len(boxes), opts['num_classes']))
                 for c in range(0, opts['num_classes']-1):
                     pred = self.classifier.predict(model[c], X_test)
                     scores[:, c+1] = np.squeeze(pred.numpy())
 
+                total_testing_time = total_testing_time + t0 - time.time()
                 b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
                 b.add_field("scores", torch.from_numpy(np.float32(scores)))
                 predictions.append(b)
             else:
                 print('None feature loaded. Skipping image {}.'.format(path_list[i]))
 
+        avg_time = total_testing_time/len(path_list)
+        print('Testing an image in {} seconds.'.format(avg_time))
         return scores, boxes, predictions
 
     def predict(self, dataset) -> None:
