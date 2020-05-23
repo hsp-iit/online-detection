@@ -31,15 +31,19 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             with open(imset_path, 'r') as f:
                 path_list = f.readlines()
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+            positives = []
             for i in range(len(path_list)):
-                l = loadFeature(feat_path, path_list[i])
-                for c in opts['num_classes']:
+                l = loadFeature(feat_path, path_list[i].rstrip())
+                for c in range(opts['num_classes'] - 1):
                     if len(positives) < c + 1:
-                        positives.append(0)  # Initialization for class c-th
+                        positives.append([])  # Initialization for class c-th
                     sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
                                                             # INDEXING Moreover class 0 is bkg
                     if len(sel):
-                        positives[c] = np.vstack(positives[c], l['feat'][sel, :])
+                        if len(positives[c]) == 0:
+                            positives[c] = l['feat'][sel, :]
+                        else:
+                            positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
 
         return positives
 
@@ -88,9 +92,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         return model
 
     def trainRegionClassifier(self, dataset, opts):
-
-        negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
+        # Still to implement early stopping of negatives selection
         positives = self.selectPositives(dataset, opts)
+        negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
 
         self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives)
         for i in range(opts['num_classes']-1):

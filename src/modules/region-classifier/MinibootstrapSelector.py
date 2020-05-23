@@ -9,6 +9,7 @@ import NegativeSelectorAbstract as nsA
 import h5py
 import numpy as np
 from utils import loadFeature
+import torch
 
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
@@ -52,40 +53,47 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', experiment_name)
 
             # Number of regions to keep from image for each class
-            keep_from_image = np.ceil((self.batch_size*self.iterations)/len(path_list))
+            keep_from_image = int(np.ceil((self.batch_size*self.iterations)/len(path_list)))
             keep_from_image = min(max(keep_from_image, 1), max_regions)
 
             # Vector to track done batches and classes
-            keep_doing = np.ones(opts['num_classes'], len(self.iterations))
+            keep_doing = np.ones((opts['num_classes']-1, self.iterations))
 
             negatives = []
             for i in range(len(path_list)):
-                l = loadFeature(feat_path, path_list[i], feat_type)
+                l = loadFeature(feat_path, path_list[i].rstrip(), feat_type)
+                print('{}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
                 if l is not None:
-                    for c in range(opts['num_classes']):
+                    for c in range(opts['num_classes']-1):
                         if sum(keep_doing[c, :]) > 0:
-                            I = np.nonzero(l['overlap'][:, c] > neg_ovr_thresh)
-                            idx = np.random.choice(I, max(len(I), keep_from_image), replace=False)
-                            keep_per_batch = np.ceil(len(idx)/len(self.iterations))
+                            I = np.nonzero(l['overlap'][:, c] < neg_ovr_thresh)[0]
+                            idx = np.random.choice(I, min(len(I), keep_from_image), replace=False)
+                            keep_per_batch = np.ceil(len(idx)/self.iterations)
                             kept = 0
-                            for b in range(len(self.iterations)):
+                            for b in range(self.iterations):
                                 if kept >= len(idx):
                                     break
+                                if len(negatives) < c + 1:
+                                    negatives.append([])
+                                if len(negatives[c]) < b + 1:
+                                    negatives[c].append([])
+
                                 if len(negatives[c][b]) < self.batch_size:
-                                    end_interval = max(kept + min(keep_per_batch, len(self.batch_size) - len(negatives[c][b])),
-                                                       len(idx))
-                                    new_idx = I[idx[np.arange(kept, end_interval)]]
-                                    if len(negatives) < c + 1:
-                                        negatives.append([])
-                                    if len(negatives[c]) < b + 1:
-                                        negatives[c].append(l['feat'][new_idx, :])
+                                    end_interval = int(kept + min(keep_per_batch, self.batch_size - len(negatives[c][b]),
+                                                                  len(idx) - kept))
+                                    new_idx = idx[np.arange(kept, end_interval)]
+
+                                    if len(negatives[c][b]) == 0:
+                                        negatives[c][b] = l['feat'][new_idx, :]
                                     else:
-                                        negatives[c][b] = np.vstack(negatives[c][b], l['feat'][new_idx, :])
-                                    kept = kept + end_interval
+                                        negatives[c][b] = np.vstack((negatives[c][b], l['feat'][new_idx, :]))
+                                    kept = end_interval
                                 else:
                                     keep_doing[c, b] = 0
             if feat_type == 'mat':
                 print('Unimplemented negatives saving')
+        torch.save(negatives, negatives_file)
+
         return negatives
 
     def setIterations(self, iterations) -> None:

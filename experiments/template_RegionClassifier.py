@@ -16,7 +16,7 @@ from maskrcnn_pytorch.benchmark.config import cfg
 # Temporary imports
 import torch
 # Experiment configuration
-experiment_name = 'icub_test_TASK2_30objs_manual'
+experiment_name = 'new'
 classifier = falkon.FALKONWrapper()
 negative_selector = ms.MinibootstrapSelector(10, 2000, -0.9, -0.7)
 regionClassifier = ocr.OnlineRegionClassifier(experiment_name, classifier, negative_selector)
@@ -47,7 +47,7 @@ print('Skip cross validation')
 opts['lambda'] = 0.001
 opts['sigma'] = 25
 opts['M'] = 1000
-imset_train = ''
+imset_train = '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
 # - Train region classifier
 model = regionClassifier.trainRegionClassifier(imset_train, opts)
 # model = torch.load('model_icub_test_TASK2_30objs_manual')
