@@ -1,6 +1,7 @@
 import pickle
 from scipy.io import loadmat
 import numpy as np
+import torch
 
 def list_features(imageset_path):
     with open(imageset_path) as f:
@@ -67,10 +68,10 @@ def features_to_COXY(features_path, features_dictionary, num_classes, min_overla
             O = np.append(O, max_ov)
             C = np.append(C, cls)
 
-    COXY = {'C': C,
-            'O': O,
-            'X': X,
-            'Y': Y
+    COXY = {'C': torch.from_numpy(C).to("cuda"),
+            'O': torch.from_numpy(O).to("cuda"),
+            'X': torch.from_numpy(X).to("cuda"),
+            'Y': torch.from_numpy(Y).to("cuda")
             }
 
     return COXY

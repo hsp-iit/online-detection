@@ -1,0 +1,13 @@
+PATHS:
+  FEATURES_PATH: 'features'
+  IMAGESET_TRAIN: 'train_val_reduced.txt'
+  IMAGESET_VAL: None
+  IMAGESET_TEST: None
+
+FEATURES_FORMAT: '.mat'
+
+NUM_CLASSES: 30
+
+opts:
+  'min_overlap': 0.6
+  'lambda': 1000
