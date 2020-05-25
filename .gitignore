@@ -148,3 +148,8 @@ cython_debug/
 # mat files
 *.mat
 
+# external folder's content
+external/*
+
+# Data/feat_cache folder's content
+Data/feat_cache/*
