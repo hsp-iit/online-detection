@@ -130,7 +130,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         print('Online Region Classifier testing')
         with open(imset_path, 'r') as f:
             path_list = f.readlines()
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+        folder_name = os.path.splitext(ntpath.basename(imset_path))[0]
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', folder_name)
 
         predictions = []
         # scores = np.zeros((len(boxes), opts['num_classes']))
