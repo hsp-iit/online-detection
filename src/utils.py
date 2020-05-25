@@ -11,7 +11,7 @@ def computeFeatStatistics(positives, negatives, num_samples=4000):
     take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
 
-    sampled_X = positives[0][0] #TO CHECK
+    sampled_X = positives[0][0]
     ns = np.transpose(np.linalg.norm(positives[0][0]))
     for i in range(num_classes):
         pos_idx = np.random.randint(len(positives[i]), size=take_from_pos)
@@ -32,7 +32,6 @@ def computeFeatStatistics(positives, negatives, num_samples=4000):
 
 
 def zScores(feat, mean, mean_norm, target_norm=20):
-    print('Normalizing features.')
     feat = feat - mean
     feat = np.multiply(feat, (target_norm / mean_norm))
     return feat
