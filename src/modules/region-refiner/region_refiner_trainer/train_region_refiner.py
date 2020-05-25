@@ -1,5 +1,5 @@
 #import h5py
-#import numpy as np
+import numpy as np
 import os
 import time
 #import warnings
@@ -11,15 +11,15 @@ class RegionRefinerTrainer():
     def __init__(self, cfg):
         self.cfg = cfg
         self.features_format = self.cfg['FEATURES_FORMAT']
-        self.path_to_features = self.cfg['PATHS']['FEATURES_PATH']+'/%s'+self.features_format
+        self.path_to_features = self.cfg['PATHS']['FEATURES_PATH_TRAIN']+'/%s'+self.features_format
         self.path_to_imgset_train = self.cfg['PATHS']['IMAGESET_TRAIN']
         self.path_to_imgset_val = self.cfg['PATHS']['IMAGESET_VAL']
         self.features_dictionary_train = list_features(self.path_to_imgset_train)
         return
 
     def __call__(self):
-        self.train()
-        return
+        models = self.train()
+        return models
 
     def train(self):
         COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, self.cfg['NUM_CLASSES'])
@@ -117,7 +117,7 @@ class RegionRefinerTrainer():
         end_time = time.time()
         print('Time required to train %d regressors: %f seconds.' % (num_clss - 1, end_time - start_time))
 
-        return
+        return models
 
     def solve(self, X, y, lmbd):
         #X_torch = torch.from_numpy(X).to("cuda")

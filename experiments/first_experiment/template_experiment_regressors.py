@@ -34,6 +34,7 @@ region_refiner.trainRegionRefiner()
 ### - Train region classifier
 ### - Test region classifier (on validation set)
 ### - Test region refiner (on validation set)
+region_refiner.predict()
 ### - Save/store results
 
 ## Test the best model (on the test set)
