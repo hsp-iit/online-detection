@@ -138,3 +138,8 @@ dmypy.json
 cython_debug/
 
 .idea
+
+# external folder content
+external/*
+# feat_cache folder content
+Data/feat_cache/*
