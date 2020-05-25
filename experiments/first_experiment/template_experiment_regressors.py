@@ -14,7 +14,7 @@ from region_refiner import RegionRefiner
 
 ## Experiment configuration
 #feature_extractor = FeatureExtractor('configs/config_feature_task.yaml', 'configs/config_target_task_FALKON.yaml')
-region_refiner = RegionRefiner('configs/config_region_refiner.yaml')
+region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
 
 ## Retrieve feature extractor (either by loading it or by training it)
 #try:
