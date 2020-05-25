@@ -20,24 +20,31 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
     def loadRegionClassifier(self) -> None:
         pass
 
-    def selectPositives(self, imset_path, opts):
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.experiment_name)
+    def processOptions(self, opts):
+        if 'num_classes' in opts:
+            self.num_classes = opts['num_classes']
+        if 'imset_train' in opts:
+            self.train_imset = opts['imset_train']
+        if 'classifier_options' in opts:
+            self.classifier_options = opts['classifier_options']
+
+    def selectPositives(self):
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
         positives_file = os.path.join(feat_path, self.experiment_name + '_positives.mat')
         try:
             mat_positives = h5py.File(positives_file, 'r')
             X_pos = mat_positives['X_pos']
             positives = []
-            for i in range(opts['num_classes']-1):
+            for i in range(self.num_classes-1):
                 positives.append(mat_positives[X_pos[0, i]][()].transpose())
         except:
-            with open(imset_path, 'r') as f:
+            with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
-            folder_name = os.path.splitext(ntpath.basename(imset_path))[0]
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', folder_name)
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
             positives = []
             for i in range(len(path_list)):
                 l = loadFeature(feat_path, path_list[i].rstrip())
-                for c in range(opts['num_classes'] - 1):
+                for c in range(self.num_classes - 1):
                     if len(positives) < c + 1:
                         positives.append([])  # Initialization for class c-th
                     sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
@@ -50,8 +57,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         return positives
 
-    def updateModel(self, cache, opts):
-
+    def updateModel(self, cache):
         X_neg = cache['neg']
         X_pos = cache['pos']
         num_neg = len(X_neg)
@@ -59,14 +65,14 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         X = np.vstack((X_pos, X_neg))
         y = np.vstack((np.transpose(np.ones(num_pos)[np.newaxis]), -np.transpose(np.ones(num_neg)[np.newaxis])))
 
-        return self.classifier.train(X, y, opts)
+        return self.classifier.train(X, y, self.classifier_options)
 
-    def trainWithMinibootstrap(self, negatives, positives, opts):
+    def trainWithMinibootstrap(self, negatives, positives):
         iterations = self.negative_selector.iterations
         caches = []
         model = []
         t = time.time()
-        for i in range(opts['num_classes']-1):
+        for i in range(self.num_classes-1):
             print('---------------------- Training Class number {} ----------------------'.format(i))
             first_time = True
             for j in range(iterations):
@@ -84,7 +90,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
                 print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
-                model[i] = self.updateModel(caches[i], opts)
+                model[i] = self.updateModel(caches[i])
                 neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
                 easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
@@ -97,19 +103,21 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         torch.save(model, model_name)
         return model
 
-    def trainRegionClassifier(self, dataset, opts):
+    def trainRegionClassifier(self, opts=None):
+        if opts is not None:
+            self.processOptions(opts)
         print('Training Online Region Classifier')
         # Still to implement early stopping of negatives selection
-        negatives = self.negative_selector.selectNegatives(dataset, self.experiment_name, opts)
-        positives = self.selectPositives(dataset, opts)
+        negatives = self.negative_selector.selectNegatives()
+        positives = self.selectPositives()
 
         self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives)
-        for i in range(opts['num_classes']-1):
+        for i in range(self.num_classes-1):
             positives[i] = zScores(positives[i], self.mean, self.mean_norm)
             for j in range(len(negatives[i])):
                negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
 
-        model = self.trainWithMinibootstrap(negatives, positives, opts)
+        model = self.trainWithMinibootstrap(negatives, positives)
 
         return model
 
@@ -126,12 +134,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         return feat_file
 
-    def testRegionClassifier(self, model, imset_path, opts):
+    def testRegionClassifier(self, model):
         print('Online Region Classifier testing')
-        with open(imset_path, 'r') as f:
+        with open(self.test_imset, 'r') as f:
             path_list = f.readlines()
-        folder_name = os.path.splitext(ntpath.basename(imset_path))[0]
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', folder_name)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
 
         predictions = []
         # scores = np.zeros((len(boxes), opts['num_classes']))
@@ -146,8 +153,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 X_test = l['feat'][I, :][0]
                 t0 = time.time()
                 # X_test = zScores(X_test, self.mean, self.mean_norm)
-                scores = - np.ones((len(boxes), opts['num_classes']))
-                for c in range(0, opts['num_classes']-1):
+                scores = - np.ones((len(boxes), self.num_classes))
+                for c in range(0, self.num_classes-1):
                     pred = self.classifier.predict(model[c], X_test)
                     scores[:, c+1] = np.squeeze(pred.numpy())
 
