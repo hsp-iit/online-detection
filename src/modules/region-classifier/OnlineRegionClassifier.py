@@ -145,7 +145,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 boxes = l['boxes'][I, :][0]
                 X_test = l['feat'][I, :][0]
                 t0 = time.time()
-                X_test = zScores(X_test, self.mean, self.mean_norm)
+                # X_test = zScores(X_test, self.mean, self.mean_norm)
                 scores = - np.ones((len(boxes), opts['num_classes']))
                 for c in range(0, opts['num_classes']-1):
                     pred = self.classifier.predict(model[c], X_test)
@@ -154,13 +154,14 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 total_testing_time = total_testing_time + t0 - time.time()
                 b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
                 b.add_field("scores", torch.from_numpy(np.float32(scores)))
+                b.add_field("name_file", path_list[i].rstrip())
                 predictions.append(b)
             else:
                 print('None feature loaded. Skipping image {}.'.format(path_list[i]))
 
         avg_time = total_testing_time/len(path_list)
         print('Testing an image in {} seconds.'.format(avg_time))
-        return scores, boxes, predictions
+        return predictions
 
     def predict(self, dataset) -> None:
         pass

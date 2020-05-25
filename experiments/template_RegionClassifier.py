@@ -25,15 +25,15 @@ accuracy_evaluator = ae.AccuracyEvaluator(score_thresh=-2, nms=0.3, detections_p
 opts = dict()
 opts['kernel_type'] = 'gauss'
 opts['num_classes'] = 31
-opts['output_folder'] = '/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/output'
+opts['output_folder'] = '/home/elisa/Repos/python-online-detection/output'
 
 # Retrieve feature extractor (either by loading it or by training it)
 print('Skip retriever feature extractor')
 
 # Extract features for the train/val/test sets
 print('Skip feature extraction')
-imset_test = '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual.txt'
-cfg.merge_from_file('/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/experiments/Configs/first_experiment.yaml')
+imset_test = '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
+cfg.merge_from_file('/home/elisa/Repos/python-online-detection/experiments/Configs/first_experiment.yaml')
 cfg.freeze()
 dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True)
 
@@ -47,10 +47,10 @@ print('Skip cross validation')
 opts['lambda'] = 0.001
 opts['sigma'] = 25
 opts['M'] = 1000
-imset_train = '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
+imset_train = '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
 # - Train region classifier
-model = regionClassifier.trainRegionClassifier(imset_train, opts)
-# model = torch.load('model_icub_test_TASK2_30objs_manual')
+# model = regionClassifier.trainRegionClassifier(imset_train, opts)
+model = torch.load('model_new')
 # - Test region classifier (on validation set)
 print('Skip Test region classifier on validation set')
 
@@ -61,13 +61,13 @@ print('Skip Test region refiner on validation set')
 print('Skip saving model')
 
 # Test the best model (on the test set)
-scores, boxes, predictions = regionClassifier.testRegionClassifier(model, imset_test, opts)
+predictions = regionClassifier.testRegionClassifier(model, imset_test, opts)
+torch.save(predictions, 'predictions_all')
 # scores = torch.load('scores')
 # boxes = torch.load('boxes')
 # predictions = torch.load('predictions')
 
-result_cls = accuracy_evaluator.evaluate(dataset.dataset, scores, boxes, predictions, opts, is_target_task=True)
+result_cls = accuracy_evaluator.evaluate(dataset.dataset, predictions, opts, is_target_task=True)
 
 # Test region refiner (on test set)
 print('Skip Test region refiner on test set')
-

@@ -14,7 +14,7 @@ class AccuracyEvaluator():
                                                               detections_per_img=detections_per_img,
                                                               cls_agnostic_bbox_reg=cls_agnostic_bbox_reg)
 
-    def evaluate(self, dataset, scores, boxes, predictions, opts,
+    def evaluate(self, dataset, predictions, opts,
                  box_only=False, iou_types=("bbox",), expected_results=(), draw_preds=False,
                  expected_results_sigma_tol=4, is_target_task=False, icwt_21_objs=False):
         print('Evaluating predictions')
