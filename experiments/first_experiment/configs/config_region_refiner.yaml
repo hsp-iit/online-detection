@@ -1,8 +1,9 @@
 PATHS:
-  FEATURES_PATH: 'features'
+  FEATURES_PATH_TRAIN: 'features'
+  FEATURES_PATH_TEST: 'features'
   IMAGESET_TRAIN: 'train_val_reduced.txt'
   IMAGESET_VAL: None
-  IMAGESET_TEST: None
+  IMAGESET_TEST: 'train_val_reduced.txt'
 
 FEATURES_FORMAT: '.mat'
 

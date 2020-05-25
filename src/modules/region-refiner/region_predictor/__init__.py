@@ -1,0 +1,1 @@
+from .predict_regions import RegionPredictor
