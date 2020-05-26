@@ -1,10 +1,13 @@
 import os
 import errno
+import sys
+
 from trainer_feature_task import TrainerFeatureTask
 from feature_extractor_detector import FeatureExtractorDetector
 from feature_extractor_loader import LoaderFeatureExtractor
-
-from src.modules.FeatureExtractorAbstract import FeatureExtractorAbstract
+basedir = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
+from FeatureExtractorAbstract import FeatureExtractorAbstract
 
 
 class FeatureExtractor(FeatureExtractorAbstract):
