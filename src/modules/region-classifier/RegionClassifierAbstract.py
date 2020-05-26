@@ -17,6 +17,9 @@ class RegionClassifierAbstract(ABC):
             self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
             self.feature_folder = getFeatPath(self.cfg)
+            self.mean = 0
+            self.std = 0
+            self.mean_norm = 0
 
         else:
             print('Config file path not given. cfg variable set to None.')

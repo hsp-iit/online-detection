@@ -152,7 +152,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 boxes = l['boxes'][I, :][0]
                 X_test = l['feat'][I, :][0]
                 t0 = time.time()
-                # X_test = zScores(X_test, self.mean, self.mean_norm)
+                if self.mean != 0 and self.mean_norm != 0:
+                   X_test = zScores(X_test, self.mean, self.mean_norm)
                 scores = - np.ones((len(boxes), self.num_classes))
                 for c in range(0, self.num_classes-1):
                     pred = self.classifier.predict(model[c], X_test)
