@@ -10,7 +10,7 @@ def list_features(imageset_path):
     id_to_img_map = {k: v for k, v in enumerate(ids)}
     return id_to_img_map
 
-def features_to_COXY(features_path, features_dictionary, num_classes, min_overlap = 0.6):
+def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6):
     # features
     X = np.empty((0, 2048), dtype=np.float32) #np.zeros((total, feat_dim), dtype=np.float32)
     # target values

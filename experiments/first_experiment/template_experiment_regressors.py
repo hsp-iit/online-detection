@@ -1,5 +1,6 @@
 import os
 import sys
+import torch
 
 
 basedir = os.path.dirname(__file__)
@@ -27,14 +28,14 @@ region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
 #feature_extractor.extractFeatures()
 
 ## Train region refiner
-region_refiner.trainRegionRefiner()
+#region_refiner.trainRegionRefiner()
 ## Start the cross validation
 
 ### - Set parameters
 ### - Train region classifier
 ### - Test region classifier (on validation set)
 ### - Test region refiner (on validation set)
-region_refiner.predict()
+refined_regions = region_refiner.predict()
 ### - Save/store results
-
+torch.save(refined_regions, 'test_predictor')
 ## Test the best model (on the test set)

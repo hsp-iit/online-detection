@@ -22,31 +22,15 @@ class RegionRefinerTrainer():
         return models
 
     def train(self):
-        COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, self.cfg['NUM_CLASSES'])
-
-        chosen_classes = ("__background__",
-            "flower2", "flower5", "flower7",
-            "mug1", "mug3", "mug4",
-            "wallet6", "wallet7", "wallet10",
-            "sodabottle2", "sodabottle3", "sodabottle4",
-            "book4", "book6", "book9",
-            "ringbinder4", "ringbinder5", "ringbinder6",
-            "bodylotion2", "bodylotion5", "bodylotion8",
-            "sprayer6", "sprayer8", "sprayer9",
-            "pencilcase3", "pencilcase5", "pencilcase6",
-            "hairclip2", "hairclip6", "hairclip8"
-            )
-        imdb = {
-            'classes': chosen_classes
-        }
-
+        chosen_classes = self.cfg['CHOSEN_CLASSES']
         opts = self.cfg['opts']
+        COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
+        
 
         # cache_dir = 'bbox_reg/'
         # if not os.path.exists(cache_dir):
         #    os.mkdir(cache_dir)
-        clss = imdb['classes']
-        num_clss = len(clss)
+        num_clss = len(chosen_classes)
         bbox_model_suffix = '_first_test'
 
         models = np.empty((0))
@@ -54,20 +38,20 @@ class RegionRefinerTrainer():
 
         start_time = time.time()
         for i in range(1, num_clss):
-            print('Training regressor for class %s (%d/%d)' % (imdb['classes'][i], i, num_clss - 1))
+            print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
             # Compute indices where bboxes of class i overlap with the ground truth
             #I = np.logical_and(COXY['O'] > opts['min_overlap'], COXY['C'] == i)
             I = (COXY['O'] > opts['min_overlap']) & (COXY['C'] == i)
             #I = np.squeeze(np.where(I == True))
             I = torch.where(I == True)[0]
-            print(I)
+            #print(I)
             if len(I) == 0:
                 models = np.append(models, {'mu': None,
                                             'T': None,
                                             'T_inv': None,
                                             'Beta': None
                                             })
-                print('No indices for class %s' % (imdb['classes'][i]))
+                print('No indices for class %s' % (chosen_classes[i]))
                 continue
             # Extract the corresponding values in the X matrix
             # Transpose is used to set the number of features as the number of columns (instead of the number of rows)
@@ -116,6 +100,7 @@ class RegionRefinerTrainer():
             # break
         end_time = time.time()
         print('Time required to train %d regressors: %f seconds.' % (num_clss - 1, end_time - start_time))
+        torch.save(models, 'models_regressor')
 
         return models
 
