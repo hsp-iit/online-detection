@@ -1,5 +1,6 @@
-OUTPUT_DIR: "features"
+OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/%s_ep%s_FT%s_TT%s"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
+DATA_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/pretrained_feature_extractor.pth"
@@ -46,4 +47,4 @@ SOLVER:
   CHECKPOINT_PERIOD: 3988
 TEST:
   IMS_PER_BATCH: 1
-FEATURES_FORMAT: '.pkl'
+FEATURES_FORMAT: '.mat'

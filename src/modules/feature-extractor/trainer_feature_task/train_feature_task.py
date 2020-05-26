@@ -5,7 +5,8 @@ Basic training script for PyTorch
 """
 import os
 import torch
-from maskrcnn_benchmark.config import cfg
+#from maskrcnn_benchmark.config import cfg
+from maskrcnn_pytorch.benchmark.config import cfg
 from maskrcnn_pytorch.benchmark.data import make_data_loader
 from maskrcnn_benchmark.solver import make_lr_scheduler
 from maskrcnn_benchmark.solver import make_optimizer
