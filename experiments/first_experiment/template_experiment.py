@@ -13,7 +13,7 @@ from feature_extractor import FeatureExtractor
 #import region_refiner
 
 ## Experiment configuration
-feature_extractor = FeatureExtractor('configs/config_feature_task.yaml', 'configs/config_target_task_FALKON.yaml')
+feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico.yaml')
 
 ## Retrieve feature extractor (either by loading it or by training it)
 try:

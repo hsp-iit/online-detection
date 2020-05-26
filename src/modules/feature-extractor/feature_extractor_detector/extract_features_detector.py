@@ -62,6 +62,7 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
+        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '4', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
         self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -117,11 +118,13 @@ class FeatureExtractorDetector:
         torch.cuda.empty_cache()  # TODO check if it helps
 
         output_folders = [None] * (len(self.cfg.DATASETS.TRAIN) + len(self.cfg.DATASETS.TEST))
-        dataset_names = []
-        for elem in self.cfg.DATASETS.TRAIN:
-            dataset_names.append(elem)
-        for elem in self.cfg.DATASETS.TEST:
-            dataset_names.append(elem)
+        if len(self.cfg.DATASETS.TRAIN) + len(self.cfg.DATASETS.TEST) == 2:
+            dataset_names = ['train_val', 'test']
+        else:
+            for elem in self.cfg.DATASETS.TRAIN:
+                dataset_names.append(elem)
+            for elem in self.cfg.DATASETS.TEST:
+                dataset_names.append(elem)
 
         if cfg.OUTPUT_DIR:
             for idx, dataset_name in enumerate(dataset_names):
