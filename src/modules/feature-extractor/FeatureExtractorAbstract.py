@@ -13,9 +13,9 @@ class FeatureExtractorAbstract(ABC):
     def trainFeatureExtractor(self) -> None:
         pass
 
-    @abstractmethod
-    def extractRPNFeatures(self, dataset) -> None:
-        pass
+    # @abstractmethod
+    # def extractRPNFeatures(self, dataset) -> None:
+    #     pass
 
     @abstractmethod
     def extractFeatures(self) -> None:
