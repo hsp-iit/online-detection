@@ -5,7 +5,7 @@ basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-classifier')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'accuracy-evaluator')))
-sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', 'src', 'modules', 'feature-extractor')))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', 'src', 'modules', 'feature-extractor')))
 
 import OnlineRegionClassifier as ocr
 import FALKONWrapper as falkon
