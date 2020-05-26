@@ -1,5 +1,10 @@
 from abc import ABC, abstractmethod
 import yaml
+import os
+import sys
+basedir = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
+from utils import getFeatPath
 
 
 class RegionClassifierAbstract(ABC):
@@ -11,10 +16,7 @@ class RegionClassifierAbstract(ABC):
             self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
             self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
-            self.feature_folder = '' + self.cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
-                                  + str(self.cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
-                                  + self.cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
-                                  + self.cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
+            self.feature_folder = getFeatPath(self.cfg)
 
         else:
             print('Config file path not given. cfg variable set to None.')

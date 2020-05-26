@@ -111,7 +111,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         negatives = self.negative_selector.selectNegatives()
         positives = self.selectPositives()
 
-        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives)
+        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder)
         for i in range(self.num_classes-1):
             positives[i] = zScores(positives[i], self.mean, self.mean_norm)
             for j in range(len(negatives[i])):

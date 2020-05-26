@@ -1,33 +1,51 @@
 import math
 import numpy as np
 import os
+import torch
 
 
-def computeFeatStatistics(positives, negatives, num_samples=4000):
-    print('Computing features statistics')
-    pos_fraction = 1/10
-    neg_fraction = 9/10
-    num_classes = len(positives)
-    take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
-    take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
+def getFeatPath(cfg):
+    return '' + cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
+              + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
+              + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
+              + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
 
-    sampled_X = positives[0][0]
-    ns = np.transpose(np.linalg.norm(positives[0][0]))
-    for i in range(num_classes):
-        pos_idx = np.random.randint(len(positives[i]), size=take_from_pos)
-        pos_picked = positives[i][pos_idx]
-        sampled_X = np.vstack((sampled_X, pos_picked))
-        ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked, axis=1)[np.newaxis])))
-        for j in range(len(negatives[i])):
-            neg_idx = np.random.choice(len(negatives[i][j]), size=take_from_neg)
-            neg_picked = negatives[i][j][neg_idx]
-            sampled_X = np.vstack((sampled_X, neg_picked))
-            ns = np.vstack((ns, np.transpose(np.linalg.norm(neg_picked, axis=1)[np.newaxis])))
 
-    mean = np.mean(sampled_X, axis=0)
-    std = np.std(sampled_X, axis=0)
-    mean_norm = np.mean(ns)
-    print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean, std, mean_norm))
+def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000):
+    basedir = os.path.dirname(__file__)
+    stats_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'stats')
+    try:
+        l = torch.load(stats_path)
+        mean = l['mean']
+        std = l['std']
+        mean_norm = l['mean_norm']
+    except:
+        print('Computing features statistics')
+        pos_fraction = 1/10
+        neg_fraction = 9/10
+        num_classes = len(positives)
+        take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
+        take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
+
+        sampled_X = positives[0][0]
+        ns = np.transpose(np.linalg.norm(positives[0][0]))
+        for i in range(num_classes):
+            pos_idx = np.random.randint(len(positives[i]), size=take_from_pos)
+            pos_picked = positives[i][pos_idx]
+            sampled_X = np.vstack((sampled_X, pos_picked))
+            ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked, axis=1)[np.newaxis])))
+            for j in range(len(negatives[i])):
+                neg_idx = np.random.choice(len(negatives[i][j]), size=take_from_neg)
+                neg_picked = negatives[i][j][neg_idx]
+                sampled_X = np.vstack((sampled_X, neg_picked))
+                ns = np.vstack((ns, np.transpose(np.linalg.norm(neg_picked, axis=1)[np.newaxis])))
+
+        mean = np.mean(sampled_X, axis=0)
+        std = np.std(sampled_X, axis=0)
+        mean_norm = np.mean(ns)
+        print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean, std, mean_norm))
+        l = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
+        torch.save(l, stats_path)
     return mean, std, mean_norm
 
 
