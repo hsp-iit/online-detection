@@ -19,15 +19,15 @@ from maskrcnn_pytorch.benchmark.config import cfg
 # Temporary imports
 import torch
 # Experiment configuration
-cfg.merge_from_file('/home/elisa/Repos/python-online-detection/experiments/Configs/first_experiment_elisa.yaml')
+cfg.merge_from_file('Configs/first_experiment_elisa_server.yaml')
 cfg.freeze()
 dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True)
-cfg_path = '/home/elisa/Repos/python-online-detection/experiments/Configs/config_region_classifier_elisa.yaml'
+cfg_path = 'Configs/config_region_classifier_elisa_server.yaml'
 classifier = falkon.FALKONWrapper()
 negative_selector = ms.MinibootstrapSelector(cfg_path)
 regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_path)
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_path)
-feature_extractor = FeatureExtractor('configs/config_feature_task_elisa.yaml', 'configs/config_target_task_FALKON_elisa.yaml')
+feature_extractor = FeatureExtractor('first_experiment/configs/config_feature_task_elisa_server.yaml', 'first_experiment/configs/config_target_task_FALKON_elisa_server.yaml')
 
 # Retrieve feature extractor (either by loading it or by training it)
 try:
