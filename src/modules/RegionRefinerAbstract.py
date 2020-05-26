@@ -10,13 +10,13 @@ class RegionRefinerAbstract(ABC):
         pass
 
     @abstractmethod
-    def trainRegionRefiner(self, dataset) -> None:
+    def trainRegionRefiner(self) -> None:
         pass
 
     @abstractmethod
-    def testRegionRefiner(self, dataset) -> None:
+    def testRegionRefiner(self) -> None:
         pass
 
     @abstractmethod
-    def predict(self, dataset) -> None:
+    def predict(self) -> None:
         pass
