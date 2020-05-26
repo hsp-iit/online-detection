@@ -11,7 +11,7 @@ import OnlineRegionClassifier as ocr
 import FALKONWrapper as falkon
 import MinibootstrapSelector as ms
 import AccuracyEvaluator as ae
-from feature_extractor import FeatureExtractor as fe
+from feature_extractor import FeatureExtractor
 from maskrcnn_pytorch.benchmark.data import make_data_loader
 from maskrcnn_pytorch.benchmark.config import cfg
 
@@ -27,7 +27,7 @@ classifier = falkon.FALKONWrapper()
 negative_selector = ms.MinibootstrapSelector(cfg_path)
 regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_path)
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_path)
-feature_extractor = fe.FeatureExtractor('first_experiment/configs/config_feature_task_elisa_server.yaml', 'first_experiment/configs/config_target_task_FALKON_elisa_server.yaml')
+feature_extractor = FeatureExtractor('first_experiment/configs/config_feature_task_elisa_server.yaml', 'first_experiment/configs/config_target_task_FALKON_elisa_server.yaml')
 
 # Retrieve feature extractor (either by loading it or by training it)
 try:
