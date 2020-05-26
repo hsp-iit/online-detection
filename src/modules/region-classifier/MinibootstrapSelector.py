@@ -8,8 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 import NegativeSelectorAbstract as nsA
 import h5py
 import numpy as np
-from utils import loadFeature
-import torch
+from utils import loadFeature, getFeatPath
 import yaml
 
 
@@ -23,16 +22,14 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         self.num_classes = cfg['NUM_CLASSES']
         self.experiment_name = cfg['EXPERIMENT_NAME']
         self.train_imset = cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
-        self.feature_folder = '' + cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
-                              + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
-                              + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
-                              + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
+        self.feature_folder = getFeatPath(cfg)
 
-    def selectNegatives(self, neg_ovr_thresh=0.3, max_regions=300, feat_type='mat'):
+    def selectNegatives(self, neg_ovr_thresh=0.3, max_regions=300, feat_type='h5'):
         print('Selecting negatives from the {} dataset.'.format(self.train_imset))
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
-        negatives_file = os.path.join(feat_path, self.experiment_name + '_negatives{}x{}'.format(self.iterations,
-                                                                                            self.batch_size))
+        negatives_file = os.path.join(feat_path, 'negatives{}x{}'.format(self.iterations,
+                                                                         self.batch_size))
+        negatives = None
         try:
             if feat_type == 'mat':
                 negatives_file = negatives_file + '.mat'
@@ -45,6 +42,14 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                     for j in range(self.iterations):
                         tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose())
                     negatives.append(tmp)
+            elif feat_type == 'h5':
+                negatives_dataset = h5py.File(negatives_file, 'r')['negatives']
+                negatives = []
+                for i in range(self.num_classes - 1):
+                    # tmp = []
+                    # for j in range(self.iterations):
+                    #     tmp.append(negatives_dataset[i][j])
+                    negatives.append(negatives_dataset[i])
             else:
                 print('Unrecognized type of feature file')
                 negatives = None
@@ -62,11 +67,10 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             # Vector to track done batches and classes
             keep_doing = np.ones((self.num_classes-1, self.iterations))
 
-            negatives = []
             for i in range(len(path_list)):
                 if sum(sum(keep_doing)) == 0:
                     break
-                l = loadFeature(feat_path, path_list[i].rstrip(), feat_type)
+                l = loadFeature(feat_path, path_list[i].rstrip(), 'mat')
                 print('{}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
                 if l is not None:
                     for c in range(self.num_classes-1):
@@ -96,7 +100,9 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                 else:
                                     keep_doing[c, b] = 0
 
-            torch.save(negatives, negatives_file)
+            hf = h5py.File(negatives_file, 'w')
+            hf.create_dataset('negatives', data=negatives)
+            hf.close()
 
         return negatives
 

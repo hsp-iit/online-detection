@@ -1,4 +1,4 @@
-EXPERIMENT_NAME: 'test_classifier'
+EXPERIMENT_NAME: 'new_experiment'
 NUM_CLASSES: 31
 OUTPUT_FOLDER: '/home/elisa/Repos/python-online-detection/output'
 

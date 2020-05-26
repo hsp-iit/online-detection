@@ -13,7 +13,7 @@ def getFeatPath(cfg):
 
 def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000):
     basedir = os.path.dirname(__file__)
-    stats_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'stats')
+    stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'stats')
     try:
         l = torch.load(stats_path)
         mean = l['mean']

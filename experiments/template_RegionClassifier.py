@@ -38,8 +38,8 @@ print('Skip region refiner training')
 print('Skip cross validation')
 
 # - Train region classifier
-# model = regionClassifier.trainRegionClassifier()
-model = torch.load('model_icub_test_TASK2_30objs_manual')
+model = regionClassifier.trainRegionClassifier()
+#model = torch.load('model_icub_test_TASK2_30objs_manual')
 # - Test region classifier (on validation set)
 print('Skip Test region classifier on validation set')
 

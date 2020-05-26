@@ -28,15 +28,24 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if 'classifier_options' in opts:
             self.classifier_options = opts['classifier_options']
 
-    def selectPositives(self):
+    def selectPositives(self, feat_type='h5'):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
-        positives_file = os.path.join(feat_path, self.experiment_name + '_positives.mat')
+        positives_file = os.path.join(feat_path, 'positives')
         try:
-            mat_positives = h5py.File(positives_file, 'r')
-            X_pos = mat_positives['X_pos']
-            positives = []
-            for i in range(self.num_classes-1):
-                positives.append(mat_positives[X_pos[0, i]][()].transpose())
+            if feat_type == 'mat':
+                mat_positives = h5py.File(positives_file, 'r')
+                X_pos = mat_positives['X_pos']
+                positives = []
+                for i in range(self.num_classes-1):
+                    positives.append(mat_positives[X_pos[0, i]][()].transpose())
+            elif feat_type == 'h5':
+                positives_dataset = h5py.File(positives_file, 'r')['positives']
+                positives = []
+                for i in range(self.num_classes-1):
+                    positives.append(positives_dataset[i])
+            else:
+                print('Unrecognized type of feature file')
+                positives = None
         except:
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
@@ -54,6 +63,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                             positives[c] = l['feat'][sel, :]
                         else:
                             positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
+            hf = h5py.File(positives_file, 'w')
+            hf.create_dataset('positives', data=positives)
+            hf.close()
 
         return positives
 
@@ -141,7 +153,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
 
         predictions = []
-        # scores = np.zeros((len(boxes), opts['num_classes']))
         total_testing_time = 0
         for i in range(len(path_list)):
             print('Testing {}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
@@ -152,7 +163,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 boxes = l['boxes'][I, :][0]
                 X_test = l['feat'][I, :][0]
                 t0 = time.time()
-                if self.mean != 0 and self.mean_norm != 0:
+                if self.mean_norm != 0:
                    X_test = zScores(X_test, self.mean, self.mean_norm)
                 scores = - np.ones((len(boxes), self.num_classes))
                 for c in range(0, self.num_classes-1):
