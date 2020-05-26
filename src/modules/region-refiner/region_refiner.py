@@ -16,7 +16,7 @@ class RegionRefiner(RegionRefinerAbstract):
     def trainRegionRefiner(self):
         trainer = RegionRefinerTrainer(self.cfg)
         self.models = trainer()
-        return
+        return self.models
 
     def testRegionRefiner(self):
         return

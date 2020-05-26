@@ -1,7 +1,6 @@
 PATHS:
-  FEATURES_PATH_TRAIN: /home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4
-  FEATURES_PATH_TEST: /home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual
-#'/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments_FALKON/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_target_task_FALKON_no_FPN/train_features_proposals'
+  FEATURES_PATH_TRAIN: 'features_mat/icubworld_id_30objects_train_val_target_task' #icubworld_id_30objects_test_target_task #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4
+  FEATURES_PATH_TEST: 'features_mat/icubworld_id_30objects_test_target_task' #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual
   IMAGESET_TRAIN: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
   IMAGESET_VAL: None
   IMAGESET_TEST: #'/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual_fake.txt'
@@ -45,5 +44,5 @@ opts:
   min_overlap: 0.6
   lambda: 1000
 
-MODELS_PATH: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/models_regressor'
+MODELS_PATH: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/regressors_mask' #models_regressor'
 BOXES_PATH: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/predictions_good_small'

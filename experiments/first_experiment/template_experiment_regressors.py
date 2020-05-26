@@ -28,14 +28,15 @@ region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
 #feature_extractor.extractFeatures()
 
 ## Train region refiner
-#region_refiner.trainRegionRefiner()
+regressors = region_refiner.trainRegionRefiner()
+torch.save(regressors, 'regressors_mask')
 ## Start the cross validation
-
+quit()
 ### - Set parameters
 ### - Train region classifier
 ### - Test region classifier (on validation set)
 ### - Test region refiner (on validation set)
 refined_regions = region_refiner.predict()
 ### - Save/store results
-torch.save(refined_regions, 'test_predictor')
+torch.save(refined_regions, 'test_regressors_mask')
 ## Test the best model (on the test set)
