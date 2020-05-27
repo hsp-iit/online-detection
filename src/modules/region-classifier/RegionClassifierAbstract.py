@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-import yaml
 import os
 import sys
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
-from utils import getFeatPath
+from py_od_utils import getFeatPath
+import yaml
 
 
 class RegionClassifierAbstract(ABC):

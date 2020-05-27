@@ -5,10 +5,11 @@ import torch
 
 
 def getFeatPath(cfg):
-    return '' + cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
-              + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
-              + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
-              + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
+    s =  '' + cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
+            + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
+            + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
+            + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
+    return s
 
 
 def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000):

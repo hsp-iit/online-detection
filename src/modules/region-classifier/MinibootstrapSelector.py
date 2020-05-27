@@ -8,7 +8,7 @@ sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 import NegativeSelectorAbstract as nsA
 import h5py
 import numpy as np
-from utils import loadFeature, getFeatPath
+from py_od_utils import loadFeature, getFeatPath
 import yaml
 
 
@@ -29,7 +29,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
         negatives_file = os.path.join(feat_path, 'negatives{}x{}'.format(self.iterations,
                                                                          self.batch_size))
-        negatives = None
+        negatives = []
         try:
             if feat_type == 'mat':
                 negatives_file = negatives_file + '.mat'
@@ -58,7 +58,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
 
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
 
             # Number of regions to keep from image for each class
             keep_from_image = int(np.ceil((self.batch_size*self.iterations)/len(path_list)))

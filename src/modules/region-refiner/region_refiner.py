@@ -1,4 +1,4 @@
-from src.modules.RegionRefinerAbstract import RegionRefinerAbstract
+from RegionRefinerAbstract import RegionRefinerAbstract
 
 from region_refiner_trainer import RegionRefinerTrainer
 from region_predictor import RegionPredictor

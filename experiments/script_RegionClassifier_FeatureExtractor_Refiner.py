@@ -7,6 +7,8 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'mo
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'accuracy-evaluator')))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', 'src', 'modules', 'feature-extractor')))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', 'src', 'modules', 'region-refiner')))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', 'src')))
+
 
 import OnlineRegionClassifier as ocr
 import FALKONWrapper as falkon
@@ -40,14 +42,14 @@ try:
     feature_extractor.loadFeatureExtractor()
 except OSError:
     print('Feature extractor will be trained from scratch.')
-    feature_extractor.trainFeatureExtractor()
+#    feature_extractor.trainFeatureExtractor()
 
 # Extract features for the train/val/test sets
 print('Extract features from dataset if needed')
-feature_extractor.extractFeatures()
+# feature_extractor.extractFeatures()
 
 # Train region refiner
-print('')
+print('Train region refiner')
 regressors = region_refiner.trainRegionRefiner()
 # torch.save(regressors, 'regressors_mask')
 

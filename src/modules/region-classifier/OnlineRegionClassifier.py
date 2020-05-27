@@ -6,7 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 
 import RegionClassifierAbstract as rcA
-from utils import computeFeatStatistics, zScores, loadFeature
+from py_od_utils import computeFeatStatistics, zScores, loadFeature
 import h5py
 import numpy as np
 import torch
@@ -49,7 +49,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         except:
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
             positives = []
             for i in range(len(path_list)):
                 l = loadFeature(feat_path, path_list[i].rstrip())
@@ -150,7 +150,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         print('Online Region Classifier testing')
         with open(self.test_imset, 'r') as f:
             path_list = f.readlines()
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'test')
 
         predictions = []
         total_testing_time = 0
