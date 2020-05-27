@@ -4,7 +4,7 @@ OUTPUT_FOLDER: '/home/elisa/Repos/python-online-detection/output'
 
 DATASET:
     TARGET_TASK:
-        TRAIN_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
+        TRAIN_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/prova.txt'
         TEST_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
         VAL_IMSET: ''
 

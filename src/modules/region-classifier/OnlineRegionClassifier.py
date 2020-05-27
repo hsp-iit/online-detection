@@ -39,10 +39,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 for i in range(self.num_classes-1):
                     positives.append(mat_positives[X_pos[0, i]][()].transpose())
             elif feat_type == 'h5':
-                positives_dataset = h5py.File(positives_file, 'r')['positives']
+                positives_dataset = h5py.File(positives_file, 'r')['list']
                 positives = []
                 for i in range(self.num_classes-1):
-                    positives.append(positives_dataset[i])
+                    positives.append(positives_dataset[str(i)])
             else:
                 print('Unrecognized type of feature file')
                 positives = None
@@ -64,7 +64,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         else:
                             positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
             hf = h5py.File(positives_file, 'w')
-            hf.create_dataset('positives', data=positives)
+            grp = hf.create_group('list')
+            for i in range(self.num_classes - 1):
+                grp.create_dataset(str(i), data=positives[i])
             hf.close()
 
         return positives

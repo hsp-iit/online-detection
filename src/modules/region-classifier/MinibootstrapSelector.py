@@ -29,7 +29,6 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
         negatives_file = os.path.join(feat_path, 'negatives{}x{}'.format(self.iterations,
                                                                          self.batch_size))
-        negatives = []
         try:
             if feat_type == 'mat':
                 negatives_file = negatives_file + '.mat'
@@ -43,13 +42,17 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                         tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose())
                     negatives.append(tmp)
             elif feat_type == 'h5':
-                negatives_dataset = h5py.File(negatives_file, 'r')['negatives']
+                negatives_dataset = h5py.File(negatives_file, 'r')['list']
                 negatives = []
                 for i in range(self.num_classes - 1):
-                    # tmp = []
+                    tmp = []
                     # for j in range(self.iterations):
                     #     tmp.append(negatives_dataset[i][j])
-                    negatives.append(negatives_dataset[i])
+                    cls_neg = negatives_dataset[str(i)]
+                    for j in range(self.iterations):
+                        tmp.append(cls_neg[str(j)])
+                    negatives.append(tmp)
+                # negatives_dataset.close()
             else:
                 print('Unrecognized type of feature file')
                 negatives = None
@@ -67,6 +70,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             # Vector to track done batches and classes
             keep_doing = np.ones((self.num_classes-1, self.iterations))
 
+            negatives = []
             for i in range(len(path_list)):
                 if sum(sum(keep_doing)) == 0:
                     break
@@ -101,7 +105,11 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                     keep_doing[c, b] = 0
 
             hf = h5py.File(negatives_file, 'w')
-            hf.create_dataset('negatives', data=negatives)
+            grp = hf.create_group('list')
+            for i in range(self.num_classes-1):
+                grpp = grp.create_group(str(i))
+                for j in range(len(negatives[i])):
+                    grpp.create_dataset(str(j), data=negatives[i][j])
             hf.close()
 
         return negatives
