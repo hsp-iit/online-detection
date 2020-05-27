@@ -1,11 +1,13 @@
-#import h5py
+import h5py
 import numpy as np
 import os
 import time
+import sys
 #import warnings
 from scipy import linalg
 import torch
 from utils import list_features, features_to_COXY
+
 
 class RegionRefinerTrainer():
     def __init__(self, cfg):
@@ -24,8 +26,14 @@ class RegionRefinerTrainer():
     def train(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
         opts = self.cfg['opts']
-        COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
-        
+
+        feat_path = self.path_to_features
+        positives_file = os.path.join(feat_path[:-6], 'bbox_positives')
+        try:
+            COXY = torch.load(positives_file)
+        except:
+            COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
+            torch.save(COXY, positives_file)
 
         # cache_dir = 'bbox_reg/'
         # if not os.path.exists(cache_dir):
