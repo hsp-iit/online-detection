@@ -20,6 +20,7 @@ from region_refiner import RegionRefiner
 
 # Temporary imports
 import torch
+
 # Experiment configuration
 cfg.merge_from_file('Configs/first_experiment_elisa_server.yaml')
 cfg.freeze()
