@@ -28,7 +28,7 @@ class RegionRefinerTrainer():
         opts = self.cfg['opts']
 
         feat_path = self.path_to_features
-        positives_file = os.path.join(feat_path[:-6], 'bbox_positives')
+        positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
         try:
             COXY = torch.load(positives_file)
         except:

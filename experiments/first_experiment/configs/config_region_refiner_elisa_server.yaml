@@ -1,9 +1,9 @@
 PATHS:
-  FEATURES_PATH_TRAIN: '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4' #icubworld_id_30objects_test_target_task #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4
-  FEATURES_PATH_TEST: '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual' #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual
+  FEATURES_PATH_TRAIN: '/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/Data/feat_cache/R50_ep4_FTicwt100_TTicwt30/trainval' #icubworld_id_30objects_test_target_task #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4
+  FEATURES_PATH_TEST: '/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/Data/feat_cache/R50_ep4_FTicwt100_TTicwt30/test' #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual
   IMAGESET_TRAIN: '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
   IMAGESET_VAL: None
-  IMAGESET_TEST: #'/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual_fake.txt'
+  IMAGESET_TEST: #'/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual.txt'
 
 FEATURES_FORMAT: '.mat'
 
