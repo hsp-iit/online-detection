@@ -9,22 +9,32 @@ from scipy import linalg
 import torch
 from utils import list_features, features_to_COXY
 
+basedir = os.path.dirname(__file__)
+from py_od_utils import getFeatPath
+
 class RegionPredictor():
     def __init__(self, cfg, models=None, boxes=None):
         self.cfg = cfg
-        self.features_format = self.cfg['FEATURES_FORMAT']
-        self.path_to_features = self.cfg['PATHS']['FEATURES_PATH_TEST']+'/%s'+self.features_format
-        self.path_to_imgset_test = self.cfg['PATHS']['IMAGESET_TRAIN']
+        self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
+        feature_folder = getFeatPath(self.cfg)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'test')
+        self.path_to_features = feat_path + '/%s.' + self.features_format
+        self.path_to_imgset_test = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.features_dictionary_test = list_features(self.path_to_imgset_test)
         if models is not None:
             self.models = models
         else:
-            self.models = torch.load(self.cfg['MODELS_PATH'])
+            try:
+                self.models = torch.load(self.cfg['REGION_REFINER']['MODELS_PATH'])
+            except:
+                print('Failed to load model')
         if boxes is not None:
             self.boxes = boxes
         else:
-            self.boxes = torch.load(self.cfg['BOXES_PATH'])
-
+            try:
+                self.boxes = torch.load(self.cfg['REGION_REFINER']['BOXES_PATH'])
+            except:
+                print('Failed to load boxes')
 
     def __call__(self):
         pred_boxes = self.predict()
@@ -32,7 +42,7 @@ class RegionPredictor():
 
     def predict(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
-        opts = self.cfg['opts']
+        opts = self.cfg['REGION_REFINER']['opts']
 
         # cache_dir = 'bbox_reg/'
         # if not os.path.exists(cache_dir):

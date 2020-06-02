@@ -27,26 +27,28 @@ import torch
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
 # ----------------------------------------------------------------------------------------
+cfg_online_path = 'Configs/config_elisa_server.yaml'
+cfg_target_path = 'Configs/config_target_task_elisa_server.yaml'
+cfg_feature_path = 'Configs/config_feature_task_elisa_server.yaml'
 
 # Test dataset creation
-cfg.merge_from_file('Configs/first_experiment_elisa_server.yaml')
+cfg.merge_from_file(cfg_target_path)
 cfg.freeze()
 dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True)
 
 # Region Classifier initialization
-cfg_path_cls = 'Configs/config_region_classifier_elisa_server.yaml'
 classifier = falkon.FALKONWrapper()
-negative_selector = ms.MinibootstrapSelector(cfg_path_cls)
-regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_path_cls)
+negative_selector = ms.MinibootstrapSelector(cfg_online_path)
+regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_online_path)
 
 # Feature extraction initialization
-feature_extractor = FeatureExtractor('first_experiment/configs/config_feature_task_elisa_server.yaml',
-                                     'first_experiment/configs/config_target_task_FALKON_elisa_server.yaml')
-# region refiner initialization
-region_refiner = RegionRefiner('first_experiment/configs/config_region_refiner_elisa_server.yaml')
+feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
+
+# Region refiner initialization
+region_refiner = RegionRefiner(cfg_online_path)
 
 # Accuracy evaluator initialization
-accuracy_evaluator = ae.AccuracyEvaluator(cfg_path_cls)
+accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 
 # ----------------------------------------------------------------------------------
 # ------------------------------- Feature extraction -------------------------------

@@ -4,6 +4,7 @@ from region_refiner_trainer import RegionRefinerTrainer
 from region_predictor import RegionPredictor
 import yaml
 
+
 class RegionRefiner(RegionRefinerAbstract):
     def __init__(self, cfg_path_region_refiner, models=None, boxes=None):
         self.cfg = yaml.load(open(cfg_path_region_refiner), Loader=yaml.FullLoader)

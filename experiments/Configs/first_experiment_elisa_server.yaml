@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments_FALKON/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_target_task_FALKON_no_FPN"
+#OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments_FALKON/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_target_task_FALKON_no_FPN"
 PATHS_CATALOG: "/home/IIT.LOCAL/emaiettini/workspace/Repos/online-object-segmentation/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"

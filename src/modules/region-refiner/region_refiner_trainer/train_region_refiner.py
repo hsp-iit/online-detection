@@ -8,14 +8,18 @@ from scipy import linalg
 import torch
 from utils import list_features, features_to_COXY
 
+basedir = os.path.dirname(__file__)
+from py_od_utils import getFeatPath
 
 class RegionRefinerTrainer():
     def __init__(self, cfg):
         self.cfg = cfg
-        self.features_format = self.cfg['FEATURES_FORMAT']
-        self.path_to_features = self.cfg['PATHS']['FEATURES_PATH_TRAIN']+'/%s'+self.features_format
-        self.path_to_imgset_train = self.cfg['PATHS']['IMAGESET_TRAIN']
-        self.path_to_imgset_val = self.cfg['PATHS']['IMAGESET_VAL']
+        self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
+        feature_folder = getFeatPath(self.cfg)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'trainval')
+        self.path_to_features = feat_path + '/%s.' + self.features_format
+        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
+        self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
         self.features_dictionary_train = list_features(self.path_to_imgset_train)
         return
 
@@ -25,7 +29,7 @@ class RegionRefinerTrainer():
 
     def train(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
-        opts = self.cfg['opts']
+        opts = self.cfg['REGION_REFINER']['opts']
 
         feat_path = self.path_to_features
         positives_file = os.path.join(feat_path[:-15], 'bbox_positives')

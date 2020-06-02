@@ -1,0 +1,75 @@
+EXPERIMENT_NAME: 'test_integration'
+NUM_CLASSES: 31
+OUTPUT_FOLDER: '/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/output_integration'
+
+DATASET:
+    TARGET_TASK:
+        TRAIN_IMSET: '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
+        TEST_IMSET: '/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/datasets/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual.txt'
+        VAL_IMSET: ''
+
+ONLINE_REGION_CLASSIFIER:
+    CROSS_VAL: False
+    MINIBOOTSTRAP:
+        ITERATIONS: 10
+        BATCH_SIZE: 2000
+        EASY_THRESH: -0.9
+        HARD_THRESH: -0.7
+    CLASSIFIER:
+        lambda: 0.001
+        sigma: 25
+        M: 1000
+        kernel_type: 'gauss'
+
+REGION_REFINER:
+    opts:
+        min_overlap: 0.6
+        lambda: 1000
+
+#    MODELS_PATH: ''
+#    BOXES_PATH: ''
+
+FEATURE_INFO:
+    FEAT_TASK_NAME: 'icwt100'
+    TARGET_TASK_NAME: "icwt30"
+    BACKBONE: 'R50'
+    NUM_EPOCHS: 4
+    FORMAT: 'mat'
+
+EVALUATION:
+    SCORE_THRESH: -2
+    NMS: 0.3
+    DETECTIONS_PER_IMAGE: 100
+
+CHOSEN_CLASSES:
+    0: '_background_'
+    1: 'sodabottle2'
+    2: 'sodabottle3'
+    3: 'sodabottle4'
+    4: 'mug1'
+    5: 'mug3'
+    6: 'mug4'
+    7: 'pencilcase5'
+    8: 'pencilREGION_REFINERcase3'
+    9: 'pencilcase6'
+    10: 'ringbinder4'
+    11: 'ringbinder5'
+    12: 'ringbinder6'
+    13: 'wallet6'
+    14: 'wallet7'
+    15: 'wallet10'
+    16: 'flower7'
+    17: 'flower5'
+    18: 'flower2'
+    19: 'book6'
+    20: 'book4'
+    21: 'book9'
+    22: 'bodylotion2'
+    23: 'bodylotion8'
+    24: 'bodylotion5'
+    25: 'hairclip2'
+    26: 'hairclip8'
+    27: 'hairclip6'
+    28: 'sprayer6'
+    29: 'sprayer8'
+    30: 'sprayer9'
