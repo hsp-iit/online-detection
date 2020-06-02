@@ -55,16 +55,16 @@ accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 # ----------------------------------------------------------------------------------
 
 # Retrieve feature extractor (either by loading it or by training it)
-print('Retrieve or train feature extractor')
-try:
-    feature_extractor.loadFeatureExtractor()
-except OSError:
-    print('Feature extractor will be trained from scratch.')
-    feature_extractor.trainFeatureExtractor()
+#print('Retrieve or train feature extractor')
+#try:
+#    feature_extractor.loadFeatureExtractor()
+#except OSError:
+#    print('Feature extractor will be trained from scratch.')
+#    feature_extractor.trainFeatureExtractor()
 
 # Extract features for the train/val/test sets
-print('Extract features from dataset if needed')
-feature_extractor.extractFeatures()
+#print('Extract features from dataset if needed')
+#feature_extractor.extractFeatures()
 
 # -----------------------------------------------------------------------------------
 # --------------------------------- Training models ---------------------------------

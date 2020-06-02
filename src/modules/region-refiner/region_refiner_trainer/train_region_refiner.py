@@ -16,7 +16,7 @@ class RegionRefinerTrainer():
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
         feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'trainval')
+        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'trainval')
         self.path_to_features = feat_path + '/%s.' + self.features_format
         self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
         self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
