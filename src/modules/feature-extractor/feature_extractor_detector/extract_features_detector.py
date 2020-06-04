@@ -39,6 +39,7 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
+
 class FeatureExtractorDetector:
     def __init__(self, cfg_path_target_task=None, local_rank=0):
 

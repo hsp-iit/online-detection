@@ -10,6 +10,7 @@ import h5py
 import numpy as np
 from py_od_utils import loadFeature, getFeatPath
 import yaml
+import torch
 
 
 class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
@@ -35,27 +36,27 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                 print('Trying to load negative samples from {}'.format(negatives_file))
                 mat_negatives = h5py.File(negatives_file, 'r')
                 X_neg = mat_negatives['X_neg']
-                negatives = []
+                negatives_torch = []
                 for i in range(self.num_classes - 1):
                     tmp = []
                     for j in range(self.iterations):
-                        tmp.append(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose())
-                    negatives.append(tmp)
+                        tmp.append(torch.tensor(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose()))
+                    negatives_torch.append(tmp)
             elif feat_type == 'h5':
                 negatives_dataset = h5py.File(negatives_file, 'r')['list']
-                negatives = []
+                negatives_torch = []
                 for i in range(self.num_classes - 1):
                     tmp = []
                     # for j in range(self.iterations):
                     #     tmp.append(negatives_dataset[i][j])
                     cls_neg = negatives_dataset[str(i)]
                     for j in range(self.iterations):
-                        tmp.append(cls_neg[str(j)])
-                    negatives.append(tmp)
+                        tmp.append(torch.tensor(cls_neg[str(j)]))
+                    negatives_torch.append(tmp)
                 # negatives_dataset.close()
             else:
                 print('Unrecognized type of feature file')
-                negatives = None
+                negatives_torch = None
         except:
             print('Loading failed. Starting negatives computation')
             with open(self.train_imset, 'r') as f:
@@ -104,6 +105,11 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                 else:
                                     keep_doing[c, b] = 0
 
+            negatives_torch = []
+            for i in range(self.num_classes - 1):
+                for j in range(self.iterations):
+                    negatives_torch.append(torch.tensor(negatives[i][j]))
+
             hf = h5py.File(negatives_file, 'w')
             grp = hf.create_group('list')
             for i in range(self.num_classes-1):
@@ -112,7 +118,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                     grpp.create_dataset(str(j), data=negatives[i][j])
             hf.close()
 
-        return negatives
+        return negatives_torch
 
     def setIterations(self, iterations) -> None:
         self.iterations = iterations

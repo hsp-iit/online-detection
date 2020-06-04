@@ -17,7 +17,7 @@ import OnlineRegionClassifier as ocr
 import FALKONWrapper as falkon
 import MinibootstrapSelector as ms
 import AccuracyEvaluator as ae
-from feature_extractor import FeatureExtractor
+# from feature_extractor import FeatureExtractor
 from region_refiner import RegionRefiner
 
 
@@ -27,9 +27,9 @@ import torch
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
 # ----------------------------------------------------------------------------------------
-cfg_online_path = 'Configs/config_elisa_server.yaml'
-cfg_target_path = 'Configs/config_target_task_elisa_server.yaml'
-cfg_feature_path = 'Configs/config_feature_task_elisa_server.yaml'
+cfg_online_path = 'Configs/config_elisa_laptop.yaml'
+cfg_target_path = 'Configs/config_target_task_elisa_laptop.yaml'
+cfg_feature_path = 'Configs/config_feature_task_elisa_laptop.yaml'
 
 # Test dataset creation
 cfg.merge_from_file(cfg_target_path)
@@ -42,7 +42,7 @@ negative_selector = ms.MinibootstrapSelector(cfg_online_path)
 regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_online_path)
 
 # Feature extraction initialization
-feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
+# feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
 
 # Region refiner initialization
 region_refiner = RegionRefiner(cfg_online_path)
@@ -72,7 +72,7 @@ accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 
 # Train region refiner
 print('Train region refiner')
-regressors = region_refiner.trainRegionRefiner()
+# regressors = region_refiner.trainRegionRefiner()
 
 # Start the cross validation
 print('Skip cross validation')

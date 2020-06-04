@@ -44,15 +44,21 @@ def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000
         mean = np.mean(sampled_X, axis=0)
         std = np.std(sampled_X, axis=0)
         mean_norm = np.mean(ns)
-        print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean, std, mean_norm))
+
+        mean = torch.tensor(mean)
+        std = torch.tensor(std)
+        mean_norm = torch.tensor(mean_norm)
+
+        print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean.item(), std.item(), mean_norm.item()))
         l = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
         torch.save(l, stats_path)
+
     return mean, std, mean_norm
 
 
 def zScores(feat, mean, mean_norm, target_norm=20):
     feat = feat - mean
-    feat = np.multiply(feat, (target_norm / mean_norm))
+    feat = feat * (target_norm / mean_norm)
     return feat
 
 

@@ -11,7 +11,6 @@ import h5py
 import numpy as np
 import torch
 from maskrcnn_benchmark.structures.bounding_box import BoxList
-import ntpath
 import time
 
 
@@ -35,17 +34,17 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             if feat_type == 'mat':
                 mat_positives = h5py.File(positives_file, 'r')
                 X_pos = mat_positives['X_pos']
-                positives = []
+                positives_torch = []
                 for i in range(self.num_classes-1):
-                    positives.append(mat_positives[X_pos[0, i]][()].transpose())
+                    positives_torch.append(mat_positives[X_pos[0, i]][()].transpose())
             elif feat_type == 'h5':
                 positives_dataset = h5py.File(positives_file, 'r')['list']
-                positives = []
+                positives_torch = []
                 for i in range(self.num_classes-1):
-                    positives.append(positives_dataset[str(i)])
+                    positives_torch.append(torch.tensor(positives_dataset[str(i)]))
             else:
                 print('Unrecognized type of feature file')
-                positives = None
+                positives_torch = None
         except:
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
@@ -69,15 +68,22 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 grp.create_dataset(str(i), data=positives[i])
             hf.close()
 
-        return positives
+            positives_torch = []
+            for i in range(self.num_classes - 1):
+                for j in range(self.iterations):
+                    positives_torch.append(torch.tensor(positives[i][j]))
+
+        return positives_torch
 
     def updateModel(self, cache):
         X_neg = cache['neg']
         X_pos = cache['pos']
         num_neg = len(X_neg)
         num_pos = len(X_pos)
-        X = np.vstack((X_pos, X_neg))
-        y = np.vstack((np.transpose(np.ones(num_pos)[np.newaxis]), -np.transpose(np.ones(num_neg)[np.newaxis])))
+        # X = np.vstack((X_pos, X_neg))
+        # y = np.vstack((np.transpose(np.ones(num_pos)[np.newaxis]), -np.transpose(np.ones(num_neg)[np.newaxis])))
+        X = torch.cat((X_pos, X_neg), 0)
+        y = torch.cat((torch.transpose(torch.ones(num_pos), 0, 0), -torch.transpose(torch.ones(num_neg), 0, 0)), 0)
 
         return self.classifier.train(X, y, self.classifier_options)
 
@@ -99,17 +105,22 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     first_time = False
                 else:
                     neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
-                    hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
-                    caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
+                    # hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
+                    hard_idx = torch.where(neg_pred > self.negative_selector.neg_hard_thresh)[0]
+                    # caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
+                    caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
                     print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
                 print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
                 model[i] = self.updateModel(caches[i])
                 neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
-                easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
-                caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
-                print('Removed {} easy negatives. {} Remaining'.format(len(easy_idx), len(caches[i]['neg'])))
+                # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
+                keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
+                easy_idx = len(caches[i]['neg']) - len(keep_idx)
+                caches[i]['neg'] = caches[i]['neg'][keep_idx]
+                # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+                print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))
@@ -129,7 +140,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         for i in range(self.num_classes-1):
             positives[i] = zScores(positives[i], self.mean, self.mean_norm)
             for j in range(len(negatives[i])):
-               negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
+                negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives)
 
