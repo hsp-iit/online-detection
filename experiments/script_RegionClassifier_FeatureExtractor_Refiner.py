@@ -78,7 +78,7 @@ print('Train region refiner')
 print('Skip cross validation')
 
 # - Train region classifier
-model = regionClassifier.trainRegionClassifier()
+# model = regionClassifier.trainRegionClassifier()
 
 # - Test region classifier (on validation set)
 print('Skip Test region classifier on validation set')
@@ -95,9 +95,9 @@ print('Skip saving model')
 
 # Test the best classifier on the test set
 print('Region classifier test on the test set')
-predictions = regionClassifier.testRegionClassifier(model)
-region_refiner.boxes = predictions
-
+# predictions = regionClassifier.testRegionClassifier(model)
+# region_refiner.boxes = predictions
+predictions = torch.load('predictions_elisa')
 print('Region classifier predictions evaluation')
 result_cls = accuracy_evaluator.evaluate(dataset.dataset, predictions, is_target_task=True,
                                          cls_agnostic_bbox_reg=True)

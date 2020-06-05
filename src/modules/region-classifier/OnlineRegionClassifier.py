@@ -174,18 +174,19 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)
                 boxes = l['boxes'][I, :][0]
-                X_test = l['feat'][I, :][0]
+                X_test = torch.tensor(l['feat'][I, :][0])
                 t0 = time.time()
                 if self.mean_norm != 0:
                    X_test = zScores(X_test, self.mean, self.mean_norm)
-                scores = - np.ones((len(boxes), self.num_classes))
+                scores = - torch.ones((len(boxes), self.num_classes))
                 for c in range(0, self.num_classes-1):
                     pred = self.classifier.predict(model[c], X_test)
-                    scores[:, c+1] = np.squeeze(pred.numpy())
+                    scores[:, c+1] = torch.squeeze(pred)
 
                 total_testing_time = total_testing_time + t0 - time.time()
                 b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
-                b.add_field("scores", torch.from_numpy(np.float32(scores)))
+                # b.add_field("scores", torch.from_numpy(np.float32(scores)))
+                b.add_field("scores", scores)
                 b.add_field("name_file", path_list[i].rstrip())
                 predictions.append(b)
             else:
