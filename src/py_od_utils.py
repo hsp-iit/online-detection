@@ -17,9 +17,9 @@ def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000
     stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'stats')
     try:
         l = torch.load(stats_path)
-        mean = torch.tensor(l['mean'], device='cuda')
-        std = torch.tensor(l['std'], device='cuda')
-        mean_norm = torch.tensor(l['mean_norm'], device='cuda')
+        mean = torch.tensor(l['mean'])
+        std = torch.tensor(l['std'])
+        mean_norm = torch.tensor(l['mean_norm'])
     except:
         print('Computing features statistics')
         pos_fraction = 1/10
@@ -57,6 +57,7 @@ def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000
 
 
 def zScores(feat, mean, mean_norm, target_norm=20):
+    feat = torch.tensor(feat)
     feat = feat - mean
     feat = feat * (target_norm / mean_norm)
     return feat

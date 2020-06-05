@@ -51,7 +51,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                     #     tmp.append(negatives_dataset[i][j])
                     cls_neg = negatives_dataset[str(i)]
                     for j in range(self.iterations):
-                        tmp.append(torch.tensor(np.array(cls_neg[str(j)]).reshape(cls_neg[str(j)].shape[0], cls_neg[str(j)].shape[1], order='F')))
+                        tmp.append(torch.tensor(np.asfortranarray(np.array(cls_neg[str(j)]))))
                     negatives_torch.append(tmp)
                 # negatives_dataset.close()
             else:

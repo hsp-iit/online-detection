@@ -22,13 +22,14 @@ class FALKONWrapper(ca.ClassifierAbstract):
             nyst_centers = min(opts['M'], len(X))
             model = Falkon(
                         kernel=kernel,
-                        la=opts['lambda'],
+                        penalty=opts['lambda'],
                         M=nyst_centers,
+                        debug=False
                         # use_cpu=True,
-                        use_display_gpu=True,
-                        gpu_use_processes=False,
-                        inter_type=torch.float32,
-                        final_type=torch.float32
+                        #use_display_gpu=True,
+                        #gpu_use_processes=False,
+                        #inter_type=torch.float32,
+                        #final_type=torch.float32
                     )
         else:
             print('Kernel is None in trainRegionClassifier function')
@@ -44,12 +45,12 @@ class FALKONWrapper(ca.ClassifierAbstract):
 
         return model
 
-    def predict(self, model, X, y=None):
-        # X = torch.from_numpy(X_np)
+    def predict(self, model, X_np, y=None):
+#        X = torch.from_numpy(X_np)
         if y is not None:
-            predictions = model.predict(X, y)
+            predictions = model.predict(X_np, y)
         else:
-            predictions = model.predict(X)
+            predictions = model.predict(X_np)
 
         return predictions
 
