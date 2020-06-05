@@ -24,9 +24,9 @@ class FALKONWrapper(ca.ClassifierAbstract):
                         kernel=kernel,
                         la=opts['lambda'],
                         M=nyst_centers,
-                        use_cpu=True,
-                        # use_display_gpu=True,
-                        # gpu_use_processes=False,
+                        # use_cpu=True,
+                        use_display_gpu=True,
+                        gpu_use_processes=False,
                         inter_type=torch.float32,
                         final_type=torch.float32
                     )

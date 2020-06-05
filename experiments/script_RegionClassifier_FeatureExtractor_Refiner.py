@@ -27,9 +27,9 @@ import torch
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
 # ----------------------------------------------------------------------------------------
-cfg_online_path = 'Configs/config_elisa_laptop.yaml'
-cfg_target_path = 'Configs/config_target_task_elisa_laptop.yaml'
-cfg_feature_path = 'Configs/config_feature_task_elisa_laptop.yaml'
+cfg_online_path = 'Configs/config_elisa_server.yaml'
+cfg_target_path = 'Configs/config_target_task_elisa_server.yaml'
+cfg_feature_path = 'Configs/config_feature_task_elisa_server.yaml'
 
 # Test dataset creation
 cfg.merge_from_file(cfg_target_path)
@@ -45,7 +45,7 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg
 # feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
 
 # Region refiner initialization
-region_refiner = RegionRefiner(cfg_online_path)
+# region_refiner = RegionRefiner(cfg_online_path)
 
 # Accuracy evaluator initialization
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
@@ -78,7 +78,7 @@ print('Train region refiner')
 print('Skip cross validation')
 
 # - Train region classifier
-# model = regionClassifier.trainRegionClassifier()
+model = regionClassifier.trainRegionClassifier()
 
 # - Test region classifier (on validation set)
 print('Skip Test region classifier on validation set')
@@ -95,9 +95,9 @@ print('Skip saving model')
 
 # Test the best classifier on the test set
 print('Region classifier test on the test set')
-# predictions = regionClassifier.testRegionClassifier(model)
+predictions = regionClassifier.testRegionClassifier(model)
 # region_refiner.boxes = predictions
-predictions = torch.load('predictions_elisa')
+# predictions = torch.load('predictions_elisa')
 print('Region classifier predictions evaluation')
 result_cls = accuracy_evaluator.evaluate(dataset.dataset, predictions, is_target_task=True,
                                          cls_agnostic_bbox_reg=True)
