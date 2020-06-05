@@ -85,7 +85,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         X = torch.cat((X_pos, X_neg), 0)
         y = torch.cat((torch.transpose(torch.ones(num_pos), 0, 0), -torch.transpose(torch.ones(num_neg), 0, 0)), 0)
 
-        return self.classifier.train(X, y, self.classifier_options)
+        # return self.classifier.train(X, y, self.classifier_options)
+        return self.classifier.train(X, y)
 
     def trainWithMinibootstrap(self, negatives, positives):
         iterations = self.negative_selector.iterations
@@ -96,6 +97,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             print('---------------------- Training Class number {} ----------------------'.format(i))
             first_time = True
             for j in range(iterations):
+                t_iter = time.time()
                 if first_time:
                     dataset = {}
                     dataset['pos'] = positives[i]
@@ -104,15 +106,21 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     model.append(None)
                     first_time = False
                 else:
+                    t_hard = time.time()
                     neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
                     # hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
                     hard_idx = torch.where(neg_pred > self.negative_selector.neg_hard_thresh)[0]
                     # caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
                     caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
+                    print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
                     print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
                 print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
+                t_update = time.time()
                 model[i] = self.updateModel(caches[i])
+                print('Model updated in {} seconds'.format(time.time() - t_update))
+
+                t_easy = time.time()
                 neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
                 # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
@@ -120,7 +128,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 easy_idx = len(caches[i]['neg']) - len(keep_idx)
                 caches[i]['neg'] = caches[i]['neg'][keep_idx]
                 # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+                print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
                 print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
+                print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))

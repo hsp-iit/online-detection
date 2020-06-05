@@ -27,9 +27,9 @@ import torch
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
 # ----------------------------------------------------------------------------------------
-cfg_online_path = 'Configs/config_elisa_server.yaml'
-cfg_target_path = 'Configs/config_target_task_elisa_server.yaml'
-cfg_feature_path = 'Configs/config_feature_task_elisa_server.yaml'
+cfg_online_path = 'Configs/config_elisa_laptop.yaml'
+cfg_target_path = 'Configs/config_target_task_elisa_laptop.yaml'
+cfg_feature_path = 'Configs/config_feature_task_elisa_laptop.yaml'
 
 # Test dataset creation
 cfg.merge_from_file(cfg_target_path)
@@ -37,7 +37,7 @@ cfg.freeze()
 dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True)
 
 # Region Classifier initialization
-classifier = falkon.FALKONWrapper()
+classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
 negative_selector = ms.MinibootstrapSelector(cfg_online_path)
 regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_online_path)
 
