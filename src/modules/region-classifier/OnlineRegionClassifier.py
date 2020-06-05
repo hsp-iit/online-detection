@@ -41,7 +41,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 positives_dataset = h5py.File(positives_file, 'r')['list']
                 positives_torch = []
                 for i in range(self.num_classes-1):
-                    positives_torch.append(torch.tensor(positives_dataset[str(i)]))
+                    positives_torch.append(torch.tensor(positives_dataset[str(i)], device='cuda'))
             else:
                 print('Unrecognized type of feature file')
                 positives_torch = None
@@ -71,7 +71,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             positives_torch = []
             for i in range(self.num_classes - 1):
                 for j in range(self.iterations):
-                    positives_torch.append(torch.tensor(positives[i][j]))
+                    positives_torch.append(torch.tensor(positives[i][j], device='cuda'))
 
         return positives_torch
 
@@ -174,7 +174,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)
                 boxes = l['boxes'][I, :][0]
-                X_test = torch.tensor(l['feat'][I, :][0])
+                X_test = torch.tensor(l['feat'][I, :][0], device='cuda')
                 t0 = time.time()
                 if self.mean_norm != 0:
                    X_test = zScores(X_test, self.mean, self.mean_norm)
