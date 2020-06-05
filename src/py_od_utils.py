@@ -17,9 +17,9 @@ def computeFeatStatistics(positives, negatives, feature_folder, num_samples=4000
     stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'stats')
     try:
         l = torch.load(stats_path)
-        mean = l['mean']
-        std = l['std']
-        mean_norm = l['mean_norm']
+        mean = torch.tensor(l['mean'], device='cuda')
+        std = torch.tensor(l['std'], device='cuda')
+        mean_norm = torch.tensor(l['mean_norm'], device='cuda')
     except:
         print('Computing features statistics')
         pos_fraction = 1/10
