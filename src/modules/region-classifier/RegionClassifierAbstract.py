@@ -8,7 +8,7 @@ import yaml
 
 
 class RegionClassifierAbstract(ABC):
-    def __init__(self, classifier, negative_selector, cfg_path=None):
+    def __init__(self, classifier, positive_selector, negative_selector, cfg_path=None):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             self.experiment_name = self.cfg['EXPERIMENT_NAME']
@@ -27,6 +27,7 @@ class RegionClassifierAbstract(ABC):
 
         self.classifier = classifier
         self.negative_selector = negative_selector
+        self.positive_selector = positive_selector
         # self.experiment_name = experiment_name
 
     @abstractmethod

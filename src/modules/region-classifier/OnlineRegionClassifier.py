@@ -27,53 +27,53 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if 'classifier_options' in opts:
             self.classifier_options = opts['classifier_options']
 
-    def selectPositives(self, feat_type='h5'):
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
-        positives_file = os.path.join(feat_path, 'positives')
-        try:
-            if feat_type == 'mat':
-                mat_positives = h5py.File(positives_file, 'r')
-                X_pos = mat_positives['X_pos']
-                positives_torch = []
-                for i in range(self.num_classes-1):
-                    positives_torch.append(mat_positives[X_pos[0, i]][()].transpose())
-            elif feat_type == 'h5':
-                positives_dataset = h5py.File(positives_file, 'r')['list']
-                positives_torch = []
-                for i in range(self.num_classes-1):
-                    positives_torch.append(torch.tensor(np.asfortranarray(np.array(positives_dataset[str(i)]))))
-            else:
-                print('Unrecognized type of feature file')
-                positives_torch = None
-        except:
-            with open(self.train_imset, 'r') as f:
-                path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
-            positives = []
-            for i in range(len(path_list)):
-                l = loadFeature(feat_path, path_list[i].rstrip())
-                for c in range(self.num_classes - 1):
-                    if len(positives) < c + 1:
-                        positives.append([])  # Initialization for class c-th
-                    sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
-                                                            # INDEXING Moreover class 0 is bkg
-                    if len(sel):
-                        if len(positives[c]) == 0:
-                            positives[c] = l['feat'][sel, :]
-                        else:
-                            positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
-            hf = h5py.File(positives_file, 'w')
-            grp = hf.create_group('list')
-            for i in range(self.num_classes - 1):
-                grp.create_dataset(str(i), data=positives[i])
-            hf.close()
-
-            positives_torch = []
-            for i in range(self.num_classes - 1):
-                for j in range(self.iterations):
-                    positives_torch.append(torch.tensor(positives[i].reshape(positives[i].shape[0],positives[i].shape[1],order='F'), device='cuda'))
-
-        return positives_torch
+    # def selectPositives(self, feat_type='h5'):
+    #     feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+    #     positives_file = os.path.join(feat_path, 'positives')
+    #     try:
+    #         if feat_type == 'mat':
+    #             mat_positives = h5py.File(positives_file, 'r')
+    #             X_pos = mat_positives['X_pos']
+    #             positives_torch = []
+    #             for i in range(self.num_classes-1):
+    #                 positives_torch.append(mat_positives[X_pos[0, i]][()].transpose())
+    #         elif feat_type == 'h5':
+    #             positives_dataset = h5py.File(positives_file, 'r')['list']
+    #             positives_torch = []
+    #             for i in range(self.num_classes-1):
+    #                 positives_torch.append(torch.tensor(np.asfortranarray(np.array(positives_dataset[str(i)]))))
+    #         else:
+    #             print('Unrecognized type of feature file')
+    #             positives_torch = None
+    #     except:
+    #         with open(self.train_imset, 'r') as f:
+    #             path_list = f.readlines()
+    #         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
+    #         positives = []
+    #         for i in range(len(path_list)):
+    #             l = loadFeature(feat_path, path_list[i].rstrip())
+    #             for c in range(self.num_classes - 1):
+    #                 if len(positives) < c + 1:
+    #                     positives.append([])  # Initialization for class c-th
+    #                 sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
+    #                                                         # INDEXING Moreover class 0 is bkg
+    #                 if len(sel):
+    #                     if len(positives[c]) == 0:
+    #                         positives[c] = l['feat'][sel, :]
+    #                     else:
+    #                         positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
+    #         hf = h5py.File(positives_file, 'w')
+    #         grp = hf.create_group('list')
+    #         for i in range(self.num_classes - 1):
+    #             grp.create_dataset(str(i), data=positives[i])
+    #         hf.close()
+    #
+    #         positives_torch = []
+    #         for i in range(self.num_classes - 1):
+    #             # for j in range(self.iterations):
+    #                 positives_torch.append(torch.tensor(positives[i].reshape(positives[i].shape[0], positives[i].shape[1]), device='cuda'))
+    #
+    #     return positives_torch
 
     def updateModel(self, cache):
         X_neg = cache['neg']
@@ -144,7 +144,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         print('Training Online Region Classifier')
         # Still to implement early stopping of negatives selection
         negatives = self.negative_selector.selectNegatives()
-        positives = self.selectPositives()
+        positives = self.positive_selector.selectPositives()
 
         self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder)
         for i in range(self.num_classes-1):

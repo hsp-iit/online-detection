@@ -16,6 +16,7 @@ from maskrcnn_pytorch.benchmark.config import cfg
 import OnlineRegionClassifier as ocr
 import FALKONWrapper as falkon
 import MinibootstrapSelector as ms
+import PositivesGTSeector as ps
 import AccuracyEvaluator as ae
 # from feature_extractor import FeatureExtractor
 from region_refiner import RegionRefiner
@@ -39,7 +40,8 @@ dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_
 # Region Classifier initialization
 classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
 negative_selector = ms.MinibootstrapSelector(cfg_online_path)
-regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg_path=cfg_online_path)
+positive_selector = ps.PositivesGTSeector(cfg_online_path)
+regionClassifier = ocr.OnlineRegionClassifier(classifier, positive_selector, negative_selector, cfg_path=cfg_online_path)
 
 # Feature extraction initialization
 # feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
