@@ -1,5 +1,7 @@
 EXPERIMENT_NAME: 'test_integration'
 NUM_CLASSES: 31
+NUM_CLASSES_RPN: 15
+
 OUTPUT_FOLDER: '/home/IIT.LOCAL/emaiettini/workspace/Repos/python-online-detection/output_integration'
 
 DATASET:

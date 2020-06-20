@@ -1,10 +1,12 @@
 EXPERIMENT_NAME: 'test_integration'
 NUM_CLASSES: 31
+NUM_CLASSES_RPN: 15
+
 OUTPUT_FOLDER: '/home/elisa/Repos/python-online-detection/output_integration'
 
 DATASET:
     TARGET_TASK:
-        TRAIN_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
+        TRAIN_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations/ImageSets/sodabottle3.txt'
         TEST_IMSET: '/home/elisa/Data/Datasets/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual.txt'
         VAL_IMSET: ''
 

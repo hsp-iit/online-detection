@@ -13,21 +13,21 @@ import yaml
 import torch
 
 
-class PositivesGTSelector(psA.PositivesSelectorAbstract):
+class RPNPositivesSelector(psA.PositivesSelectorAbstract):
     def __init__(self, cfg_path):
         cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
         self.iterations = cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['ITERATIONS']
         self.batch_size = cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['BATCH_SIZE']
         self.neg_easy_thresh = cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH']
         self.neg_hard_thresh = cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH']
-        self.num_classes = cfg['NUM_CLASSES']
+        self.num_classes = cfg['NUM_CLASSES_RPN']
         self.experiment_name = cfg['EXPERIMENT_NAME']
         self.train_imset = cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.feature_folder = getFeatPath(cfg)
 
     def selectPositives(self, feat_type='h5'):
         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
-        positives_file = os.path.join(feat_path, 'positives')
+        positives_file = os.path.join(feat_path, 'RPN_positives')
         try:
             if feat_type == 'mat':
                 mat_positives = h5py.File(positives_file, 'r')
@@ -44,34 +44,31 @@ class PositivesGTSelector(psA.PositivesSelectorAbstract):
                 print('Unrecognized type of feature file')
                 positives_torch = None
         except:
+            print('Failed to load positives features. Extracting positives from the dataset..')
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
-            positives = []
-            for i in range(len(path_list)):
-                l = loadFeature(feat_path, path_list[i].rstrip())
-                for c in range(self.num_classes - 1):
-                    if len(positives) < c + 1:
-                        positives.append([])  # Initialization for class c-th
-                    sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
-                                                            # INDEXING Moreover class 0 is bkg
-                    if len(sel):
-                        if len(positives[c]) == 0:
-                            positives[c] = l['feat'][sel, :]
-                        else:
-                            positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
-            hf = h5py.File(positives_file, 'w')
-            grp = hf.create_group('list')
-            for i in range(self.num_classes - 1):
-                grp.create_dataset(str(i), data=positives[i])
-            hf.close()
-
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'RPN_trainval')
             positives_torch = []
-            for i in range(self.num_classes - 1):
-                # for j in range(self.iterations):
-                positives_torch.append(torch.tensor(positives[i].reshape(positives[i].shape[0], positives[i].shape[1]), device='cuda'))
+            for i in range(len(path_list)):
+                l = loadFeature(feat_path, path_list[i].rstrip(), type='torch')
+                for c in range(self.num_classes):
+                    if len(positives_torch) < c + 1:
+                        positives_torch.append([])  # Initialization for class c-th
+                    sel = torch.where((l.get_field('classifier') == c) & (l.get_field('overlap') >= 0.3))[0]
+
+                    if len(sel):
+                        if len(positives_torch[c]) == 0:
+                            positives_torch[c] = l.get_field('features')[sel, :]
+                        else:
+                            positives_torch[c] = torch.cat((positives_torch[c], l.get_field('features')[sel, :]), 0)
+
+            # hf = h5py.File(positives_file, 'w')
+            # grp = hf.create_group('list')
+            # for i in range(self.num_classes):
+            #     grp.create_dataset(str(i), data=np.array(positives_torch[i]))
+            # hf.close()
 
         return positives_torch
 
     def get_num_classes(self):
-        return self.num_classes
+        return self.num_classes + 1

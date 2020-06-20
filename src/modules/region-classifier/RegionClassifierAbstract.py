@@ -12,7 +12,6 @@ class RegionClassifierAbstract(ABC):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             self.experiment_name = self.cfg['EXPERIMENT_NAME']
-            self.num_classes = self.cfg['NUM_CLASSES']
             self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
             self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
@@ -20,6 +19,8 @@ class RegionClassifierAbstract(ABC):
             self.mean = 0
             self.std = 0
             self.mean_norm = 0
+            self.is_rpn = False
+
 
         else:
             print('Config file path not given. cfg variable set to None.')
@@ -28,6 +29,7 @@ class RegionClassifierAbstract(ABC):
         self.classifier = classifier
         self.negative_selector = negative_selector
         self.positive_selector = positive_selector
+        self.num_classes = self.positive_selector.get_num_classes()
         # self.experiment_name = experiment_name
 
     @abstractmethod

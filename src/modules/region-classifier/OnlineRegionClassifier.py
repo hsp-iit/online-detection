@@ -26,6 +26,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.train_imset = opts['imset_train']
         if 'classifier_options' in opts:
             self.classifier_options = opts['classifier_options']
+        if 'is_rpn' in opts:
+            self.is_rpn = opts['is_rpn']
 
     # def selectPositives(self, feat_type='h5'):
     #     feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
@@ -94,48 +96,53 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         model = []
         t = time.time()
         for i in range(self.num_classes-1):
-            print('---------------------- Training Class number {} ----------------------'.format(i))
-            first_time = True
-            for j in range(iterations):
-                t_iter = time.time()
-                if first_time:
-                    dataset = {}
-                    dataset['pos'] = positives[i]
-                    dataset['neg'] = negatives[i][j]
-                    caches.append(dataset)
-                    model.append(None)
-                    first_time = False
-                else:
-                    t_hard = time.time()
-                    neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
-                    # hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
-                    hard_idx = torch.where(neg_pred > self.negative_selector.neg_hard_thresh)[0]
-                    # caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
-                    caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
-                    print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
-                    print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
+            if (len(positives[i]) != 0) & (len(negatives[i][0]) != 0):
+                print('---------------------- Training Class number {} ----------------------'.format(i))
+                first_time = True
+                for j in range(len(negatives[i])):
+                    t_iter = time.time()
+                    if first_time:
+                        dataset = {}
+                        dataset['pos'] = positives[i]
+                        dataset['neg'] = negatives[i][j]
+                        caches.append(dataset)
+                        model.append(None)
+                        first_time = False
+                    else:
+                        t_hard = time.time()
+                        neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
+                        # hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
+                        hard_idx = torch.where(neg_pred > self.negative_selector.neg_hard_thresh)[0]
+                        # caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
+                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
+                        print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
+                        print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
-                print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
-                t_update = time.time()
-                model[i] = self.updateModel(caches[i])
-                print('Model updated in {} seconds'.format(time.time() - t_update))
+                    print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
+                    t_update = time.time()
+                    model[i] = self.updateModel(caches[i])
+                    print('Model updated in {} seconds'.format(time.time() - t_update))
 
-                t_easy = time.time()
-                neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
+                    t_easy = time.time()
+                    neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
-                # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
-                keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
-                easy_idx = len(caches[i]['neg']) - len(keep_idx)
-                caches[i]['neg'] = caches[i]['neg'][keep_idx]
-                # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
-                print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
-                print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
-                print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                    # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
+                    keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
+                    easy_idx = len(caches[i]['neg']) - len(keep_idx)
+                    caches[i]['neg'] = caches[i]['neg'][keep_idx]
+                    # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+                    print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
+                    print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
+                    print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+            else:
+                model.append(None)
+                dataset = {}
+                caches.append(dataset)
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))
-        model_name = 'model_' + self.experiment_name
-#        torch.save(model, model_name)
+        # model_name = 'model_' + self.experiment_name
+        # torch.save(model, model_name)
         return model
 
     def trainRegionClassifier(self, opts=None):
@@ -146,11 +153,13 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         negatives = self.negative_selector.selectNegatives()
         positives = self.positive_selector.selectPositives()
 
-        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder)
+        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder, self.is_rpn)
         for i in range(self.num_classes-1):
-            positives[i] = zScores(positives[i], self.mean, self.mean_norm)
+            if len(positives[i]):
+                positives[i] = zScores(positives[i], self.mean, self.mean_norm)
             for j in range(len(negatives[i])):
-                negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
+                if len(negatives[i][j]):
+                    negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives)
 
