@@ -27,9 +27,9 @@ import torch
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
 # ----------------------------------------------------------------------------------------
-cfg_online_path = 'Configs/config_elisa_laptop.yaml'
-cfg_target_path = 'Configs/config_target_task_elisa_laptop.yaml'
-cfg_feature_path = 'Configs/config_feature_task_elisa_laptop.yaml'
+cfg_online_path = 'Configs/config_elisa_server.yaml'
+cfg_target_path = 'Configs/config_target_task_elisa_server.yaml'
+cfg_feature_path = 'Configs/config_feature_task_elisa_server.yaml'
 
 # Test dataset creation
 cfg.merge_from_file(cfg_target_path)
@@ -45,7 +45,7 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, negative_selector, cfg
 # feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
 
 # Region refiner initialization
-# region_refiner = RegionRefiner(cfg_online_path)
+region_refiner = RegionRefiner(cfg_online_path)
 
 # Accuracy evaluator initialization
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
@@ -72,7 +72,7 @@ accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 
 # Train region refiner
 print('Train region refiner')
-# regressors = region_refiner.trainRegionRefiner()
+regressors = region_refiner.trainRegionRefiner()
 
 # Start the cross validation
 print('Skip cross validation')

@@ -40,7 +40,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                 for i in range(self.num_classes - 1):
                     tmp = []
                     for j in range(self.iterations):
-                        tmp.append(torch.tensor(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose(), device='cuda'))
+                        tmp.append(torch.tensor(mat_negatives[mat_negatives[X_neg[0, i]][0, j]][()].transpose()))
                     negatives_torch.append(tmp)
             elif feat_type == 'h5':
                 negatives_dataset = h5py.File(negatives_file, 'r')['list']
