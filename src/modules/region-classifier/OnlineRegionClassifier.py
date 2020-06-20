@@ -96,7 +96,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         model = []
         t = time.time()
         for i in range(self.num_classes-1):
-            if (len(positives[i]) != 0) & (len(negatives[i][0]) != 0):
+            if (len(positives[i]) != 0) & (len(negatives[i]) != 0):
                 print('---------------------- Training Class number {} ----------------------'.format(i))
                 first_time = True
                 for j in range(len(negatives[i])):
@@ -124,16 +124,17 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     print('Model updated in {} seconds'.format(time.time() - t_update))
 
                     t_easy = time.time()
-                    neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
+                    if len(caches[i]['neg']) != 0:
+                        neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
-                    # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
-                    keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
-                    easy_idx = len(caches[i]['neg']) - len(keep_idx)
-                    caches[i]['neg'] = caches[i]['neg'][keep_idx]
-                    # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
-                    print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
-                    print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
-                    print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                        # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
+                        keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
+                        easy_idx = len(caches[i]['neg']) - len(keep_idx)
+                        caches[i]['neg'] = caches[i]['neg'][keep_idx]
+                        # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
+                        print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
+                        print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
+                        print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
             else:
                 model.append(None)
                 dataset = {}
