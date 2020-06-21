@@ -4,6 +4,7 @@ import sys
 
 from trainer_feature_task import TrainerFeatureTask
 from feature_extractor_detector import FeatureExtractorDetector
+from feature_extractor_RPN import FeatureExtractorRPN
 from feature_extractor_loader import LoaderFeatureExtractor
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
@@ -11,9 +12,10 @@ from FeatureExtractorAbstract import FeatureExtractorAbstract
 
 
 class FeatureExtractor(FeatureExtractorAbstract):
-    def __init__(self, cfg_path_feature_task=None, cfg_path_target_task=None):
+    def __init__(self, cfg_path_feature_task=None, cfg_path_target_task=None, cfg_path_RPN=None):
         self.cfg_path_feature_task = cfg_path_feature_task
         self.cfg_path_target_task = cfg_path_target_task
+        self.cfg_path_RPN = cfg_path_RPN
 
     def loadFeatureExtractor(self):
         loader = LoaderFeatureExtractor(self.cfg_path_target_task)
@@ -43,13 +45,15 @@ class FeatureExtractor(FeatureExtractorAbstract):
         model = []
 
         return model
-
-    def extract_rpn_features(self):
+    """
+    def extractRPNFeatures(self):
         # call class to extract rpn features:
-        features = []
+        feature_extractor = FeatureExtractorRPN(self.cfg_path_RPN)
+        features = feature_extractor()
 
         return features
-    """
+
+
     def extractFeatures(self):
         # call class to extract detector features:
         feature_extractor = FeatureExtractorDetector(self.cfg_path_target_task)
