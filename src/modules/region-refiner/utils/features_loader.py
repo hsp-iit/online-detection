@@ -10,9 +10,9 @@ def list_features(imageset_path):
     id_to_img_map = {k: v for k, v in enumerate(ids)}
     return id_to_img_map
 
-def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6):
+def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048):
     # features
-    X = np.empty((0, 2048), dtype=np.float32) #np.zeros((total, feat_dim), dtype=np.float32)
+    X = np.empty((0, feat_dim), dtype=np.float32) #np.zeros((total, feat_dim), dtype=np.float32)
     # target values
     Y = np.empty((0, 4), dtype=np.float32) #np.zeros((total, 4), dtype=np.float32)
     # overlap amounts
@@ -31,7 +31,7 @@ def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6):
             feat = loadmat(pth)
 
         gt_boxes = feat['boxes'][np.squeeze(feat['class'] > 0)]
-        # add one to number of classes since python is zero-base
+        # add one to number of classes since python is zero-based
         gt_classes = feat['class'][np.squeeze(feat['class'] > 0)]
 
         max_ov = np.amax(feat['overlap'], axis=1)
@@ -72,6 +72,56 @@ def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6):
             'O': torch.from_numpy(O).to("cuda"),
             'X': torch.from_numpy(X).to("cuda"),
             'Y': torch.from_numpy(Y).to("cuda")
+            }
+
+    return COXY
+
+def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048):
+    # features
+    X = torch.empty((0, feat_dim), dtype=torch.float32, device='cuda') #np.zeros((total, feat_dim), dtype=np.float32)
+    # target values
+    Y = torch.empty((0, 4), dtype=torch.float32, device='cuda') #np.zeros((total, 4), dtype=np.float32)
+    # overlap amounts
+    O = torch.empty((0), dtype=torch.float32, device='cuda') #np.zeros((total, 1), dtype=np.float32)
+    # classes
+    C = torch.empty((0), dtype=torch.float32, device='cuda') #np.zeros((total, 1), dtype=np.float32)
+    #cls_counts = np.zeros((num_classes, 1))
+    for key in features_dictionary:
+        # TODO evaluate whether to add tic_toc_print
+        pth = features_path % features_dictionary[key]
+        #print(pth)
+        feat = torch.load(pth)
+
+        boxes = feat[feat.get_field('overlap') > min_overlap]
+        ex_boxes = boxes.bbox
+        gt_boxes = boxes.get_field('gt_bbox')
+        X = torch.cat((X, boxes.get_field('features')))
+        O = torch.cat((O, boxes.get_field('overlap')))
+        C = torch.cat((C, boxes.get_field('classifier').type(torch.float32)))
+        #print(X)
+
+        src_w = ex_boxes[:,2] - ex_boxes[:,0] + 1
+        src_h = ex_boxes[:,3] - ex_boxes[:,1] + 1
+        src_ctr_x = ex_boxes[:,0] + 0.5 * src_w
+        src_ctr_y = ex_boxes[:,1] + 0.5 * src_h
+
+        gt_w = gt_boxes[:,2] - gt_boxes[:,0] + 1
+        gt_h = gt_boxes[:,3] - gt_boxes[:,1] + 1
+        gt_ctr_x = gt_boxes[:,0] + 0.5 * gt_w
+        gt_ctr_y = gt_boxes[:,1] + 0.5 * gt_h
+
+        dst_ctr_x = (gt_ctr_x - src_ctr_x) / src_w
+        dst_ctr_y = (gt_ctr_y - src_ctr_y) / src_h
+        dst_scl_w = torch.log(gt_w / src_w)
+        dst_scl_h = torch.log(gt_h / src_h)
+
+        target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
+        Y = torch.cat((Y, target), dim=0)
+
+    COXY = {'C': C,
+            'O': O,
+            'X': X,
+            'Y': Y
             }
 
     return COXY

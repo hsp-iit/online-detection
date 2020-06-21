@@ -6,7 +6,7 @@ import sys
 #import warnings
 from scipy import linalg
 import torch
-from utils import list_features, features_to_COXY
+from utils import list_features, features_to_COXY, features_to_COXY_boxlist
 
 basedir = os.path.dirname(__file__)
 from py_od_utils import getFeatPath
@@ -43,7 +43,7 @@ class RegionRefinerTrainer():
         # if not os.path.exists(cache_dir):
         #    os.mkdir(cache_dir)
         num_clss = len(chosen_classes)
-        bbox_model_suffix = '_first_test'
+        #bbox_model_suffix = '_first_test'
 
         models = np.empty((0))
         # print(models)
@@ -120,7 +120,7 @@ class RegionRefinerTrainer():
         #X_torch = torch.from_numpy(X).to("cuda")
         #y_torch = torch.from_numpy(y).to("cuda")
         #start_mult = time.time()
-        X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(2049).to("cuda")
+        X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1]).to("cuda")
         #start_cho = time.time()
         #print('Cho: %f seconds.' % (start_cho - start_mult))
         R = torch.cholesky(X_transposed_X)
@@ -130,10 +130,10 @@ class RegionRefinerTrainer():
         for i in range(0, 4):
             y_torch_i = y[:, i]
             #torch.matmul(torch.t(X_torch), y_torch_i)
-            z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(2049, 1), R, upper=False).solution
+            z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(X.size()[1], 1), R, upper=False).solution
             #end_ls1 = time.time()
             #print('LS1: %f seconds.' % (end_ls1 - end_cho))
-            w = torch.triangular_solve(z, torch.t(R)).solution.view(2049)
+            w = torch.triangular_solve(z, torch.t(R)).solution.view(X.size()[1])
             #end_ls2 = time.time()
             #print('LS2: %f seconds.' % (end_ls2 - end_ls1))
             losses = 0.5 * torch.pow((torch.matmul(X, w) - y_torch_i), 2)

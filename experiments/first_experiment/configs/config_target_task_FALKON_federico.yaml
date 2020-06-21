@@ -1,16 +1,23 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/%s_ep%s_FT%s_TT%s"
+OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/%s_ep%s_FT%s_TT%s_RPN_online"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 DATA_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/pretrained_feature_extractor.pth"
   RPN:
+    RPN_HEAD: "OnlineRPNHead"
+  #  USE_FPN: True
+  #  ANCHOR_STRIDE: (4, 8, 16, 32, 64)
     PRE_NMS_TOP_N_TRAIN: 2000
     PRE_NMS_TOP_N_TEST: 1000
     POST_NMS_TOP_N_TEST: 300
   ROI_BOX_HEAD:
-    NUM_CLASSES: 101 # This will be set to 31 for the target task in the code, this is just to load correctly the model trained on the feature task
-
+    NUM_CLASSES: 101 #101 # This will be set to 31 for the target task in the code, this is just to load correctly the model trained on the feature task
+  #  POOLER_RESOLUTION: 7
+  #  POOLER_SCALES: (0.25, 0.125, 0.0625, 0.03125)
+  #  POOLER_SAMPLING_RATIO: 2
+  #  FEATURE_EXTRACTOR: "FPN2MLPFeatureExtractor"
+  #  PREDICTOR: "FPNPredictor"
   MASK_ON: False
 DATASETS:
   TRAIN: ("icubworld_id_30objects_train_val_target_task",)
