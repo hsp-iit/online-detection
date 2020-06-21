@@ -22,7 +22,7 @@ from maskrcnn_pytorch.benchmark.data import make_data_loader
 from maskrcnn_benchmark.solver import make_lr_scheduler
 from maskrcnn_benchmark.solver import make_optimizer
 
-from maskrcnn_pytorch.benchmark.modeling.detector.detectors_getProposals import build_detection_model
+from maskrcnn_pytorch.benchmark.modeling.rpn.rpn_getProposals_RPN import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer, Checkpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
@@ -30,7 +30,7 @@ from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
 from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor_new import inference
-
+import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
 # and enable mixed-precision via apex.amp
@@ -39,11 +39,11 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
-class FeatureExtractorDetector:
-    def __init__(self, cfg_path_target_task=None, local_rank=0):
+class FeatureExtractorRPN:
+    def __init__(self, cfg_path_RPN=None, local_rank=0):
 
         self.is_target_task = True
-        self.config_file = cfg_path_target_task
+        self.config_file = cfg_path_RPN
         self.num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
         self.distributed = self.num_gpus > 1
         self.local_rank = local_rank
@@ -51,15 +51,7 @@ class FeatureExtractorDetector:
         self.load_parameters()
 
     def __call__(self):
-        for model in ['/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task/model_0137345/model_0003988.pth',
-                      '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0019940.pth',
-                      '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth']:
-            for i in range(10, 110, 10):
-                self.cfg.MODEL.WEIGHT = model
-                self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
-                self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
-                self.train()
-        #self.train()   #TODO remove previous code and uncomment this
+        self.train()
 
 
     def load_parameters(self):
@@ -71,10 +63,11 @@ class FeatureExtractorDetector:
             synchronize()
         self.cfg.merge_from_file(self.config_file)
         self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '4', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
-        #self.cfg.freeze() TODO uncomment this
+        self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)
+
         logger = setup_logger("maskrcnn_benchmark", self.cfg.OUTPUT_DIR, get_rank())
         logger.info("Using {} GPUs".format(self.num_gpus))
         logger.info("Collecting env info (might take some time)")
@@ -84,7 +77,6 @@ class FeatureExtractorDetector:
             config_str = "\n" + cf.read()
             logger.info(config_str)
         logger.info("Running with config:\n{}".format(self.cfg))
-
 
 
     def train(self):
@@ -117,9 +109,15 @@ class FeatureExtractorDetector:
             self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
         )
 
+        # Load rpn
         model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
-        print(self.cfg.MODEL.WEIGHT, self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST)    #TODO remove this
+        model_pretrained_copy = copy.deepcopy(model_pretrained)
+        for key in model_pretrained_copy['model'].keys():
+            if key.startswith('roi'):
+                del model_pretrained['model'][key]
         checkpointer._load_model(model_pretrained)
+
+        #TODO add pick final o something similar in checkpointer.load from other training files in the server
 
         if self.distributed:
             model = model.module
