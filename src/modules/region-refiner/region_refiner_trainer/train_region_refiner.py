@@ -32,11 +32,18 @@ class RegionRefinerTrainer():
         opts = self.cfg['REGION_REFINER']['opts']
 
         feat_path = self.path_to_features
-        positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
+        if 'UPDATE_RPN' in self.cfg:
+            positives_file = os.path.join(feat_path[:-15], 'RPN_bbox_positives')
+        else:
+            positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
         try:
             COXY = torch.load(positives_file)
         except:
-            COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
+            if 'UPDATE_RPN' in self.cfg:
+                if self.cfg['UPDATE_RPN']:
+                    COXY = features_to_COXY_boxlist(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], feat_dim=1024)
+            else:
+                COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
             torch.save(COXY, positives_file)
 
         # cache_dir = 'bbox_reg/'
