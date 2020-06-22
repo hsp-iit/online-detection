@@ -26,7 +26,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
                     kernel=kernel,
                     penalty=opts['lambda'],
                     M=self.nyst_centers,
-                    debug=False,
+#                    debug=False,
                     use_cpu=True
                     # use_display_gpu=True,
                     # gpu_use_processes=False,
