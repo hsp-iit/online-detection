@@ -27,7 +27,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
                     penalty=opts['lambda'],
                     M=self.nyst_centers,
 #                    debug=False,
-                    use_cpu=True
+#                    use_cpu=True
                     # use_display_gpu=True,
                     # gpu_use_processes=False,
                     # inter_type=torch.float32,
