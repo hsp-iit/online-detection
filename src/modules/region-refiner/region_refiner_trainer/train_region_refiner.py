@@ -7,6 +7,7 @@ import sys
 from scipy import linalg
 import torch
 from utils import list_features, features_to_COXY, features_to_COXY_boxlist
+<<<<<<< HEAD
 
 basedir = os.path.dirname(__file__)
 from py_od_utils import getFeatPath
