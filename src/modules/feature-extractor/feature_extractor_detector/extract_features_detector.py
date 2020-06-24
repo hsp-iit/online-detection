@@ -52,15 +52,15 @@ class FeatureExtractorDetector:
         self.load_parameters()
 
     def __call__(self):
-        for model in ['/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task/model_0137345/model_0003988.pth',
-                      '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0019940.pth',
-                      '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth']:
-            for i in range(10, 110, 10):
-                self.cfg.MODEL.WEIGHT = model
-                self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
-                self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
-                self.train()
-        #self.train()   #TODO remove previous code and uncomment this
+        #for model in ['/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task/model_0137345/model_0003988.pth',
+        #              '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0019940.pth',
+        #              '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth']:
+        #    for i in range(10, 110, 10):
+        #        self.cfg.MODEL.WEIGHT = model
+        #        self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
+        #        self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
+        #        self.train()
+        self.train()   #TODO remove previous code and uncomment this
 
 
     def load_parameters(self):

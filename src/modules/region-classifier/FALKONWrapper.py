@@ -7,6 +7,8 @@ import ClassifierAbstract as ca
 import torch
 import yaml
 
+import copy
+
 
 class FALKONWrapper(ca.ClassifierAbstract):
     def __init__(self, cfg_path=None):
@@ -48,7 +50,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
             print('Model is None in trainRegionClassifier function')
             sys.exit(0)
 
-        return self.model
+        return copy.deepcopy(self.model) #self.model
 
     def predict(self, model, X_np, y=None):
 #        X = torch.from_numpy(X_np)

@@ -62,7 +62,7 @@ class FeatureExtractorRPN:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '4', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
+        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '5', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
         self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:

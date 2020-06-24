@@ -30,7 +30,14 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, positive_selector, neg
 
 # - Train region classifier
 models = regionClassifier.trainRegionClassifier(opts={'is_rpn': True})
-torch.save(models, 'model_classifier_rpn')
+mod = None
+for model in models:
+    if model is not None:
+        if mod is not None:
+            print('nystrom', torch.equal(model.ny_points_, mod.ny_points_))
+        print(model == mod)
+        mod = model
+torch.save(models, 'model_classifier_rpn_ep5_lmd0_0001_sigma5')
 """
 for model in models:
     torch.save(model, 'model')
