@@ -20,7 +20,8 @@ class RegionClassifierAbstract(ABC):
             self.std = 0
             self.mean_norm = 0
             self.is_rpn = False
-
+            self.lam = None
+            self.sigma = None
 
         else:
             print('Config file path not given. cfg variable set to None.')

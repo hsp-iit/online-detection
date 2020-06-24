@@ -38,7 +38,7 @@ class RPNPositivesSelector(psA.PositivesSelectorAbstract):
             elif feat_type == 'h5':
                 positives_dataset = h5py.File(positives_file, 'r')['list']
                 positives_torch = []
-                for i in range(self.num_classes-1):
+                for i in range(self.num_classes):
                     positives_torch.append(torch.tensor(np.asfortranarray(np.array(positives_dataset[str(i)]))))
             else:
                 print('Unrecognized type of feature file')
@@ -62,11 +62,14 @@ class RPNPositivesSelector(psA.PositivesSelectorAbstract):
                         else:
                             positives_torch[c] = torch.cat((positives_torch[c], l.get_field('features')[sel, :]), 0)
 
-            # hf = h5py.File(positives_file, 'w')
-            # grp = hf.create_group('list')
-            # for i in range(self.num_classes):
-            #     grp.create_dataset(str(i), data=np.array(positives_torch[i]))
-            # hf.close()
+            hf = h5py.File(positives_file, 'w')
+            grp = hf.create_group('list')
+            for i in range(self.num_classes):
+                if len(positives_torch[i]):
+                    grp.create_dataset(str(i), data=np.array(positives_torch[i].to('cpu')))
+                else:
+                    grp.create_group(str(i))
+            hf.close()
 
         return positives_torch
 

@@ -28,6 +28,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.classifier_options = opts['classifier_options']
         if 'is_rpn' in opts:
             self.is_rpn = opts['is_rpn']
+        if 'lam' in opts:
+            self.lam = opts['lam']
+        if 'sigma' in opts:
+            self.sigma = opts['sigma']
 
     # def selectPositives(self, feat_type='h5'):
     #     feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
@@ -88,7 +92,12 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         y = torch.cat((torch.transpose(torch.ones(num_pos), 0, 0), -torch.transpose(torch.ones(num_neg), 0, 0)), 0)
 
         # return self.classifier.train(X, y, self.classifier_options)
-        return self.classifier.train(X, y)
+        if self.sigma is not None and self.lam is not None:
+            print('Updating model with lambda: {} and sigma: {}'.format(self.lam, self.sigma))
+            return self.classifier.train(X, y, sigma=self.sigma, lam=self.lam)
+        else:
+            print('Updating model with default lambda and sigma')
+            return self.classifier.train(X, y)
 
     def trainWithMinibootstrap(self, negatives, positives):
         iterations = self.negative_selector.iterations

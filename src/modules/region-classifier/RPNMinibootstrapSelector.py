@@ -51,7 +51,7 @@ class RPNMinibootstrapSelector(nsA.NegativeSelectorAbstract):
                     # for j in range(self.iterations):
                     #     tmp.append(negatives_dataset[i][j])
                     cls_neg = negatives_dataset[str(i)]
-                    for j in range(self.iterations):
+                    for j in range(len(cls_neg)):
                         tmp.append(torch.tensor(np.asfortranarray(np.array(cls_neg[str(j)]))))
                     negatives_torch.append(tmp)
                 # negatives_dataset.close()
@@ -107,13 +107,13 @@ class RPNMinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                 else:
                                     keep_doing[c, b] = 0
 
-            # hf = h5py.File(negatives_file, 'w')
-            # grp = hf.create_group('list')
-            # for i in range(self.num_classes):
-            #     grpp = grp.create_group(str(i))
-            #     for j in range(len(negatives_torch[i])):
-            #         grpp.create_dataset(str(j), data=np.array(negatives_torch[i][j].cpu()))
-            # hf.close()
+            hf = h5py.File(negatives_file, 'w')
+            grp = hf.create_group('list')
+            for i in range(self.num_classes):
+                grpp = grp.create_group(str(i))
+                for j in range(len(negatives_torch[i])):
+                    grpp.create_dataset(str(j), data=np.array(negatives_torch[i][j].to('cpu')))
+            hf.close()
 
         return negatives_torch
 

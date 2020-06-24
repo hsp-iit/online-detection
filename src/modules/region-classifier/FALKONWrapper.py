@@ -16,9 +16,21 @@ class FALKONWrapper(ca.ClassifierAbstract):
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             opts = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
 
+            if 'sigma' in opts:
+                sigma = opts['sigma']
+            else:
+                print('Sigma not given for creating Falkon, default value is used.')
+                sigma = 25
+
+            if 'lam' in opts:
+                lam = opts['lambda']
+            else:
+                print('Lambda not given for creating Falkon, default value is used.')
+                lam = 0.001
+
             kernel = None
             if opts['kernel_type'] == 'gauss':
-                kernel = kernels.GaussianKernel(sigma=opts['sigma'])
+                kernel = kernels.GaussianKernel(sigma=sigma)
             else:
                 print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
@@ -26,7 +38,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
                 self.nyst_centers = opts['M']
                 self.model = Falkon(
                     kernel=kernel,
-                    penalty=opts['lambda'],
+                    penalty=lam,
                     M=self.nyst_centers,
 #                    debug=False,
 #                    use_cpu=True
@@ -39,11 +51,13 @@ class FALKONWrapper(ca.ClassifierAbstract):
                 print('Kernel is None in trainRegionClassifier function')
                 sys.exit(0)
 
-    def train(self, X, y):
+    def train(self, X, y, sigma=None, lam=None):
 
         if self.model is not None:
-            # X = torch.from_numpy(X_np)
-            # y = torch.from_numpy(y_np).to(torch.float32)
+            if sigma is not None:
+                self.model.kernel = kernels.GaussianKernel(sigma=sigma)
+            if lam is not None:
+                self.model.penalty = lam                
             self.model.M = min(self.nyst_centers, len(X))
             self.model.fit(X, y)
         else:
