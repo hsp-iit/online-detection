@@ -16,9 +16,9 @@ class RegionRefinerTrainer():
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
         feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'trainval')
+        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'train_val')
         self.path_to_features = feat_path + '/%s.' + self.features_format
-        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
+        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
         self.features_dictionary_train = list_features(self.path_to_imgset_train)
         return
@@ -32,7 +32,7 @@ class RegionRefinerTrainer():
         opts = self.cfg['REGION_REFINER']['opts']
 
         feat_path = self.path_to_features
-        positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
+        positives_file = os.path.join(feat_path[:-16], 'bbox_positives')
         try:
             COXY = torch.load(positives_file)
         except:

@@ -7,6 +7,8 @@ import ClassifierAbstract as ca
 import torch
 import yaml
 import copy
+import time
+from falkon.options import *
 
 class FALKONWrapper(ca.ClassifierAbstract):
     def __init__(self, cfg_path=None):
@@ -20,6 +22,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
             else:
                 print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
+            options = FalkonOptions(use_cpu=False)
             if kernel is not None:
                 self.nyst_centers = opts['M']
                 self.model = Falkon(
@@ -27,11 +30,12 @@ class FALKONWrapper(ca.ClassifierAbstract):
                     penalty=opts['lambda'],
                     M=self.nyst_centers,
 #                    debug=False,
-                    use_cpu=True
+#                    use_cpu=True
                     # use_display_gpu=True,
                     # gpu_use_processes=False,
                     # inter_type=torch.float32,
                     # final_type=torch.float32
+                    options=options
                 )
             else:
                 print('Kernel is None in trainRegionClassifier function')
@@ -52,11 +56,12 @@ class FALKONWrapper(ca.ClassifierAbstract):
 
     def predict(self, model, X_np, y=None):
 #        X = torch.from_numpy(X_np)
+        start = time.time()
         if y is not None:
             predictions = model.predict(X_np, y)
         else:
             predictions = model.predict(X_np)
-
+        print('Falkon prediction time:', time.time() - start)
         return predictions
 
     def test(self):

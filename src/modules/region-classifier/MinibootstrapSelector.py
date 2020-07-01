@@ -62,7 +62,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
 
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
 
             # Number of regions to keep from image for each class
             keep_from_image = int(np.ceil((self.batch_size*self.iterations)/len(path_list)))

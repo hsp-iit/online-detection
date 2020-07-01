@@ -157,10 +157,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder, self.is_rpn)
         for i in range(self.num_classes-1):
             if len(positives[i]):
-                positives[i] = zScores(positives[i], self.mean, self.mean_norm)
+                positives[i] = zScores(positives[i].to('cpu'), self.mean, self.mean_norm)
             for j in range(len(negatives[i])):
                 if len(negatives[i][j]):
-                    negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
+                    negatives[i][j] = zScores(negatives[i][j].to('cpu'), self.mean, self.mean_norm)
 
         model = self.trainWithMinibootstrap(negatives, positives)
 
@@ -189,7 +189,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         total_testing_time = 0
         for i in range(len(path_list)):
             print('Testing {}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
+            start = time.time()
             l = loadFeature(feat_path, path_list[i].rstrip())
+            t1 = time.time()
+            print('Loading time:', t1-start)
             if l is not None:
                 print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)
