@@ -1,3 +1,8 @@
+DATASET:
+    TARGET_TASK:
+        TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
+        TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual_fake.txt'
+        VAL_IMSET: ''
 PATHS:
   FEATURES_PATH_TRAIN: 'features_mat/icubworld_id_30objects_train_val_target_task' #icubworld_id_30objects_test_target_task #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4
   FEATURES_PATH_TEST: 'features_mat/icubworld_id_30objects_test_target_task' #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_test_TASK2_30objs_manual
@@ -5,7 +10,12 @@ PATHS:
   IMAGESET_VAL: None
   IMAGESET_TEST: #'/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_30objs_manual_fake.txt'
 
-FEATURES_FORMAT: '.mat'
+FEATURE_INFO:
+    FEAT_TASK_NAME: 'icwt100'
+    TARGET_TASK_NAME: "icwt30"
+    BACKBONE: 'R50'
+    NUM_EPOCHS: 5
+    FORMAT: '' #'mat'
 
 CHOSEN_CLASSES:
   0: '_background_'
@@ -40,9 +50,30 @@ CHOSEN_CLASSES:
   29: 'sprayer8'
   30: 'sprayer9'
 
-opts:
-  min_overlap: 0.6
-  lambda: 1000
+CHOSEN_CLASSES_RPN:
+  0: '0'
+  1: '1'
+  2: '2'
+  3: '3'
+  4: '4'
+  5: '5'
+  6: '6'
+  7: '7'
+  8: '8'
+  9: '9'
+  10: '10'
+  11: '11'
+  12: '12'
+  13: '13'
+  14: '14'
+#  15: '15'
+
+REGION_REFINER:
+    opts:
+        min_overlap: 0.3
+        lambda: 0.00000000001 #1000
+
+UPDATE_RPN: True
 
 MODELS_PATH: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/regressors_mask' #models_regressor'
 BOXES_PATH: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/predictions_good_small'

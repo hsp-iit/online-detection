@@ -29,7 +29,7 @@ region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
 
 ## Train region refiner
 regressors = region_refiner.trainRegionRefiner()
-torch.save(regressors, 'regressors_mask')
+torch.save(regressors, 'regressors_RPN')
 ## Start the cross validation
 quit()
 ### - Set parameters

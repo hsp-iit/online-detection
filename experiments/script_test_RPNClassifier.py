@@ -7,7 +7,9 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'mo
 from maskrcnn_pytorch.benchmark.config import cfg
 
 import OnlineRegionClassifier as ocr
-import FALKONWrapper as falkon
+import FALKONWrapper_with_centers_selection_logistic_loss as falkon
+#import FALKONWrapper_with_centers_selection as falkon
+#import FALKONWrapper as falkon
 import RPNMinibootstrapSelector as ms
 import RPNPositivesSelector as ps
 
@@ -29,15 +31,23 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, positive_selector, neg
 # -----------------------------------------------------------------------------------
 
 # - Train region classifier
-models = regionClassifier.trainRegionClassifier(opts={'is_rpn': True})
-mod = None
-for model in models:
-    if model is not None:
-        if mod is not None:
-            print('nystrom', torch.equal(model.ny_points_, mod.ny_points_))
-        print(model == mod)
-        mod = model
-torch.save(models, 'model_classifier_rpn_ep5_lmd0_0001_sigma5')
+lambdas = [0.000001, 0.0000001, 0.0001, 0.00001, 0.001]
+sigmas = [10, 15, 20, 25, 30, 50, 100, 1, 5, 1000, 10000]
+for lam in lambdas:
+    for sigma in sigmas:
+        #if os.path.exists('first_experiment/cv_falkon_with_centers_selection_dataset_sampled_logistic_loss/model_classifier_rpn_ep5_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_"))):
+        #    continue
+        models = regionClassifier.trainRegionClassifier(opts={'is_rpn': True, 'lam': lam, 'sigma': sigma})
+        """
+        mod = None
+        for model in models:
+            if model is not None:
+                if mod is not None:
+                    print('nystrom', torch.equal(model.ny_points_, mod.ny_points_))
+                print(model == mod)
+                mod = model
+        """
+        torch.save(models, 'first_experiment/cv_falkon_with_centers_selection_logistic_loss_new_easy_hard_neg_thresh/model_classifier_rpn_ep5_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_")))
 """
 for model in models:
     torch.save(model, 'model')

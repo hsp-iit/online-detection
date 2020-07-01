@@ -8,6 +8,7 @@ import torch
 import yaml
 
 import copy
+from falkon.options import *
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
@@ -34,6 +35,8 @@ class FALKONWrapper(ca.ClassifierAbstract):
             else:
                 print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
+            options = FalkonOptions(use_cpu=False) 
+
             if kernel is not None:
                 self.nyst_centers = opts['M']
                 self.model = Falkon(
@@ -46,6 +49,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
                     # gpu_use_processes=False,
                     # inter_type=torch.float32,
                     # final_type=torch.float32
+                    options = options
                 )
             else:
                 print('Kernel is None in trainRegionClassifier function')

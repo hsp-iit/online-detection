@@ -76,7 +76,7 @@ def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6, feat
 
     return COXY
 
-def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048):
+def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048, normalize_features = True, stats = None):
     # features
     X = torch.empty((0, feat_dim), dtype=torch.float32, device='cuda') #np.zeros((total, feat_dim), dtype=np.float32)
     # target values
@@ -95,7 +95,11 @@ def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0
         boxes = feat[feat.get_field('overlap') > min_overlap]
         ex_boxes = boxes.bbox
         gt_boxes = boxes.get_field('gt_bbox')
-        X = torch.cat((X, boxes.get_field('features')))
+        X_i = boxes.get_field('features')
+        if normalize_features:
+            X_i = X_i - stats['mean']
+            X_i = X_i * (20 / stats['mean_norm'].item())
+        X = torch.cat((X, X_i))#boxes.get_field('features')))
         O = torch.cat((O, boxes.get_field('overlap')))
         C = torch.cat((C, boxes.get_field('classifier').type(torch.float32)))
         #print(X)

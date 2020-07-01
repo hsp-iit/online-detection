@@ -9,19 +9,31 @@ import torch
 from utils import list_features, features_to_COXY, features_to_COXY_boxlist
 
 basedir = os.path.dirname(__file__)
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', '..')))
 from py_od_utils import getFeatPath
+
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-classifier')))
+import FALKONWrapper as falkon
+#import FALKONWrapper_with_centers_selection as falkon
 
 class RegionRefinerTrainer():
     def __init__(self, cfg):
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
         feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'trainval')
-        self.path_to_features = feat_path + '/%s.' + self.features_format
-        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
+        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', feature_folder+'_test', 'train_val')
+        self.path_to_features = feat_path + '/%s' + self.features_format
+        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
         self.features_dictionary_train = list_features(self.path_to_imgset_train)
-        return
+        self.stats = torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/R50_ep4_FTicwt100_TTicwt30/rpn_stats')
+        for key in self.stats.keys():
+            self.stats[key] = self.stats[key].to('cuda')
+        #TODO re implement this cross validation
+        self.lambd = None
+        self.sigma = None
 
     def __call__(self):
         models = self.train()
@@ -29,22 +41,26 @@ class RegionRefinerTrainer():
 
     def train(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
+
+        if 'UPDATE_RPN' in self.cfg:
+            if self.cfg['UPDATE_RPN']:
+                chosen_classes = self.cfg['CHOSEN_CLASSES_RPN']
         opts = self.cfg['REGION_REFINER']['opts']
 
         feat_path = self.path_to_features
+        #if 'UPDATE_RPN' in self.cfg:
+        #    positives_file = os.path.join(feat_path[:-15], 'RPN_bbox_positives')
+        #else:
+        #    positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
+        #try:
+        #    COXY = torch.load(positives_file)
+        #except:
         if 'UPDATE_RPN' in self.cfg:
-            positives_file = os.path.join(feat_path[:-15], 'RPN_bbox_positives')
+            if self.cfg['UPDATE_RPN']:
+                COXY = features_to_COXY_boxlist(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = True, stats = self.stats)
         else:
-            positives_file = os.path.join(feat_path[:-15], 'bbox_positives')
-        try:
-            COXY = torch.load(positives_file)
-        except:
-            if 'UPDATE_RPN' in self.cfg:
-                if self.cfg['UPDATE_RPN']:
-                    COXY = features_to_COXY_boxlist(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], feat_dim=1024)
-            else:
-                COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
-            torch.save(COXY, positives_file)
+            COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
+        #torch.save(COXY, positives_file)
 
         # cache_dir = 'bbox_reg/'
         # if not os.path.exists(cache_dir):
@@ -55,12 +71,14 @@ class RegionRefinerTrainer():
         models = np.empty((0))
         # print(models)
 
+        models_falkon = []
         start_time = time.time()
-        for i in range(1, num_clss):
-            print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
+        for i in range(num_clss):#TODO was for i in range(1, num_clss)
+            print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1)) # TODO was print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
             # Compute indices where bboxes of class i overlap with the ground truth
             #I = np.logical_and(COXY['O'] > opts['min_overlap'], COXY['C'] == i)
-            I = (COXY['O'] > opts['min_overlap']) & (COXY['C'] == i)
+            I = (COXY['O'] >= opts['min_overlap']) & (COXY['C'] == i)
+            #print(torch.sum(I))
             #I = np.squeeze(np.where(I == True))
             I = torch.where(I == True)[0]
             #print(I)
@@ -70,6 +88,7 @@ class RegionRefinerTrainer():
                                             'T_inv': None,
                                             'Beta': None
                                             })
+                models_falkon.append(None)
                 print('No indices for class %s' % (chosen_classes[i]))
                 continue
             # Extract the corresponding values in the X matrix
@@ -102,7 +121,11 @@ class RegionRefinerTrainer():
             Yi = torch.matmul(Yi, T)
             #print(Yi.shape)
 
-            Beta = self.solve(Xi, Yi, opts['lambda'])
+
+            # TODO --------------------------------------------------------- Choose one ----------------------------------------------------
+            #Beta = self.solve(Xi, Yi, opts['lambda'])
+
+            Beta = self.solve_with_falkon(Xi, Yi)
 
             models = np.append(models, {
                 'mu': mu,
@@ -112,25 +135,44 @@ class RegionRefinerTrainer():
             })
 
             mean_losses = torch.empty(0).to("cuda")
+            """ TODO was
             for elem in models[i - 1]['Beta']:
                 mean_losses = torch.cat((mean_losses, torch.mean(models[i - 1]['Beta'][elem]['losses'], dim=0, keepdim=True)))
-            print('Mean losses:', mean_losses)
+            """
+            # TODO uncomment later when training with linear regressors
+            #for elem in models[i]['Beta']:
+            #    mean_losses = torch.cat((mean_losses, torch.mean(models[i]['Beta'][elem]['losses'], dim=0, keepdim=True)))
+            #print('Mean losses:', mean_losses)
 
             # break
+            #print(Yi.size())
+            # --------------------------------------------------------------------
+            #models_falkon.append(self.solve_with_falkon(Xi, Yi))
+            
         end_time = time.time()
-        print('Time required to train %d regressors: %f seconds.' % (num_clss - 1, end_time - start_time))
+        print('Time required to train %d regressors: %f seconds.' % (num_clss, end_time - start_time))# TODO was print('Time required to train %d regressors: %f seconds.' % (num_clss - 1, end_time - start_time))
         torch.save(models, 'models_regressor')
+        #torch.save(models_falkon, 'regressors_falkon')
 
-        return models
+        #return models #TODO decide which model return
+        return models_falkon
 
     def solve(self, X, y, lmbd):
-        #X_torch = torch.from_numpy(X).to("cuda")
-        #y_torch = torch.from_numpy(y).to("cuda")
-        #start_mult = time.time()
-        X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1]).to("cuda")
-        #start_cho = time.time()
-        #print('Cho: %f seconds.' % (start_cho - start_mult))
-        R = torch.cholesky(X_transposed_X)
+        R = None        
+        while R is None:
+            try:        # TODO check whether this is a good solution
+                #X_torch = torch.from_numpy(X).to("cuda")
+                #y_torch = torch.from_numpy(y).to("cuda")
+                #start_mult = time.time()
+                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1]).to("cuda")
+                #print(torch.max(X_transposed_X))
+                #print(X.size(), X_transposed_X.size())
+                #start_cho = time.time()
+                #print('Cho: %f seconds.' % (start_cho - start_mult))        
+                R = torch.cholesky(X_transposed_X)
+            except:
+                lmbd *= 10
+        #print(lmbd)
         #end_cho = time.time()
         #print('Cho: %f seconds.' % (end_cho - start_cho))
         to_return = {}
@@ -144,8 +186,31 @@ class RegionRefinerTrainer():
             #end_ls2 = time.time()
             #print('LS2: %f seconds.' % (end_ls2 - end_ls1))
             losses = 0.5 * torch.pow((torch.matmul(X, w) - y_torch_i), 2)
+            #print(torch.matmul(X, w), y_torch_i.size(), 'here')
             #losses = losses.cpu().numpy()
             #w = w.cpu().numpy()
             to_return[str(i)] = {'weights': w,
                                  'losses': losses}
         return to_return
+
+    def solve_with_falkon(self, X, y):#, lmdb, sigma):
+        
+        cfg_online_path = '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/Configs/config_federico_server_classifier.yaml'
+
+        # Region Refiner initialization
+        regressor = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+        #for i in range(5, 100, 5):
+        model = regressor.train(X.to('cpu'), y.to('cpu'), 20, 0)#, sigma=self.sigma, lam=self.lambd)
+        losses = 0.5 * torch.pow((model.predict(X.to('cpu')) - y.to('cpu')), 2)
+
+        #model = regressor.train(X, y, sigma=self.sigma, lam=self.lambd)
+        #losses = 0.5 * torch.pow((model.predict(X) - y), 2)
+        mean_losses = torch.mean(losses, dim =0)
+        print('Falkon losses:' ,mean_losses)
+
+
+        return model
+
+
+
+
