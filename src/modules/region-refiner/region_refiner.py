@@ -10,12 +10,16 @@ class RegionRefiner(RegionRefinerAbstract):
         self.cfg = yaml.load(open(cfg_path_region_refiner), Loader=yaml.FullLoader)
         self.models = models
         self.boxes = boxes
+        self.lambd = None
+        self.sigma = None
 
     def loadRegionRefiner(self):
         return
 
     def trainRegionRefiner(self):
         trainer = RegionRefinerTrainer(self.cfg)
+        trainer.lambd = self.lambd
+        trainer.sigma = self.sigma
         self.models = trainer()
         return self.models
 

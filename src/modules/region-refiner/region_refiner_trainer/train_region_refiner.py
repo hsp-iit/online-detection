@@ -82,6 +82,7 @@ class RegionRefinerTrainer():
             #I = np.squeeze(np.where(I == True))
             I = torch.where(I == True)[0]
             #print(I)
+            print('Training with %i examples' %len(I))
             if len(I) == 0:
                 models = np.append(models, {'mu': None,
                                             'T': None,
@@ -122,8 +123,8 @@ class RegionRefinerTrainer():
             #print(Yi.shape)
 
 
-            # TODO --------------------------------------------------------- Choose one ----------------------------------------------------
-            #Beta = self.solve(Xi, Yi, opts['lambda'])
+            #TODO --------------------------------------------------------- Choose one ----------------------------------------------------
+            #Beta = self.solve(Xi, Yi, self.lambd)#opts['lambda'])
 
             Beta = self.solve_with_falkon(Xi, Yi)
 
@@ -154,8 +155,8 @@ class RegionRefinerTrainer():
         torch.save(models, 'models_regressor')
         #torch.save(models_falkon, 'regressors_falkon')
 
-        #return models #TODO decide which model return
-        return models_falkon
+        return models #TODO decide which model return
+        #return models_falkon
 
     def solve(self, X, y, lmbd):
         R = None        
@@ -200,7 +201,8 @@ class RegionRefinerTrainer():
         # Region Refiner initialization
         regressor = falkon.FALKONWrapper(cfg_path=cfg_online_path)
         #for i in range(5, 100, 5):
-        model = regressor.train(X.to('cpu'), y.to('cpu'), 20, 0)#, sigma=self.sigma, lam=self.lambd)
+        #print(self.sigma, self.lambd)
+        model = regressor.train(X.to('cpu'), y.to('cpu'), sigma=self.sigma, lam=self.lambd)
         losses = 0.5 * torch.pow((model.predict(X.to('cpu')) - y.to('cpu')), 2)
 
         #model = regressor.train(X, y, sigma=self.sigma, lam=self.lambd)
