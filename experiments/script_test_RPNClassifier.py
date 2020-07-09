@@ -33,6 +33,8 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, positive_selector, neg
 # - Train region classifier
 lambdas = [0.000001, 0.0000001, 0.0001, 0.00001, 0.001]
 sigmas = [10, 15, 20, 25, 30, 50, 100, 1, 5, 1000, 10000]
+#lambdas = [0.000001]
+#sigmas = [15]
 for lam in lambdas:
     for sigma in sigmas:
         #if os.path.exists('first_experiment/cv_falkon_with_centers_selection_dataset_sampled_logistic_loss/model_classifier_rpn_ep5_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_"))):
@@ -47,7 +49,8 @@ for lam in lambdas:
                 print(model == mod)
                 mod = model
         """
-        torch.save(models, 'first_experiment/cv_falkon_with_centers_selection_logistic_loss_new_easy_hard_neg_thresh/model_classifier_rpn_ep5_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_")))
+        #quit()
+        torch.save(models, 'first_experiment/cv_classifier_falkon_m1000_original_easy_hard_thresh/model_classifier_rpn_ep5_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_")))
 """
 for model in models:
     torch.save(model, 'model')

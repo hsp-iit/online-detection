@@ -21,7 +21,7 @@ try:
     feature_extractor.loadFeatureExtractor()
 except OSError:
     print('Feature extractor will be trained from scratch.')
-    feature_extractor.trainFeatureExtractor()
+    #feature_extractor.trainFeatureExtractor()
 
 feature_extractor.extractRPNFeatures()
 quit()

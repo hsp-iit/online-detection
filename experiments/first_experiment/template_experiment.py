@@ -14,14 +14,14 @@ from feature_extractor import FeatureExtractor
 
 ## Experiment configuration
 feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico.yaml')
-
+"""
 ## Retrieve feature extractor (either by loading it or by training it)
 try:
     feature_extractor.loadFeatureExtractor()
 except OSError:
     print('Feature extractor will be trained from scratch.')
     feature_extractor.trainFeatureExtractor()
-
+"""
 ## Extract features for the train/val/test sets
 feature_extractor.extractFeatures()
 

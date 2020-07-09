@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache_RPN/%s_ep%s_FT%s_TT%s_more_negatives"
+OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache_RPN/%s_ep%s_FT%s_TT%s_debug"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"

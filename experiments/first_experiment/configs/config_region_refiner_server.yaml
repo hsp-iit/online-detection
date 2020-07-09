@@ -1,7 +1,7 @@
 DATASET:
     TARGET_TASK:
         TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/train_TASK2_30objs_1over4.txt'
-        TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual_fake.txt'
+        TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations_manual/ImageSets/test_TASK2_30objs_manual.txt'
         VAL_IMSET: ''
 PATHS:
   FEATURES_PATH_TRAIN: 'features_mat/icubworld_id_30objects_train_val_target_task' #icubworld_id_30objects_test_target_task #/home/IIT.LOCAL/emaiettini/workspace/Repos/Incremental_Faster_RCNN/feat_cache/TASK2_ICUB100objsOld_Resnet50/icub_train_TASK2_30objs_1over4

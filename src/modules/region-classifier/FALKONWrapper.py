@@ -35,7 +35,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
             else:
                 print('Kernel type: %s unknown'.format(opts['kernel_type']))
 
-            options = FalkonOptions(use_cpu=False) 
+            options = FalkonOptions(use_cpu=True) 
 
             if kernel is not None:
                 self.nyst_centers = opts['M']

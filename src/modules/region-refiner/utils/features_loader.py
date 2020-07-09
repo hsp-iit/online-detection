@@ -93,6 +93,9 @@ def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0
         feat = torch.load(pth)
 
         boxes = feat[feat.get_field('overlap') > min_overlap]
+        #a = feat.get_field('overlap')
+        #max_ov, ind = torch.max(a, 0)
+        #boxes = feat[[ind.item()]]
         ex_boxes = boxes.bbox
         gt_boxes = boxes.get_field('gt_bbox')
         X_i = boxes.get_field('features')
@@ -127,7 +130,6 @@ def features_to_COXY_boxlist(features_path, features_dictionary, min_overlap = 0
             'X': X,
             'Y': Y
             }
-
     return COXY
 
 def getIntersectionBox(box1, box2):

@@ -3,7 +3,7 @@ PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/mask
 DATA_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/model_0137345.pth" # "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/pretrained_feature_extractor.pth" #/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth" 
+  WEIGHT: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/model_0137345.pth" #"/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth" # # "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/pretrained_feature_extractor.pth" #/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0023928.pth" 
   RPN:
     RPN_HEAD: "OnlineRPNHead"
   #  USE_FPN: True

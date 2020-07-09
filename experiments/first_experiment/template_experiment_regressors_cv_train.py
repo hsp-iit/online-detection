@@ -26,9 +26,10 @@ region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
 
 ## Extract features for the train/val/test sets
 #feature_extractor.extractFeatures()
-
+"""
 ## Train region refiner
-lambdas = [0.000001, 0.0000001, 0.0001, 0.00001, 0.001]
+lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
+#lambdas = [0.01, 0.1, 1, 10, 100, 1000]
 sigmas = [10, 15, 20, 25, 30, 50, 100, 1, 5, 1000, 10000]
 for lam in lambdas:
     for sigma in sigmas:
@@ -47,15 +48,15 @@ for lam in lambdas:
         #        print(model == mod)
         #        mod = model
         
-        torch.save(models, 'cv_regressors_falkon_m10000/cv_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_")))
+        torch.save(models, 'cv_regressors_falkon_m30000_train_with_test_set/cv_lambda%s_sigma%s' %(str(lam).replace(".","_"), str(sigma).replace(".","_")))
 """
-lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]
+#lambdas = [0.0000000001, 0.000000001, 0.00000001, 0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]
+lambdas = [0.000001, 0.00001, 0.0001, 0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000, 100000, 1000000, 10000000]
 for lam in lambdas:
-    print('----------------------------------------------------------- Training with lambda %i' %lam, '-----------------------------------------------------------')
+    print('----------------------------------------------------------- Training with lambda %s' %(str(lam).replace(".","_")), '-----------------------------------------------------------')
     region_refiner.lambd = lam
     models = region_refiner.trainRegionRefiner()
     torch.save(models,'cv_regressors_linear/cv_lambda%s' %(str(lam).replace(".","_")))
-"""
 
 ## Start the cross validation
 quit()

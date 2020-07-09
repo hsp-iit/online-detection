@@ -10,6 +10,7 @@ import yaml
 import copy
 
 from MyCenterSelector import MyCenterSelector
+from falkon.options import *
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
@@ -77,6 +78,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
         #X = X[indices,:]
         #y = y[indices]
         center_selector = MyCenterSelector(indices)
+        opt = FalkonOptions(use_cpu=True)
         if self.kernel is not None:
             #self.nyst_centers = len(indices)#opts['M']
             self.model = LogisticFalkon(
@@ -92,7 +94,8 @@ class FALKONWrapper(ca.ClassifierAbstract):
                 # inter_type=torch.float32,
                 # final_type=torch.float32
                 center_selection = center_selector,
-                error_fn=binary_loss
+                error_fn=binary_loss,
+                #options=opt
             )
         else:
             print('Kernel is None in trainRegionClassifier function')
