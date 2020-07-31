@@ -30,7 +30,7 @@ from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
 from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor_new import inference
-
+import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
 # and enable mixed-precision via apex.amp
@@ -60,7 +60,14 @@ class FeatureExtractorDetector:
         #        self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
         #        self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
         #        self.train()
-        self.train()   #TODO remove previous code and uncomment this
+        """
+        for i in range(10, 310, 10):
+            self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
+            print("Number of regions post NMS", i)
+            #self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
+            self.train()
+        """
+        return self.train()   #TODO remove previous code and uncomment this
 
 
     def load_parameters(self):
@@ -71,7 +78,7 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '4', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
+        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  # # ('R50', 'final', 'COCO', 'COCO') #TODO read these parameters maybe from a config file in the future
         #self.cfg.freeze() TODO uncomment this
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -151,6 +158,12 @@ class FeatureExtractorDetector:
             data_loaders.append(elem)
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
+            if 'train' in dataset_name:
+                model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TRAIN
+                model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TRAIN
+            else:
+                model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TEST
+                model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST
             inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
                 self.cfg,
                 model,
@@ -167,3 +180,9 @@ class FeatureExtractorDetector:
 
         logger = logging.getLogger("maskrcnn_benchmark")
         logger.handlers=[]
+        COXY = {'C': model.roi_heads.box.C,
+                'O': model.roi_heads.box.O,
+                'X': model.roi_heads.box.X,
+                'Y': model.roi_heads.box.Y
+                }
+        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)

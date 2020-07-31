@@ -46,7 +46,7 @@ class PositivesGTSelector(psA.PositivesSelectorAbstract):
         except:
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
             positives = []
             for i in range(len(path_list)):
                 l = loadFeature(feat_path, path_list[i].rstrip())

@@ -15,7 +15,7 @@ from region_refiner import RegionRefiner
 
 ## Experiment configuration
 #feature_extractor = FeatureExtractor('configs/config_feature_task.yaml', 'configs/config_target_task_FALKON.yaml')
-region_refiner = RegionRefiner('configs/config_region_refiner_server.yaml')
+region_refiner = RegionRefiner('configs/config_region_refiner_server_icwt_21.yaml')
 
 ## Retrieve feature extractor (either by loading it or by training it)
 #try:
@@ -56,7 +56,7 @@ for lam in lambdas:
     print('----------------------------------------------------------- Training with lambda %s' %(str(lam).replace(".","_")), '-----------------------------------------------------------')
     region_refiner.lambd = lam
     models = region_refiner.trainRegionRefiner()
-    torch.save(models,'cv_regressors_linear/cv_lambda%s' %(str(lam).replace(".","_")))
+    torch.save(models,'cv_regressors_linear_icwt_21/cv_lambda%s' %(str(lam).replace(".","_")))
 
 ## Start the cross validation
 quit()

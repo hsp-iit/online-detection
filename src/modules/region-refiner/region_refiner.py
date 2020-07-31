@@ -10,8 +10,13 @@ class RegionRefiner(RegionRefinerAbstract):
         self.cfg = yaml.load(open(cfg_path_region_refiner), Loader=yaml.FullLoader)
         self.models = models
         self.boxes = boxes
-        self.lambd = None
+        try:
+            self.lambd = self.cfg['REGION_REFINER']['opts']['lambda']
+        except:
+            self.lambd = None
         self.sigma = None
+        self.COXY = None
+        self.stats = None
 
     def loadRegionRefiner(self):
         return
@@ -20,6 +25,7 @@ class RegionRefiner(RegionRefinerAbstract):
         trainer = RegionRefinerTrainer(self.cfg)
         trainer.lambd = self.lambd
         trainer.sigma = self.sigma
+        trainer.COXY = self.COXY
         self.models = trainer()
         return self.models
 
@@ -28,5 +34,7 @@ class RegionRefiner(RegionRefinerAbstract):
 
     def predict(self):
         predictor = RegionPredictor(self.cfg, self.models, self.boxes)
+        if self.stats is not None:
+            predictor.stats = self.stats
         refined_regions = predictor()
         return refined_regions

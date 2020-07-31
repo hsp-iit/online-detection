@@ -12,6 +12,8 @@ import copy
 from MyCenterSelector import MyCenterSelector
 from falkon.options import *
 
+import time
+
 
 class FALKONWrapper(ca.ClassifierAbstract):
     def __init__(self, cfg_path=None):
@@ -107,13 +109,16 @@ class FALKONWrapper(ca.ClassifierAbstract):
             if lam is not None:
                 self.model.penalty = lam                
             self.model.M = len(indices)
+            #start = time.time()
             self.model.fit(X, y)
+            #print('Fit time:', time.time()-start)
         else:
             print('Model is None in trainRegionClassifier function')
             sys.exit(0)
-
-
-        return copy.deepcopy(self.model) #self.model
+        #start = time.time()
+        #a = copy.deepcopy(self.model)
+        #print('Deepcopy time:', time.time()-start)
+        return copy.deepcopy(self.model)
 
     def predict(self, model, X_np, y=None):
 #        X = torch.from_numpy(X_np)

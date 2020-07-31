@@ -10,6 +10,9 @@ import yaml
 import copy
 from falkon.options import *
 
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.metrics.pairwise import rbf_kernel
+
 
 class FALKONWrapper(ca.ClassifierAbstract):
     def __init__(self, cfg_path=None):
@@ -28,7 +31,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
             else:
                 print('Lambda not given for creating Falkon, default value is used.')
                 lam = 0.001
-
+            """
             kernel = None
             if opts['kernel_type'] == 'gauss':
                 kernel = kernels.GaussianKernel(sigma=sigma)
@@ -54,19 +57,14 @@ class FALKONWrapper(ca.ClassifierAbstract):
             else:
                 print('Kernel is None in trainRegionClassifier function')
                 sys.exit(0)
+            """
+
 
     def train(self, X, y, sigma=None, lam=None):
 
-        if self.model is not None:
-            if sigma is not None:
-                self.model.kernel = kernels.GaussianKernel(sigma=sigma)
-            if lam is not None:
-                self.model.penalty = lam                
-            self.model.M = min(self.nyst_centers, len(X))
-            self.model.fit(X, y)
-        else:
-            print('Model is None in trainRegionClassifier function')
-            sys.exit(0)
+        #kernel_gauss = rbf_kernel(X.tolist(), gamma = sigma)
+        self.model = KernelRidge(alpha=lam, kernel='rbf', gamma=sigma) #kernel = kernel_gauss) #(alpha=1.0)
+        self.model.fit(X, y)
 
         return copy.deepcopy(self.model) #self.model
 
@@ -75,9 +73,9 @@ class FALKONWrapper(ca.ClassifierAbstract):
         if y is not None:
             predictions = model.predict(X_np, y)
         else:
-            predictions = model.predict(X_np)
+            predictions = model.predict(X_np.cpu())
 
-        return predictions
+        return torch.tensor(predictions)
 
     def test(self):
         pass

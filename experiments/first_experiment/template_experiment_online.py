@@ -13,7 +13,7 @@ from feature_extractor import FeatureExtractor
 #import region_refiner
 
 ## Experiment configuration
-feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico_icwt_21_copy.yaml')#'configs/config_target_task_FALKON_federico.yaml') #'configs/config_target_task_FALKON_federico.yaml') # #'configs/config_target_task_FALKON_COCO.yaml')# # # # # # # #'configs/config_target_task_FALKON_COCO.yaml')#  #'configs/config_target_task_FALKON_federico.yaml') #
+feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico_icwt_21_copy.yaml')#'configs/config_target_task_FALKON_federico.yaml') # #'configs/config_target_task_FALKON_COCO.yaml')# # # # # # # #'configs/config_target_task_FALKON_COCO.yaml')#  #'configs/config_target_task_FALKON_federico.yaml') #
 """
 ## Retrieve feature extractor (either by loading it or by training it)
 try:
@@ -23,7 +23,8 @@ except OSError:
     feature_extractor.trainFeatureExtractor()
 """
 ## Extract features for the train/val/test sets
-feature_extractor.extractFeatures()
+negatives, positives, COXY = feature_extractor.extractFeatures()
+print(negatives, positives, COXY)
 
 ## Train region refiner
 

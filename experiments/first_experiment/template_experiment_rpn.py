@@ -14,7 +14,7 @@ from feature_extractor import FeatureExtractor
 #from region_refiner import RegionRefiner
 
 ## Experiment configuration
-feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico.yaml', 'configs/config_rpn_federico.yaml')
+feature_extractor = FeatureExtractor('configs/config_feature_task_federico.yaml', 'configs/config_target_task_FALKON_federico.yaml', 'configs/config_rpn_federico_icwt_21.yaml') #'configs/config_rpn_federico.yaml') #
 
 ## Retrieve feature extractor (either by loading it or by training it)
 try:

@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache_RPN/%s_ep%s_FT%s_TT%s_debug"
+OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache_RPN/%s_ep%s_FT%s_TT%s_test_times"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
@@ -15,10 +15,10 @@ MODEL:
   #  FPN_POST_NMS_TOP_N_TEST: 300
   #  FPN_POST_NMS_PER_BATCH: False
 DATASETS:
-  TRAIN: ("icubworld_id_30objects_train_val_target_task",)
+  TRAIN: ("icubworld_id_30objects_train_target_task",)
   TEST: ("icubworld_id_30objects_test_target_task",)
 INPUT:
-  HORIZONTAL_FLIP_PROB_TRAIN: 0.5
+  HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333
   MAX_SIZE_TRAIN: 1333
   MIN_SIZE_TEST: 600

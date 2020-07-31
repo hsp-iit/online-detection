@@ -28,7 +28,7 @@ class RPNMinibootstrapSelector(nsA.NegativeSelectorAbstract):
 
     def selectNegatives(self, feat_type='h5'):
         print('Selecting negatives from the {} dataset.'.format(self.train_imset))
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder)
         negatives_file = os.path.join(feat_path, 'RPN_negatives{}x{}'.format(self.iterations,
                                                                          self.batch_size))
         try:
@@ -69,7 +69,7 @@ class RPNMinibootstrapSelector(nsA.NegativeSelectorAbstract):
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
 
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'RPN_trainval')
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder, 'train_val')
             # Vector to track done batches and classes
             keep_doing = np.ones((self.num_classes, self.iterations))
 

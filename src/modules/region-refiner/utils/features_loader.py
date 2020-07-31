@@ -10,7 +10,7 @@ def list_features(imageset_path):
     id_to_img_map = {k: v for k, v in enumerate(ids)}
     return id_to_img_map
 
-def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048):
+def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6, feat_dim = 2048, normalize_features = True, stats = None):
     # features
     X = np.empty((0, feat_dim), dtype=np.float32) #np.zeros((total, feat_dim), dtype=np.float32)
     # target values
@@ -67,6 +67,9 @@ def features_to_COXY(features_path, features_dictionary, min_overlap = 0.6, feat
             Y = np.append(Y, target, axis=0)
             O = np.append(O, max_ov)
             C = np.append(C, cls)
+    if normalize_features:
+        X = X - stats['mean'].numpy()
+        X = X * (20 / stats['mean_norm'].item())
 
     COXY = {'C': torch.from_numpy(C).to("cuda"),
             'O': torch.from_numpy(O).to("cuda"),

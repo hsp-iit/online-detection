@@ -24,29 +24,44 @@ class RegionRefinerTrainer():
     def __init__(self, cfg):
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
-        feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', feature_folder+'_debug', 'train_val')
+        self.feature_folder = getFeatPath(self.cfg)
+        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
+        #feat_path = '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/features_mat/icubworld_id_30objects_train_val_target_task' #TODO remove this
+        if 'UPDATE_RPN' in self.cfg:
+            if self.cfg['UPDATE_RPN']:
+                feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder, 'train_val')
         self.path_to_features = feat_path + '/%s' + self.features_format
         self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
         self.features_dictionary_train = list_features(self.path_to_imgset_train)
-        self.stats = torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/R50_ep4_FTicwt100_TTicwt30/rpn_stats')
-        for key in self.stats.keys():
-            self.stats[key] = self.stats[key].to('cuda')
+        self.stats_rpn = None
+        if 'UPDATE_RPN' in self.cfg:
+            if self.cfg['UPDATE_RPN']:
+                self.stats_rpn = torch.load(os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder) + '/rpn_stats')
+                for key in self.stats_rpn.keys():
+                    self.stats_rpn[key] = self.stats_rpn[key].to('cuda')
+        try:
+            self.stats = torch.load(os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', self.feature_folder) + '/stats')
+        except:
+            self.stats = None
         #TODO re implement this cross validation
-        self.lambd = None
+        self.lambd = self.cfg['REGION_REFINER']['opts']['lambda']
+        #print(self.lambd)
         self.sigma = None
 
-        feat_path_test = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', feature_folder+'_debug', 'test')
+        feat_path_test = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder+'_debug', 'test')
         self.path_to_features_test = feat_path_test + '/%s' + self.features_format
         self.path_to_imgset_test = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
         self.features_dictionary_test = list_features(self.path_to_imgset_test)
         self.test_losses = False
         self.percentile = 0#5
         self.normalize_features = True
+        self.normalize_features_rpn = True
 
         self.pretrained_reg_weights = None #torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/reg_wgts').squeeze().cpu()
         self.pretrained_reg_bias = None #torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/reg_bias').squeeze().cpu()
+
+        self.COXY = None
 
     def __call__(self):
         models = self.train()
@@ -54,10 +69,12 @@ class RegionRefinerTrainer():
 
     def train(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
+        start_index = 1
 
         if 'UPDATE_RPN' in self.cfg:
             if self.cfg['UPDATE_RPN']:
                 chosen_classes = self.cfg['CHOSEN_CLASSES_RPN']
+                start_index = 0
         opts = self.cfg['REGION_REFINER']['opts']
 
         feat_path = self.path_to_features
@@ -68,14 +85,23 @@ class RegionRefinerTrainer():
         #try:
         #    COXY = torch.load(positives_file)
         #except:
-        if 'UPDATE_RPN' in self.cfg:
-            if self.cfg['UPDATE_RPN']:
-                COXY = features_to_COXY_boxlist(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = self.normalize_features, stats = self.stats)
-                #COXY = features_to_COXY_boxlist(self.path_to_features_test, self.features_dictionary_test, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = True, stats = self.stats) # TODO remove this
-                if self.test_losses:
-                    COXY_test = features_to_COXY_boxlist(self.path_to_features_test, self.features_dictionary_test, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = self.normalize_features, stats = self.stats)
-        else:
-            COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
+        if self.COXY is None:
+            print('here')
+            quit()
+            if 'UPDATE_RPN' in self.cfg:
+                if self.cfg['UPDATE_RPN']:
+                    self.COXY = features_to_COXY_boxlist(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = self.normalize_features_rpn, stats = self.stats_rpn)
+                    #self.COXY = features_to_COXY_boxlist(self.path_to_features_test, self.features_dictionary_test, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = True, stats = self.stats_rpn) # TODO remove this
+
+                    if self.test_losses:
+                        COXY_test = features_to_COXY_boxlist(self.path_to_features_test, self.features_dictionary_test, min_overlap=opts['min_overlap'], feat_dim=1024, normalize_features = self.normalize_features_rpn, stats = self.stats_rpn)
+            else:
+                try:
+                    self.COXY = torch.load(os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'coxy_detector'))
+                    print('Loading COXY from file')
+                except:
+                    self.COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'], normalize_features = self.normalize_features, stats = self.stats)
+                    torch.save(self.COXY, os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'coxy_detector'))
         #torch.save(COXY, positives_file)
 
         # cache_dir = 'bbox_reg/'
@@ -89,11 +115,14 @@ class RegionRefinerTrainer():
 
         #models_falkon = []
         start_time = time.time()
-        for i in range(num_clss):#TODO was for i in range(1, num_clss)
+        for i in range(start_index, num_clss):#TODO was for i in range(1, num_clss)
             print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1)) # TODO was print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
             # Compute indices where bboxes of class i overlap with the ground truth
             #I = np.logical_and(COXY['O'] > opts['min_overlap'], COXY['C'] == i)
-            I = (COXY['O'] >= opts['min_overlap']) & (COXY['C'] == i)
+            if self.COXY['O'] is not None:
+                I = (self.COXY['O'] >= opts['min_overlap']) & (self.COXY['C'] == i)
+            else:
+                I = self.COXY['C'] == i
             #print(torch.sum(I))
             #I = np.squeeze(np.where(I == True))
             I = torch.where(I == True)[0]
@@ -110,8 +139,8 @@ class RegionRefinerTrainer():
                 continue
             # Extract the corresponding values in the X matrix
             # Transpose is used to set the number of features as the number of columns (instead of the number of rows)
-            Xi = COXY['X'][I]
-            Yi = COXY['Y'][I]
+            Xi = self.COXY['X'][I]
+            Yi = self.COXY['Y'][I]
             # TODO check if Oi and Ci computations are required
             # Add bias values to Xi
             #bias = np.ones((Xi.shape[0], 1), dtype=np.float32)
@@ -143,7 +172,7 @@ class RegionRefinerTrainer():
             Yi = torch.matmul(Yi, T)           #TODO uncomment this
             #print(Yi.shape)
 
-
+            print(self.lambd)
 
             if self.test_losses:
                 # Compute indices where bboxes of class i overlap with the ground truth
@@ -197,11 +226,18 @@ class RegionRefinerTrainer():
             for elem in models[i - 1]['Beta']:
                 mean_losses = torch.cat((mean_losses, torch.mean(models[i - 1]['Beta'][elem]['losses'], dim=0, keepdim=True)))
             """
+            """ #Working for rpn regressors, check changes below
             # TODO uncomment later when training with linear regressors
             for elem in models[i]['Beta']:
                 mean_losses = torch.cat((mean_losses, torch.mean(models[i]['Beta'][elem]['losses'], dim=0, keepdim=True)))
                 if self.test_losses:
                     mean_losses_test = torch.cat((mean_losses_test, torch.mean(models[i]['Beta'][elem]['losses_test'], dim=0, keepdim=True)))
+            """
+            # TODO uncomment later when training with linear regressors
+            for elem in models[i - start_index]['Beta']:
+                mean_losses = torch.cat((mean_losses, torch.mean(models[i - start_index]['Beta'][elem]['losses'], dim=0, keepdim=True)))
+                if self.test_losses:
+                    mean_losses_test = torch.cat((mean_losses_test, torch.mean(models[i - start_index]['Beta'][elem]['losses_test'], dim=0, keepdim=True)))
             print('Mean losses:', mean_losses)
             if self.test_losses:
                 print('Mean losses_test:', mean_losses_test)

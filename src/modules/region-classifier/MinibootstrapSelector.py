@@ -62,7 +62,7 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
 
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
 
             # Number of regions to keep from image for each class
             keep_from_image = int(np.ceil((self.batch_size*self.iterations)/len(path_list)))
@@ -100,12 +100,16 @@ class MinibootstrapSelector(nsA.NegativeSelectorAbstract):
                                     if len(negatives[c][b]) == 0:
                                         negatives[c][b] = l['feat'][new_idx, :]
                                     else:
-                                        negatives[c][b] = np.vstack((negatives[c][b], l['feat'][new_idx, :]))
+                                        #negatives[c][b] = np.vstack((negatives[c][b], l['feat'][new_idx, :]))
+                                        negatives[c][b] = torch.cat((torch.tensor(negatives[c][b]), torch.tensor(l['feat'][new_idx, :])), 0).numpy()
                                     kept = end_interval
                                 else:
                                     keep_doing[c, b] = 0
 
             negatives_torch = []
+            #for i in range(self.num_classes - 1):
+            #    for j in range(self.iterations):
+            #        negatives_torch.append(torch.tensor(np.asfortranarray(negatives[i][j])))
             for i in range(self.num_classes - 1):
                 for j in range(self.iterations):
                     negatives_torch.append(torch.tensor(negatives[i][j], device='cuda'))

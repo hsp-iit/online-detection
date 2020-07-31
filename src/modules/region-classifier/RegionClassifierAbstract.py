@@ -22,6 +22,7 @@ class RegionClassifierAbstract(ABC):
             self.is_rpn = False
             self.lam = None
             self.sigma = None
+            self.output_folder = self.cfg['OUTPUT_FOLDER']
 
         else:
             print('Config file path not given. cfg variable set to None.')

@@ -17,8 +17,11 @@ class RegionPredictor():
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
         feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'test')
-        self.path_to_features = feat_path + '/%s.' + self.features_format
+        if 'val' in self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']:
+            feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'train_val')
+        else:
+            feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'test')
+        self.path_to_features = feat_path + '/%s' + self.features_format
         self.path_to_imgset_test = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
         self.features_dictionary_test = list_features(self.path_to_imgset_test)
         if models is not None:
@@ -35,6 +38,14 @@ class RegionPredictor():
                 self.boxes = torch.load(self.cfg['REGION_REFINER']['BOXES_PATH'])
             except:
                 print('Failed to load boxes')
+        try:
+            self.stats = torch.load(os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder) + '/stats')
+            for key in self.stats.keys():
+                self.stats[key] = self.stats[key].to('cuda')
+        except:
+            self.stats = None
+        self.normalize_features = True
+
 
     def __call__(self):
         pred_boxes = self.predict()
@@ -69,9 +80,12 @@ class RegionPredictor():
 
 
 
-            refined_boxes = torch.empty((0, len(chosen_classes), 4))
-            num_gt = 1 #TODO edit this to allow to have more than one gt
+            #refined_boxes = torch.empty((0, len(chosen_classes), 4))
+            num_gt = np.sum(feat['class'] > 0)
             feat = torch.tensor(feat['feat'][num_gt:]).to('cuda')
+            if self.normalize_features:
+                feat = feat - self.stats['mean']
+                feat = feat * (20 / self.stats['mean_norm'].item())
             ex_box = box_list.bbox.to('cuda')
             num_boxes = ex_box.size()[0]
             refined_boxes = ex_box

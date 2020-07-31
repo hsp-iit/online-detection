@@ -51,7 +51,7 @@ class FeatureExtractorRPN:
         self.load_parameters()
 
     def __call__(self):
-        self.train()
+        return self.train()
 
 
     def load_parameters(self):
@@ -62,7 +62,7 @@ class FeatureExtractorRPN:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '5', 'icwt100', 'icwt30')                   #TODO read these parameters maybe from a config file in the future
+        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  #TODO read these parameters maybe from a config file in the future
         self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -146,7 +146,6 @@ class FeatureExtractorRPN:
                                             is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
         for elem in data_loaders_test:
             data_loaders.append(elem)
-
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
                 self.cfg,
@@ -158,9 +157,15 @@ class FeatureExtractorRPN:
                 device=cfg.MODEL.DEVICE,
                 output_folder=output_folder,
                 is_target_task=self.is_target_task,
-                icwt_21_objs=self.icwt_21_objs
+                icwt_21_objs=self.icwt_21_objs,
+                num_classes=None
             )
             synchronize()
-
         logger = logging.getLogger("maskrcnn_benchmark")
         logger.handlers=[]
+        COXY = {'C': model.rpn.C,
+                'O': model.rpn.O,
+                'X': model.rpn.X,
+                'Y': model.rpn.Y
+                }
+        return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)

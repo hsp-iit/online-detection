@@ -9,6 +9,9 @@ def getFeatPath(cfg):
             + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
             + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
             + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
+    if 'DETECTOR_WITH_ONLINE_RPN' in cfg.keys():
+        if cfg['DETECTOR_WITH_ONLINE_RPN']:
+            s += '_RPN_online'
     return s
 
 
@@ -17,7 +20,7 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
     if not is_rpn:
         stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'stats')
     else:
-        stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'rpn_stats')
+        stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache_RPN', feature_folder, 'rpn_stats')
     try:
         l = torch.load(stats_path)
         mean = torch.tensor(l['mean'])
@@ -47,6 +50,7 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
                 if len(negatives[i][j]) != 0:
                     neg_idx = np.random.choice(len(negatives[i][j]), size=take_from_neg)
                     neg_picked = negatives[i][j][neg_idx]
+                    #print(neg_picked.shape, sampled_X.shape)
                     sampled_X = np.vstack((sampled_X, neg_picked.cpu()))
                     ns = np.vstack((ns, np.transpose(np.linalg.norm(neg_picked.cpu(), axis=1)[np.newaxis])))
 
@@ -60,6 +64,8 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
 
         # print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean.item(), std.item(), mean_norm.item()))
         l = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
+        #print(l)
+        #quit()
         torch.save(l, stats_path)
 
     return mean, std, mean_norm

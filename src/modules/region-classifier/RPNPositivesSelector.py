@@ -26,7 +26,7 @@ class RPNPositivesSelector(psA.PositivesSelectorAbstract):
         self.feature_folder = getFeatPath(cfg)
 
     def selectPositives(self, feat_type='h5'):
-        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
+        feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder)
         positives_file = os.path.join(feat_path, 'RPN_positives')
         try:
             if feat_type == 'mat':
@@ -47,7 +47,7 @@ class RPNPositivesSelector(psA.PositivesSelectorAbstract):
             print('Failed to load positives features. Extracting positives from the dataset..')
             with open(self.train_imset, 'r') as f:
                 path_list = f.readlines()
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'RPN_trainval')
+            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache_RPN', self.feature_folder, 'train_val')
             positives_torch = []
             for i in range(len(path_list)):
                 l = loadFeature(feat_path, path_list[i].rstrip(), type='torch')

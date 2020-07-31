@@ -6,15 +6,50 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 
 import RegionClassifierAbstract as rcA
-from py_od_utils import computeFeatStatistics, zScores, loadFeature
+from py_od_utils import computeFeatStatistics, loadFeature # zScores,
 import h5py
 import numpy as np
 import torch
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 import time
 
+from py_od_utils import getFeatPath
+import yaml
+import copy
+
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
+
+    def __init__(self, classifier, positives, negatives, stats, cfg_path=None):
+        if cfg_path is not None:
+            self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
+            self.experiment_name = self.cfg['EXPERIMENT_NAME']
+            self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
+            self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
+            self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
+            self.feature_folder = getFeatPath(self.cfg)
+            self.mean = 0
+            self.std = 0
+            self.mean_norm = 0
+            self.is_rpn = False
+            self.lam = None
+            self.sigma = None
+            self.output_folder = self.cfg['OUTPUT_FOLDER']
+
+        else:
+            print('Config file path not given. cfg variable set to None.')
+            self.cfg = None
+
+        self.classifier = classifier
+        self.negatives = negatives
+        self.positives = positives
+        self.num_classes = len(positives)+1
+        # self.experiment_name = experiment_name
+        self.stats = stats
+        self.mean = self.stats['mean']
+        self.std = self.stats['std']
+        self.mean_norm = self.stats['mean_norm']
+
 
     def loadRegionClassifier(self) -> None:
         pass
@@ -33,53 +68,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if 'sigma' in opts:
             self.sigma = opts['sigma']
 
-    # def selectPositives(self, feat_type='h5'):
-    #     feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder)
-    #     positives_file = os.path.join(feat_path, 'positives')
-    #     try:
-    #         if feat_type == 'mat':
-    #             mat_positives = h5py.File(positives_file, 'r')
-    #             X_pos = mat_positives['X_pos']
-    #             positives_torch = []
-    #             for i in range(self.num_classes-1):
-    #                 positives_torch.append(mat_positives[X_pos[0, i]][()].transpose())
-    #         elif feat_type == 'h5':
-    #             positives_dataset = h5py.File(positives_file, 'r')['list']
-    #             positives_torch = []
-    #             for i in range(self.num_classes-1):
-    #                 positives_torch.append(torch.tensor(np.asfortranarray(np.array(positives_dataset[str(i)]))))
-    #         else:
-    #             print('Unrecognized type of feature file')
-    #             positives_torch = None
-    #     except:
-    #         with open(self.train_imset, 'r') as f:
-    #             path_list = f.readlines()
-    #         feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'trainval')
-    #         positives = []
-    #         for i in range(len(path_list)):
-    #             l = loadFeature(feat_path, path_list[i].rstrip())
-    #             for c in range(self.num_classes - 1):
-    #                 if len(positives) < c + 1:
-    #                     positives.append([])  # Initialization for class c-th
-    #                 sel = np.where(l['class'] == c + 1)[0]  # TO CHECK BECAUSE OF MATLAB 1
-    #                                                         # INDEXING Moreover class 0 is bkg
-    #                 if len(sel):
-    #                     if len(positives[c]) == 0:
-    #                         positives[c] = l['feat'][sel, :]
-    #                     else:
-    #                         positives[c] = np.vstack((positives[c], l['feat'][sel, :]))
-    #         hf = h5py.File(positives_file, 'w')
-    #         grp = hf.create_group('list')
-    #         for i in range(self.num_classes - 1):
-    #             grp.create_dataset(str(i), data=positives[i])
-    #         hf.close()
-    #
-    #         positives_torch = []
-    #         for i in range(self.num_classes - 1):
-    #             # for j in range(self.iterations):
-    #                 positives_torch.append(torch.tensor(positives[i].reshape(positives[i].shape[0], positives[i].shape[1]), device='cuda'))
-    #
-    #     return positives_torch
 
     def updateModel(self, cache):
         X_neg = cache['neg']
@@ -100,7 +88,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             return self.classifier.train(X, y)
 
     def trainWithMinibootstrap(self, negatives, positives):
-        iterations = self.negative_selector.iterations
+        iterations = len(negatives[0])
         caches = []
         model = []
         t = time.time()
@@ -112,18 +100,18 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     t_iter = time.time()
                     if first_time:
                         dataset = {}
-                        dataset['pos'] = positives[i]
-                        dataset['neg'] = negatives[i][j]
+                        dataset['pos'] = positives[i].cpu()
+                        dataset['neg'] = negatives[i][j].cpu()
                         caches.append(dataset)
                         model.append(None)
                         first_time = False
                     else:
                         t_hard = time.time()
-                        neg_pred = self.classifier.predict(model[i], negatives[i][j])  # To check
+                        neg_pred = self.classifier.predict(model[i], negatives[i][j].cpu())  # To check
                         # hard_idx = np.argwhere(neg_pred.numpy() > self.negative_selector.neg_hard_thresh)[:,0]
-                        hard_idx = torch.where(neg_pred > self.negative_selector.neg_hard_thresh)[0]
+                        hard_idx = torch.where(neg_pred > self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH'])[0]
                         # caches[i]['neg'] = np.vstack((caches[i]['neg'], negatives[i][j][hard_idx]))
-                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
+                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx].cpu()), 0)
                         print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
                         print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
@@ -137,7 +125,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         neg_pred = self.classifier.predict(model[i], caches[i]['neg'])  # To check
 
                         # easy_idx = np.argwhere(neg_pred.numpy() < self.negative_selector.neg_easy_thresh)[:,0]
-                        keep_idx = torch.where(neg_pred >= self.negative_selector.neg_easy_thresh)[0]
+                        keep_idx = torch.where(neg_pred >= self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH'])[0]
                         easy_idx = len(caches[i]['neg']) - len(keep_idx)
                         caches[i]['neg'] = caches[i]['neg'][keep_idx]
                         # caches[i]['neg'] = np.delete(caches[i]['neg'], easy_idx, axis=0)
@@ -160,19 +148,20 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.processOptions(opts)
         print('Training Online Region Classifier')
         # Still to implement early stopping of negatives selection
-        negatives = self.negative_selector.selectNegatives()
-        positives = self.positive_selector.selectPositives()
+        negatives = self.negatives #copy.deepcopy(self.negatives)
+        positives = self.positives #copy.deepcopy(self.positives)
 
-        self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder, self.is_rpn)
+        #self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder, self.is_rpn)
+        #print(self.stats)
         for i in range(self.num_classes-1):
             if len(positives[i]):
-                positives[i] = zScores(positives[i], self.mean, self.mean_norm)
+                positives[i] = self.zScores(positives[i])
             for j in range(len(negatives[i])):
                 if len(negatives[i][j]):
-                    negatives[i][j] = zScores(negatives[i][j], self.mean, self.mean_norm)
+                    negatives[i][j] = self.zScores(negatives[i][j])
 
+        
         model = self.trainWithMinibootstrap(negatives, positives)
-
         return model
 
     def crossValRegionClassifier(self, dataset):
@@ -196,6 +185,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
         else:
             feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'test')
+        print(feat_path)
+        """
         try:
             self.mean = self.mean.to('cuda')
             self.mean_norm = self.mean_norm.to('cuda')
@@ -203,6 +194,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             stats = torch.load(os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'stats'))
             self.mean = stats['mean'].to('cuda')
             self.mean_norm = stats['mean_norm'].to('cuda')
+        """
         predictions = []
         total_testing_time = 0
         try:
@@ -221,7 +213,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 X_test = torch.tensor(l['feat'][I, :][0], device='cuda')
                 t0 = time.time()
                 if self.mean_norm != 0:
-                   X_test = zScores(X_test, self.mean, self.mean_norm)
+                   X_test = self.zScores(X_test)
                 scores = - torch.ones((len(boxes), self.num_classes))
                 for c in range(0, self.num_classes-1):
                     pred = self.classifier.predict(model[c], X_test)
@@ -239,6 +231,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         avg_time = total_testing_time/len(path_list)
         print('Testing an image in {} seconds.'.format(avg_time))
         return predictions
-
+    
     def predict(self, dataset) -> None:
         pass
+
+    def zScores(self, feat, target_norm=20):
+        feat = feat - self.mean
+        feat = feat * (target_norm / self.mean_norm.item())
+        return feat
