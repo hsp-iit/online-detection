@@ -50,6 +50,9 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
+        self.is_train = False
+        self.is_test = False
+
     def __call__(self):
         return self.train()
 
@@ -147,6 +150,13 @@ class FeatureExtractorRPN:
         for elem in data_loaders_test:
             data_loaders.append(elem)
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
+            if 'train' in dataset_name:
+                if not self.is_train:
+                    continue
+            else:
+                if not self.is_test:
+                    continue
+
             inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
                 self.cfg,
                 model,
@@ -158,7 +168,9 @@ class FeatureExtractorRPN:
                 output_folder=output_folder,
                 is_target_task=self.is_target_task,
                 icwt_21_objs=self.icwt_21_objs,
-                num_classes=None
+                num_classes=None,
+                is_train = self.is_train,
+                is_test = self.is_test
             )
             synchronize()
         logger = logging.getLogger("maskrcnn_benchmark")

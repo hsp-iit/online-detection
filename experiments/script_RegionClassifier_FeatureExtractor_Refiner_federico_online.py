@@ -21,6 +21,7 @@ from region_refiner import RegionRefiner
 import torch
 import math
 import copy
+from py_od_utils import computeFeatStatistics_torch
 
 
 feature_extractor = FeatureExtractor('first_experiment/configs/config_feature_task_federico.yaml', 'first_experiment/configs/config_target_task_FALKON_federico_icwt_21_copy.yaml')#'first_experiment/configs/config_target_task_FALKON_federico.yaml') ## # #'configs/config_target_task_FALKON_COCO.yaml')# # # # # # # #'configs/config_target_task_FALKON_COCO.yaml')#  #'configs/config_target_task_FALKON_federico.yaml') #
@@ -33,73 +34,9 @@ except OSError:
     feature_extractor.trainFeatureExtractor()
 """
 ## Extract features for the train/val/test sets
+feature_extractor.is_train = True
 negatives, positives, COXY = feature_extractor.extractFeatures()
-#quit()
-
-def computeFeatStatistics(positives, negatives, num_samples=4000):
-    print('Computing features statistics')
-    pos_fraction = 1/10
-    neg_fraction = 9/10
-    num_classes = len(positives)
-    take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
-    take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
-
-    sampled_X = torch.empty((0,2048), device='cuda')
-    ns = torch.empty((0,1), device='cuda')
-    for i in range(num_classes):
-        if len(positives[i]) != 0:
-            #print(1)
-            sampled_X = positives[i][0].unsqueeze(0)
-            #try:
-            ns = torch.cat((ns, torch.norm(positives[i][0].view(-1, 2048) , dim=1).view(-1,1)), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-            #except:
-            #    ns = torch.cat((ns, torch.norm(positives[i][0])), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-            #print(ns)
-    for i in range(num_classes):
-        if len(positives[i]) != 0:
-            #print(2)
-            pos_idx = torch.randint(len(positives[i]), (take_from_pos,)) #np.random.randint(len(positives[i]), size=take_from_pos)
-            pos_picked = positives[i][pos_idx]
-            #print(sampled_X, pos_picked)
-            sampled_X = torch.cat((sampled_X, pos_picked))      #np.vstack((sampled_X, pos_picked.cpu()))
-            #ns = torch.cat((ns, torch.t(torch.norm(pos_picked))), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-            #try:
-            #ns = torch.cat((ns, torch.t(torch.norm(pos_picked))), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-            ns = torch.cat((ns, torch.norm(pos_picked.view(-1, 2048) , dim=1).view(-1,1)), dim=0)
-            #except:
-            #    ns = torch.cat((ns, torch.norm(pos_picked).unsqueeze(0)), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-        for j in range(len(negatives[i])):
-            if len(negatives[i][j]) != 0:
-                #print(3)
-                """
-                neg_idx = np.random.choice(len(negatives[i][j]), size=take_from_neg)
-                neg_picked = negatives[i][j][neg_idx]
-                #print(neg_picked.shape, sampled_X.shape)
-                sampled_X = np.vstack((sampled_X, neg_picked.cpu()))
-                ns = np.vstack((ns, np.transpose(np.linalg.norm(neg_picked.cpu(), axis=1)[np.newaxis])))
-                """
-                neg_idx = torch.randint(len(negatives[i][j]), (take_from_neg,)) #np.random.randint(len(positives[i]), size=take_from_pos)
-                neg_picked = negatives[i][j][neg_idx]
-                #print(sampled_X, neg_picked, i, j)
-                sampled_X = torch.cat((sampled_X, neg_picked))      #np.vstack((sampled_X, pos_picked.cpu()))
-                #try:
-                #ns = torch.cat((ns, torch.t(torch.norm(neg_picked, dim=1))), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-                ns = torch.cat((ns, torch.norm(neg_picked.view(-1, 2048) , dim=1).view(-1,1)), dim=0)
-                #except:
-                #    ns = torch.cat((ns, torch.norm(neg_picked)), dim=0)                             #ns = np.vstack((ns, np.transpose(np.linalg.norm(pos_picked.cpu(), axis=1)[np.newaxis])))
-
-    mean = torch.mean(sampled_X, dim=0)
-    std = torch.std(sampled_X, dim=0)
-    mean_norm = torch.mean(ns)
-    # print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean.item(), std.item(), mean_norm.item()))
-    stats = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
-
-
-    return stats
-
-stats = computeFeatStatistics(positives, negatives)
-
-    
+stats = computeFeatStatistics_torch(positives, negatives,  features_dim=2048)
 
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
@@ -107,6 +44,7 @@ stats = computeFeatStatistics(positives, negatives)
 cfg_online_path = 'Configs/config_federico_server_icwt_21.yaml' #'Configs/config_federico_server_copy.yaml' # # #'Configs/config_federico_server_icwt_21.yaml' # # # # #'Configs/config_federico_server_copy_rpn.yaml' 'Configs/config_federico_server_copy_coco.yaml' #
 cfg_target_path = 'Configs/config_target_task_federico_server_icwt21.yaml' #'Configs/config_target_task_federico_server.yaml' # #'Configs/config_target_task_federico_server_icwt21.yaml' 'Configs/config_target_task_federico_server_coco.yaml' #
 cfg_feature_path = 'Configs/config_feature_task_federico_server.yaml'
+
 
 # TODO do this more clever
 if '21' in cfg_online_path:
@@ -125,6 +63,8 @@ regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, 
 # Feature extraction initialization
 # feature_extractor = FeatureExtractor(cfg_feature_path, cfg_target_path)
 
+if not os.path.exists(regionClassifier.output_folder):
+    os.mkdir(regionClassifier.output_folder)
 # Accuracy evaluator initialization
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 # -----------------------------------------------------------------------------------
@@ -153,7 +93,7 @@ for lam in lambdas:
             
         #quit()
         #model = regionClassifier.trainRegionClassifier(opts={'is_rpn': True, 'lam': lam, 'sigma': sigma})
-        torch.save(model, os.path.join(regionClassifier.output_folder, 'model_classifier_ep8_lambda%s_sigma%s_test' %(str(lam).replace(".","_"), str(sigma).replace(".","_"))))
+        #torch.save(model, os.path.join(regionClassifier.output_folder, 'model_classifier_ep8_lambda%s_sigma%s_test' %(str(lam).replace(".","_"), str(sigma).replace(".","_"))))
         #model = torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/cls_detector')
 
         # Train region refiner
@@ -166,13 +106,8 @@ for lam in lambdas:
         print('----------------------------------------------------------- Training with lambda %s' %(str(lam).replace(".","_")), '-----------------------------------------------------------')
         region_refiner.lambd = lam
         models = region_refiner.trainRegionRefiner()
-        torch.save(models, os.path.join(regionClassifier.output_folder, 'regressor_lambda%s_test' %(str(lam).replace(".","_"))))
+        #torch.save(models, os.path.join(regionClassifier.output_folder, 'regressor_lambda%s_test' %(str(lam).replace(".","_"))))
         #torch.save(models,'first_experiment/cv_rpn_icwt21_online_pipeline/regressor_lambda%s_test' %(str(lam).replace(".","_")))
-
-
-
-
-
 
 
         # - Test region classifier (on validation set)
@@ -187,10 +122,12 @@ for lam in lambdas:
         # ----------------------------------------------------------------------------------
         # --------------------------------- Testing models ---------------------------------
         # ----------------------------------------------------------------------------------
-
+        feature_extractor.is_train = False
+        feature_extractor.is_test = True
+        test_boxes = feature_extractor.extractFeatures()
         # Test the best classifier on the test set
         print('Region classifier test on the test set')
-        predictions = regionClassifier.testRegionClassifier(model)
+        predictions = regionClassifier.testRegionClassifier(model, test_boxes)
         #torch.save(predictions, '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/predictions')
         # region_refiner.boxes = predictions
         #predictions = torch.load('/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/predictions')
@@ -203,6 +140,7 @@ for lam in lambdas:
         print('Region refiner test on the test set')
         region_refiner.boxes = predictions
         region_refiner.stats = stats
+        region_refiner.feat = test_boxes
         refined_predictions = region_refiner.predict()
 
         print('Region classifier predictions evaluation')

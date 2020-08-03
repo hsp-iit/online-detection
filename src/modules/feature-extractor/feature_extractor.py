@@ -16,6 +16,11 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.cfg_path_feature_task = cfg_path_feature_task
         self.cfg_path_target_task = cfg_path_target_task
         self.cfg_path_RPN = cfg_path_RPN
+        self.is_train = False
+        self.is_test = False
+        self.falkon_rpn_models = None
+        self.regressors_rpn_models = None
+        self.stats_rpn = None
 
     def loadFeatureExtractor(self):
         loader = LoaderFeatureExtractor(self.cfg_path_target_task)
@@ -49,6 +54,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
     def extractRPNFeatures(self):
         # call class to extract rpn features:
         feature_extractor = FeatureExtractorRPN(self.cfg_path_RPN)
+        feature_extractor.is_train = self.is_train
+        feature_extractor.is_test = self.is_test
         features = feature_extractor()
 
         return features
@@ -57,6 +64,11 @@ class FeatureExtractor(FeatureExtractorAbstract):
     def extractFeatures(self):
         # call class to extract detector features:
         feature_extractor = FeatureExtractorDetector(self.cfg_path_target_task)
+        feature_extractor.is_train = self.is_train
+        feature_extractor.is_test = self.is_test
+        feature_extractor.falkon_rpn_models = self.falkon_rpn_models
+        feature_extractor.regressors_rpn_models = self.regressors_rpn_models
+        feature_extractor.stats_rpn = self.stats_rpn
         features = feature_extractor()
 
         return features

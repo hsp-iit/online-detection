@@ -45,6 +45,7 @@ class RegionPredictor():
         except:
             self.stats = None
         self.normalize_features = True
+        self.feat = None
 
 
     def __call__(self):
@@ -66,27 +67,31 @@ class RegionPredictor():
         img_width = img_size[0]
         img_height = img_size[1]
 
-        l = 1
+        #l = 1
         # Loop on the list of boxlists
-        for box_list in self.boxes:
+        for i in range(len(self.boxes)):
             # TODO evaluate whether to add tic_toc_print
-            pth = self.path_to_features % box_list.get_field('name_file')
-            #print(pth)
-            if '.pkl' in pth:
-                with open(pth, 'rb') as f:
-                    feat = pickle.load(f)
-            elif '.mat' in pth:
-                feat = loadmat(pth)
-
+            if self.feat is None:
+                pth = self.path_to_features % self.boxes[i].get_field('name_file')
+                #print(pth)
+                if '.pkl' in pth:
+                    with open(pth, 'rb') as f:
+                        feat = pickle.load(f)
+                elif '.mat' in pth:
+                    feat = loadmat(pth)
+                num_gt = np.sum(feat['class'] > 0)
+                feat = torch.tensor(feat['feat'][num_gt:]).to('cuda')
+            else:
+                I = np.nonzero(self.feat[i]['gt'] == 0)
+                feat = torch.tensor(self.feat[i]['feat'][I, :][0], device='cuda')
 
 
             #refined_boxes = torch.empty((0, len(chosen_classes), 4))
-            num_gt = np.sum(feat['class'] > 0)
-            feat = torch.tensor(feat['feat'][num_gt:]).to('cuda')
             if self.normalize_features:
                 feat = feat - self.stats['mean']
                 feat = feat * (20 / self.stats['mean_norm'].item())
-            ex_box = box_list.bbox.to('cuda')
+
+            ex_box = self.boxes[i].bbox.to('cuda')
             num_boxes = ex_box.size()[0]
             refined_boxes = ex_box
             for j in range(1, len(chosen_classes)):
@@ -122,12 +127,12 @@ class RegionPredictor():
                 pred_boxes = torch.cat((pred_boxes, (pred_ctr_y + 0.5 * pred_h).view(num_boxes,1)),dim=1)
 
 
-                if '.pkl' in pth:
+                if '.pkl' in self.features_format:
                     pred_boxes[:, 0] = torch.max(pred_boxes[:, 0], torch.zeros(pred_boxes[:,0].size(), device='cuda'))
                     pred_boxes[:, 1] = torch.max(pred_boxes[:, 1], torch.zeros(pred_boxes[:,1].size(), device='cuda'))
                     pred_boxes[:, 2] = torch.min(pred_boxes[:, 2], torch.full(pred_boxes[:,2].size(), img_width - 1, device='cuda'))
                     pred_boxes[:, 3] = torch.min(pred_boxes[:, 3], torch.full(pred_boxes[:,3].size(), img_height - 1, device='cuda'))
-                elif '.mat' in pth:
+                elif '.mat' in self.features_format:
                     pred_boxes[:, 0] = torch.max(pred_boxes[:, 0], torch.ones(pred_boxes[:,0].size(), device='cuda'))
                     pred_boxes[:, 1] = torch.max(pred_boxes[:, 1], torch.ones(pred_boxes[:,1].size(), device='cuda'))
                     pred_boxes[:, 2] = torch.min(pred_boxes[:, 2], torch.full(pred_boxes[:,2].size(), img_width, device='cuda'))
@@ -136,6 +141,6 @@ class RegionPredictor():
 
             refined_boxes = refined_boxes.view((num_boxes, len(chosen_classes), 4))
 
-            box_list.bbox = refined_boxes
+            self.boxes[i].bbox = refined_boxes
 
         return self.boxes

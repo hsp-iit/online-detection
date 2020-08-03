@@ -20,6 +20,7 @@ from region_refiner import RegionRefiner
 import torch
 import math
 
+quit()
 
 feature_extractor = FeatureExtractor('first_experiment/configs/config_feature_task_federico.yaml', 'first_experiment/configs/config_target_task_FALKON_federico.yaml', 'first_experiment/configs/config_rpn_federico_icwt_21.yaml') # 'first_experiment/configs/config_rpn_federico.yaml') #
 

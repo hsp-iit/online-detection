@@ -20,20 +20,22 @@ import copy
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
-    def __init__(self, classifier, positives, negatives, stats, cfg_path=None):
+    def __init__(self, classifier, positives, negatives, stats, cfg_path=None, is_rpn=False):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
+            if is_rpn:
+                self.cfg = self.cfg['RPN']
             self.experiment_name = self.cfg['EXPERIMENT_NAME']
             self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
             self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
-            self.feature_folder = getFeatPath(self.cfg)
+            #self.feature_folder = getFeatPath(self.cfg)
             self.mean = 0
             self.std = 0
             self.mean_norm = 0
-            self.is_rpn = False
-            self.lam = None
-            self.sigma = None
+            self.is_rpn = is_rpn
+            self.lam = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['lambda']
+            self.sigma = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['sigma']
             self.output_folder = self.cfg['OUTPUT_FOLDER']
 
         else:
@@ -177,24 +179,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         return feat_file
 
-    def testRegionClassifier(self, model):
+    def testRegionClassifier(self, model, test_boxes):
         print('Online Region Classifier testing')
         with open(self.test_imset, 'r') as f:
             path_list = f.readlines()
-        if 'val' in self.test_imset:
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'train_val')
-        else:
-            feat_path = os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'test')
-        print(feat_path)
-        """
-        try:
-            self.mean = self.mean.to('cuda')
-            self.mean_norm = self.mean_norm.to('cuda')
-        except:
-            stats = torch.load(os.path.join(basedir, '..', '..', '..', 'Data', 'feat_cache', self.feature_folder, 'stats'))
-            self.mean = stats['mean'].to('cuda')
-            self.mean_norm = stats['mean_norm'].to('cuda')
-        """
         predictions = []
         total_testing_time = 0
         try:
@@ -205,7 +193,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             pass
         for i in range(len(path_list)):
             print('Testing {}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
-            l = loadFeature(feat_path, path_list[i].rstrip())
+            l = test_boxes[i]
             if l is not None:
                 print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)

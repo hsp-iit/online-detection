@@ -15,7 +15,6 @@ from feature_extractor import FeatureExtractor
 from maskrcnn_pytorch.benchmark.data import make_data_loader
 from maskrcnn_pytorch.benchmark.config import cfg
 
-
 # Temporary imports
 import torch
 # Experiment configuration

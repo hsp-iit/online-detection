@@ -51,6 +51,13 @@ class FeatureExtractorDetector:
         self.cfg = cfg.clone()
         self.load_parameters()
 
+        self.is_train = False
+        self.is_test = False
+
+        self.falkon_rpn_models = None
+        self.regressors_rpn_models = None
+        self.stats_rpn = None
+
     def __call__(self):
         #for model in ['/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task/model_0137345/model_0003988.pth',
         #              '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/experiments/e2e_mask_rcnn_mask_off_imagenet_R_50_FPN_1x_online_object_detection_feature_task_no_FPN/target_task_rpn_update/model_0137345/model_0019940.pth',
@@ -78,7 +85,10 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  # # ('R50', 'final', 'COCO', 'COCO') #TODO read these parameters maybe from a config file in the future
+        try:
+            self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  # # ('R50', 'final', 'COCO', 'COCO') #TODO read these parameters maybe from a config file in the future
+        except:
+            pass        
         #self.cfg.freeze() TODO uncomment this
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -126,8 +136,14 @@ class FeatureExtractorDetector:
         )
 
         model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
-        print(self.cfg.MODEL.WEIGHT, self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST)    #TODO remove this
         checkpointer._load_model(model_pretrained)
+
+        if self.falkon_rpn_models is not None:
+            model.rpn.head.classifiers = self.falkon_rpn_models            
+        if self.regressors_rpn_models is not None:
+            model.rpn.head.regressors = self.regressors_rpn_models
+        if self.stats_rpn is not None:
+            model.rpn.head.stats = self.stats_rpn
 
         if self.distributed:
             model = model.module
@@ -159,11 +175,17 @@ class FeatureExtractorDetector:
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             if 'train' in dataset_name:
-                model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TRAIN
-                model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TRAIN
+                if self.is_train:
+                    model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TRAIN
+                    model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TRAIN
+                else:
+                    continue
             else:
-                model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TEST
-                model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST
+                if self.is_test:
+                    model.rpn.box_selector_test.pre_nms_top_n = self.cfg.MODEL.RPN.PRE_NMS_TOP_N_TEST
+                    model.rpn.box_selector_test.post_nms_top_n = self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST
+                else:
+                    continue
             inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
                 self.cfg,
                 model,
@@ -174,15 +196,21 @@ class FeatureExtractorDetector:
                 device=cfg.MODEL.DEVICE,
                 output_folder=output_folder,
                 is_target_task=self.is_target_task,
-                icwt_21_objs=self.icwt_21_objs
+                icwt_21_objs=self.icwt_21_objs,
+                is_train = self.is_train,
+                is_test = self.is_test
             )
             synchronize()
-
-        logger = logging.getLogger("maskrcnn_benchmark")
-        logger.handlers=[]
-        COXY = {'C': model.roi_heads.box.C,
-                'O': model.roi_heads.box.O,
-                'X': model.roi_heads.box.X,
-                'Y': model.roi_heads.box.Y
-                }
-        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+            if self.is_train:
+                COXY = {'C': model.roi_heads.box.C,
+                        'O': model.roi_heads.box.O,
+                        'X': model.roi_heads.box.X,
+                        'Y': model.roi_heads.box.Y
+                        }
+                logger = logging.getLogger("maskrcnn_benchmark")
+                logger.handlers=[]
+                return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+            else:
+                logger = logging.getLogger("maskrcnn_benchmark")
+                logger.handlers=[]
+                return copy.deepcopy(model.roi_heads.box.test_boxes)

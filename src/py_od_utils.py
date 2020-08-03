@@ -71,6 +71,40 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
     return mean, std, mean_norm
 
 
+def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048):
+    print('Computing features statistics')
+    pos_fraction = 1/10
+    neg_fraction = 9/10
+    num_classes = len(positives)
+    take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
+    take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
+    sampled_X = torch.empty((0, features_dim), device='cuda')
+    ns = torch.empty((0,1), device='cuda')
+    for i in range(num_classes):
+        if len(positives[i]) != 0:
+            sampled_X = positives[i][0].unsqueeze(0)
+            ns = torch.cat((ns, torch.norm(positives[i][0].view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
+    for i in range(num_classes):
+        if len(positives[i]) != 0:
+            pos_idx = torch.randint(len(positives[i]), (take_from_pos,))
+            pos_picked = positives[i][pos_idx]
+            sampled_X = torch.cat((sampled_X, pos_picked))
+            ns = torch.cat((ns, torch.norm(pos_picked.view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
+        for j in range(len(negatives[i])):
+            if len(negatives[i][j]) != 0:
+                neg_idx = torch.randint(len(negatives[i][j]), (take_from_neg,))
+                neg_picked = negatives[i][j][neg_idx]
+                sampled_X = torch.cat((sampled_X, neg_picked))
+                ns = torch.cat((ns, torch.norm(neg_picked.view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
+
+    mean = torch.mean(sampled_X, dim=0)
+    std = torch.std(sampled_X, dim=0)
+    mean_norm = torch.mean(ns)
+    stats = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
+
+    return stats
+
+
 def zScores(feat, mean, mean_norm, target_norm=20):
     feat = torch.tensor(feat)
     feat = feat - mean
@@ -91,3 +125,17 @@ def loadFeature(feat_path, file_name, type='mat'):
         feature = None
 
     return feature
+
+def normalize_COXY(COXY, stats):
+    COXY['X'] = COXY['X'] - stats['mean']
+    COXY['X'] = COXY['X'] * (20 / stats['mean_norm'].item())
+    return COXY
+
+def falkon_models_to_cuda(models):
+    for i in range(len(models)):
+        if models[i] is not None:
+            models[i].ny_points_ = models[i].ny_points_.to('cuda')
+            models[i].alpha_ = models[i].alpha_.to('cuda')
+    return models
+
+
