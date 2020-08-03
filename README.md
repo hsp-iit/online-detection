@@ -44,13 +44,13 @@ cd cocoapi/PythonAPI
 python setup.py build_ext install
 ```
 #### Install cityscapesScripts
+In order to complete the installation of the repository `cityscapesScripts`, after cloning the repository, you may need to change in the `setup.py` file the line 27. Specifically, from `with open("README.md") as f:`  to `open("README.md", encoding='utf-8') as f:` 
 ```
 cd $INSTALL_DIR
 git clone https://github.com/mcordts/cityscapesScripts.git
 cd cityscapesScripts/
 python setup.py build_ext install
 ```
-Note: in order to complete the installation of the repository `cityscapesScripts` you may need to change in the `setup.py` file the line 27. Specifically, from `with open("README.md") as f:`  to `open("README.md", encoding='utf-8') as f:` 
 
 #### Install apex
 ```
@@ -95,6 +95,8 @@ The code contained in this repository is part of the contribution of the present
 
 
 ## References
-_[1] E. Maiettini, G. Pasquale, L. Rosasco, and L. Natale. On-line object detection: a robotics challenge. Autonomous Robots, Nov 2019. ISSN 1573-7527. doi:10.1007/s10514-019-09894-9. URL https://doi.org/10.1007/s10514-019-09894-9.
+[1] E. Maiettini, G. Pasquale, L. Rosasco, and L. Natale. On-line object detection: a robotics challenge. Autonomous Robots, Nov 2019. ISSN 1573-7527. doi:10.1007/s10514-019-09894-9. URL https://doi.org/10.1007/s10514-019-09894-9.
+
 [2] K. He, G. Gkioxari, P. Dollár, and R. B. Girshick. Mask r-cnn. 2017 IEEE International Conference on Computer Vision (ICCV), pages 2980–2988, 2017.
-[3] A. Rudi, L. Carratino, and L. Rosasco. Falkon: An optimal large scale kernel method. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30, pages 3888–3898. Curran Associates, Inc., 2017._
+
+[3] A. Rudi, L. Carratino, and L. Rosasco. Falkon: An optimal large scale kernel method. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30, pages 3888–3898. Curran Associates, Inc., 2017.
