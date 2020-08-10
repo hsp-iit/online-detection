@@ -16,9 +16,11 @@ import time
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
-    def __init__(self, cfg_path=None):
+    def __init__(self, cfg_path=None, is_rpn=False):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
+            if is_rpn:
+                self.cfg = self.cfg['RPN']
             opts = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
 
             if 'sigma' in opts:
@@ -34,48 +36,18 @@ class FALKONWrapper(ca.ClassifierAbstract):
                 self.lam = 0.001
 
             self.kernel = None
-            if opts['kernel_type'] == 'gauss':
-                self.kernel = kernels.GaussianKernel(sigma=self.sigma)
-            else:
-                print('Kernel type: %s unknown'.format(opts['kernel_type']))
+            #if opts['kernel_type'] == 'gauss':
+            #    self.kernel = kernels.GaussianKernel(sigma=self.sigma)
+            #else:
+            #    print('Kernel type: %s unknown'.format(opts['kernel_type']))
             self.nyst_centers = opts['M']
-            """
-            if kernel is not None:
-                self.nyst_centers = opts['M']
-                self.model = Falkon(
-                    kernel=kernel,
-                    penalty=lam,
-                    M=self.nyst_centers,
-#                    debug=False,
-#                    use_cpu=True
-                    # use_display_gpu=True,
-                    # gpu_use_processes=False,
-                    # inter_type=torch.float32,
-                    # final_type=torch.float32
-                )
-            else:
-                print('Kernel is None in trainRegionClassifier function')
-                sys.exit(0)
-            """
 
     def train(self, X, y, sigma=None, lam=None):
-        """
-        if self.model is not None:
-            if sigma is not None:
-                self.model.kernel = kernels.GaussianKernel(sigma=sigma)
-            if lam is not None:
-                self.model.penalty = lam                
-            self.model.M = min(self.nyst_centers, len(X))
-            self.model.fit(X, y)
-        else:
-            print('Model is None in trainRegionClassifier function')
-            sys.exit(0)
-        """
         if sigma is None:
             sigma = self.sigma
         if lam is None:
             lam = self.lam
-
+        self.kernel = kernels.GaussianKernel(sigma=sigma)
         indices = self.compute_indices_selection(y)
         #X = X[indices,:]
         #y = y[indices]
@@ -87,28 +59,23 @@ class FALKONWrapper(ca.ClassifierAbstract):
                 kernel=self.kernel,
                 penalty_list=[lam],
                 iter_list = [20],
-                loss = gsc_losses.LogisticLoss(self.kernel),
+                loss = gsc_losses.LogisticLoss(self.kernel),      #TODO change this if sigma=100
                 M=len(indices),#self.nyst_centers,
 #                debug=False,
 #                use_cpu=True
-                # use_display_gpu=True,
-                # gpu_use_processes=False,
-                # inter_type=torch.float32,
-                # final_type=torch.float32
                 center_selection = center_selector,
                 error_fn=binary_loss,
-                #options=opt
             )
         else:
             print('Kernel is None in trainRegionClassifier function')
             sys.exit(0)
 
         if self.model is not None:
-            if sigma is not None:
-                self.model.kernel = kernels.GaussianKernel(sigma=sigma)
-            if lam is not None:
-                self.model.penalty = lam                
-            self.model.M = len(indices)
+            #if sigma is not None:
+            #    self.model.kernel = self.kernel
+            #if lam is not None:
+            #    self.model.penalty = lam                
+            #self.model.M = len(indices)
             #start = time.time()
             self.model.fit(X, y)
             #print('Fit time:', time.time()-start)

@@ -13,8 +13,9 @@ from feature_extractor import FeatureExtractor
 from maskrcnn_pytorch.benchmark.config import cfg
 
 import OnlineRegionClassifierRPNOnline as ocr
-import FALKONWrapper_with_centers_selection_logistic_loss as falkon_rpn
-import FALKONWrapper as falkon
+#import FALKONWrapper_with_centers_selection_logistic_loss as falkon_rpn
+#import FALKONWrapper as falkon
+import FALKONWrapper_with_centers_selection as falkon
 
 from region_refiner import RegionRefiner
 import torch
@@ -23,54 +24,67 @@ from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_mode
 import AccuracyEvaluator as ae
 import copy
 
+
 cfg_feature_task = 'first_experiment/configs/config_feature_task_federico.yaml'
-cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico_icwt_21_copy.yaml'
-cfg_rpn = 'first_experiment/configs/config_rpn_federico_icwt_21.yaml'
-cfg_online_path = 'Configs/config_federico_server_icwt_21_final.yaml'
 is_tabletop = True
+update_rpn = False
+if is_tabletop:
+    cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico_icwt_21_copy.yaml'
+    cfg_rpn = 'first_experiment/configs/config_rpn_federico_icwt_21.yaml'
+    cfg_online_path = 'Configs/config_federico_server_icwt_21_final.yaml'
+
+else:
+    cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico.yaml'
+    cfg_rpn = 'first_experiment/configs/config_rpn_federico.yaml'
+    cfg_online_path = 'Configs/config_federico_server_icwt_30_final.yaml'
 
 
 
 feature_extractor = FeatureExtractor(cfg_feature_task, cfg_target_task, cfg_rpn)
+if update_rpn:
+    # Extract RPN features for the training set
+    feature_extractor.is_train = True
+    negatives, positives, COXY = feature_extractor.extractRPNFeatures()
+    stats_rpn = computeFeatStatistics_torch(positives, negatives,  features_dim=positives[0].size()[1])
 
-# Extract RPN features
-feature_extractor.is_train = True
-negatives, positives, COXY = feature_extractor.extractRPNFeatures()
-stats_rpn = computeFeatStatistics_torch(positives, negatives,  features_dim=positives[0].size()[1])
+    # ----------------------------------------------------------------------------------------
+    # ------------------------------- Experiment configuration -------------------------------
+    # ----------------------------------------------------------------------------------------
+    # RPN Region Classifier initialization
+    classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_rpn=True)
+    regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats_rpn, cfg_path=cfg_online_path, is_rpn=True)
 
-# ----------------------------------------------------------------------------------------
-# ------------------------------- Experiment configuration -------------------------------
-# ----------------------------------------------------------------------------------------
-# Region Classifier initialization
-classifier = falkon_rpn.FALKONWrapper(cfg_path=cfg_online_path)
-regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats_rpn, cfg_path=cfg_online_path, is_rpn=True)
+    # -----------------------------------------------------------------------------------
+    # --------------------------------- Training models ---------------------------------
+    # -----------------------------------------------------------------------------------
 
-# -----------------------------------------------------------------------------------
-# --------------------------------- Training models ---------------------------------
-# -----------------------------------------------------------------------------------
+    # Train RPN region classifier
+    print('Region classifier test on the test set')
+    models_falkon_rpn = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'is_rpn': True}))
+    print(models_falkon_rpn)
 
-# - Train region classifier
-models_falkon_rpn = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'is_rpn': True}))
+    # RPN Region Refiner initialization
+    region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
+    region_refiner.COXY = normalize_COXY(COXY, stats_rpn)
 
-# Region Refiner initialization
-region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
-region_refiner.COXY = normalize_COXY(COXY, stats_rpn)
-
-# - Train region Refiner
-models_reg_rpn = region_refiner.trainRegionRefiner()
-
-
-# Setting trained rpn models in the pipeline
-feature_extractor.falkon_rpn_models = models_falkon_rpn
-feature_extractor.regressors_rpn_models = models_reg_rpn
-feature_extractor.stats_rpn = stats_rpn
+    # Train RPN region Refiner
+    models_reg_rpn = region_refiner.trainRegionRefiner()
 
 
-## Extract features for the train/val/test sets
+    # Setting trained RPN models in the pipeline
+    feature_extractor.falkon_rpn_models = models_falkon_rpn
+    feature_extractor.regressors_rpn_models = models_reg_rpn
+    feature_extractor.stats_rpn = stats_rpn
+
+# Setting trained RPN models in the pipeline
+#feature_extractor.falkon_rpn_models = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/classifier_rpn')
+#feature_extractor.regressors_rpn_models = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/regressor_rpn')
+#feature_extractor.stats_rpn = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/stats_rpn')
+
+## Extract features for the train set
 feature_extractor.is_train = True
 negatives, positives, COXY = feature_extractor.extractFeatures()
-print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!', positives[0].size()[1])
-stats = computeFeatStatistics_torch(positives, negatives,  features_dim=positives[0].size()[1])
+stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1])
 
 # ----------------------------------------------------------------------------------------
 # ------------------------------- Experiment configuration -------------------------------
@@ -93,12 +107,17 @@ accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 # -----------------------------------------------------------------------------------
 # - Train region classifier
 model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier())
+print(model)
 # Region Refiner initialization
 region_refiner = RegionRefiner(cfg_online_path)
 region_refiner.COXY = normalize_COXY(COXY, stats)
 
 # - Train region Refiner
 models = region_refiner.trainRegionRefiner()
+
+#torch.save(model, os.path.join(regionClassifier.output_folder, 'classifier_ood'))
+#torch.save(models, os.path.join(regionClassifier.output_folder, 'regressor_ood'))
+#torch.save(stats, os.path.join(regionClassifier.output_folder, 'stats_ood'))
 
 # ----------------------------------------------------------------------------------
 # --------------------------------- Testing models ---------------------------------

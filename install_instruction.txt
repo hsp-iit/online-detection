@@ -44,10 +44,55 @@ unset INSTALL_DIR
 cd ../..
 git clone --recurse-submodules https://github.com/FalkonML/falkon.git
 cd falkon
-git checkout faster-mmv
 git checkout b0e45e5495a4e9801f9bf4608a92fb4a7f95d4df
 pip install ./keops
 pip install scipy==1.4.1
 pip install .
 
 pip install h5py==2.10.0
+
+# Datasets download
+cd ../../Data/datasets/iCWT/TABLE-TOP
+wget https://zenodo.org/record/3970624/files/table_top_annotations.tar.xz
+tar -xvf table_top_annotations.tar.xz
+rm table_top_annotations.tar.xz
+mv table_top_annotations Annotations
+
+wget https://zenodo.org/record/3970624/files/table_top_images.tar.xz
+tar -xvf table_top_images.tar.xz
+rm table_top_images.tar.xz
+mv table_top_images Images
+
+cd ../iCubWorld-Transformations
+mkdir Images
+cd Images
+wget https://zenodo.org/record/835510/files/part1.tar.gz
+tar -xvf part1.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part2.tar.gz
+tar -xvf part2.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part3.tar.gz
+tar -xvf part3.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part4.tar.gz
+tar -xvf part4.tar.gz --strip 1
+
+rm part1.tar.xz
+rm part2.tar.xz
+rm part3.tar.xz
+rm part4.tar.xz
+
+cd ..
+mkdir Annotations
+cd Annotations
+wget https://zenodo.org/record/1227305/files/Annotations.tar.gz                         # Probably must be substituted with Annotations_refined
+tar -xvf Annotations.tar.gz --strip 1
+rm Annotations.tar.gz
+
+cd ../..
+mkdir iCubWorld-Transformations_manual
+cd iCubWorld-Transformations_manual
+ln -s ../iCubWorld-Transformations/Images .
+mkdir Annotations
+cd Annotations
+wget https://zenodo.org/record/2563223/files/Annotations_manual.tar.gz
+tar -xvf Annotations_manual.tar.gz --strip 1
+rm Annotations_manual.tar.gz
