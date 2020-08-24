@@ -26,7 +26,7 @@ import copy
 
 
 cfg_feature_task = 'first_experiment/configs/config_feature_task_federico.yaml'
-is_tabletop = True
+is_tabletop = False
 update_rpn = False
 if is_tabletop:
     cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico_icwt_21_copy.yaml'
@@ -105,6 +105,11 @@ if not os.path.exists(regionClassifier.output_folder):
 # Accuracy evaluator initialization
 accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
 
+
+feature_extractor.is_train = False
+feature_extractor.is_test = True
+test_boxes = feature_extractor.extractFeatures()
+
 print('Start cross validation')
 
 lambdas = [0.000001, 0.0000001, 0.0001, 0.00001, 0.001, 0.01]
@@ -131,12 +136,9 @@ for lam in lambdas:
         # ----------------------------------------------------------------------------------
         # --------------------------------- Testing models ---------------------------------
         # ----------------------------------------------------------------------------------
-        feature_extractor.is_train = False
-        feature_extractor.is_test = True
-        test_boxes = feature_extractor.extractFeatures()
         # Test the best classifier on the test set
         print('Region classifier test on the test set')
-        predictions = regionClassifier.testRegionClassifier(model, test_boxes)
+        predictions = regionClassifier.testRegionClassifier(model, copy.deepcopy(test_boxes))
 
         #print('Region classifier predictions evaluation')
         #result_cls = accuracy_evaluator.evaluate(dataset.dataset, copy.deepcopy(predictions), is_target_task=True, cls_agnostic_bbox_reg=True, icwt_21_objs=is_tabletop)

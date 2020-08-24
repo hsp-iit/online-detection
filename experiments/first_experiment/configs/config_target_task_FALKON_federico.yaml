@@ -22,7 +22,7 @@ MODEL:
   MASK_ON: False
 DATASETS:
   TRAIN: ("icubworld_id_30objects_train_target_task",)
-  TEST: ("icubworld_id_30objects_val_target_task",)
+  TEST: ("icubworld_id_30objects_test_target_task",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333

@@ -4,8 +4,6 @@ from maskrcnn_pytorch.benchmark.data import datasets as datasets_custom
 from maskrcnn_benchmark.data.datasets.evaluation.coco import coco_evaluation
 from maskrcnn_benchmark.data.datasets.evaluation.voc import voc_evaluation
 from maskrcnn_pytorch.benchmark.data.datasets.evaluation.icubworld import icw_evaluation
-from maskrcnn_pytorch.benchmark.data.datasets.evaluation.ivos import ivos_evaluation
-
 
 def evaluate(dataset, predictions, output_folder, **kwargs):
     """evaluate dataset using different methods based on dataset type.
@@ -27,8 +25,6 @@ def evaluate(dataset, predictions, output_folder, **kwargs):
         return voc_evaluation(**args)
     elif isinstance(dataset, datasets_custom.iCubWorldDataset):
         return icw_evaluation(**args)
-    elif isinstance(dataset, datasets_custom.IVOSDataset):
-        return ivos_evaluation(**args)
     else:
         dataset_name = dataset.__class__.__name__
         raise NotImplementedError("Unsupported dataset type {}.".format(dataset_name))

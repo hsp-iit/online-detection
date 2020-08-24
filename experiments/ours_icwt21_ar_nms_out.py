@@ -77,67 +77,12 @@ if update_rpn:
     feature_extractor.stats_rpn = stats_rpn
 
 # Setting trained RPN models in the pipeline
-#feature_extractor.falkon_rpn_models = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/classifier_rpn')
-#feature_extractor.regressors_rpn_models = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/regressor_rpn')
-#feature_extractor.stats_rpn = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/stats_rpn')
+feature_extractor.falkon_rpn_models = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/classifier_rpn')
+feature_extractor.regressors_rpn_models = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/regressor_rpn')
+feature_extractor.stats_rpn = torch.load('first_experiment/integration_tests_ep8_icwt_21_online_pipeline/stats_rpn')
 
-## Extract features for the train set
-feature_extractor.is_train = True
-negatives, positives, COXY = feature_extractor.extractFeatures()
-stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1])
-
-# ----------------------------------------------------------------------------------------
-# ------------------------------- Experiment configuration -------------------------------
-# ----------------------------------------------------------------------------------------
-# Test dataset creation
-cfg.merge_from_file(cfg_target_task)
-cfg.freeze()
-dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True, icwt_21_objs=is_tabletop)
-
-# Region Classifier initialization
-classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
-
-if not os.path.exists(regionClassifier.output_folder):
-    os.mkdir(regionClassifier.output_folder)
-# Accuracy evaluator initialization
-accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path)
-# -----------------------------------------------------------------------------------
-# --------------------------------- Training models ---------------------------------
-# -----------------------------------------------------------------------------------
-# - Train region classifier
-model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier())
-print(model)
-# Region Refiner initialization
-region_refiner = RegionRefiner(cfg_online_path)
-region_refiner.COXY = normalize_COXY(COXY, stats)
-
-# - Train region Refiner
-models = region_refiner.trainRegionRefiner()
-
-#torch.save(model, os.path.join(regionClassifier.output_folder, 'classifier_ood_sigma15'))
-#torch.save(models, os.path.join(regionClassifier.output_folder, 'regressor_ood_sigma15'))
-#torch.save(stats, os.path.join(regionClassifier.output_folder, 'stats_ood_sigma15'))
-
-# ----------------------------------------------------------------------------------
-# --------------------------------- Testing models ---------------------------------
-# ----------------------------------------------------------------------------------
 feature_extractor.is_train = False
 feature_extractor.is_test = True
-test_boxes = feature_extractor.extractFeatures()
-# Test the best classifier on the test set
-print('Region classifier test on the test set')
-predictions = regionClassifier.testRegionClassifier(model, test_boxes)
-
-print('Region classifier predictions evaluation')
-result_cls = accuracy_evaluator.evaluate(dataset.dataset, copy.deepcopy(predictions), is_target_task=True, cls_agnostic_bbox_reg=True, icwt_21_objs=is_tabletop)
-
-# Test the best regressor on the test set
-print('Region refiner test on the test set')
-region_refiner.boxes = predictions
-region_refiner.stats = stats
-region_refiner.feat = test_boxes
-refined_predictions = region_refiner.predict()
-
-print('Region classifier predictions evaluation')
-result_reg = accuracy_evaluator.evaluate(dataset.dataset, refined_predictions, is_target_task=True, cls_agnostic_bbox_reg=False, icwt_21_objs=is_tabletop)
+for i in range(10, 310, 10):
+    feature_extractor.regions_post_nms = i
+    feature_extractor.extractFeatures()

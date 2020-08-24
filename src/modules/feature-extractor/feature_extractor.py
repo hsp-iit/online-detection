@@ -21,6 +21,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.falkon_rpn_models = None
         self.regressors_rpn_models = None
         self.stats_rpn = None
+        self.regions_post_nms = None
+
 
     def loadFeatureExtractor(self):
         loader = LoaderFeatureExtractor(self.cfg_path_target_task)
@@ -69,6 +71,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
         feature_extractor.falkon_rpn_models = self.falkon_rpn_models
         feature_extractor.regressors_rpn_models = self.regressors_rpn_models
         feature_extractor.stats_rpn = self.stats_rpn
+        if self.regions_post_nms is not None:
+            feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
         features = feature_extractor()
 
         return features
