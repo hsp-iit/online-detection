@@ -1,3 +1,5 @@
+# Class used to perform Nystrom centers initialization
+
 class MyCenterSelector():
     def __init__(self, center_indices):
         self.center_indices = center_indices

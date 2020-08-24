@@ -1,52 +1,18 @@
-import pickle
-from scipy.io import loadmat
-#import h5py
 import numpy as np
 import os
-import time
-#import warnings
-from scipy import linalg
 import torch
-from utils import list_features, features_to_COXY
 
 basedir = os.path.dirname(__file__)
-from py_od_utils import getFeatPath
 
 class RegionPredictor():
     def __init__(self, cfg, models=None, boxes=None):
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
-        feature_folder = getFeatPath(self.cfg)
-        if 'val' in self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']:
-            feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'train_val')
-        else:
-            feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'test')
-        self.path_to_features = feat_path + '/%s' + self.features_format
-        self.path_to_imgset_test = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
-        self.features_dictionary_test = list_features(self.path_to_imgset_test)
-        if models is not None:
-            self.models = models
-        else:
-            try:
-                self.models = torch.load(self.cfg['REGION_REFINER']['MODELS_PATH'])
-            except:
-                print('Failed to load model')
-        if boxes is not None:
-            self.boxes = boxes
-        else:
-            try:
-                self.boxes = torch.load(self.cfg['REGION_REFINER']['BOXES_PATH'])
-            except:
-                print('Failed to load boxes')
-        try:
-            self.stats = torch.load(os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder) + '/stats')
-            for key in self.stats.keys():
-                self.stats[key] = self.stats[key].to('cuda')
-        except:
-            self.stats = None
-        self.normalize_features = True
+        self.normalize_features = False #True TODO modidy to true
         self.feat = None
-
+        self.boxes = boxes
+        self.stats = None
+        self.models = models
 
     def __call__(self):
         pred_boxes = self.predict()
@@ -54,60 +20,41 @@ class RegionPredictor():
 
     def predict(self):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
-        opts = self.cfg['REGION_REFINER']['opts']
-
-        # cache_dir = 'bbox_reg/'
-        # if not os.path.exists(cache_dir):
-        #    os.mkdir(cache_dir)
 
         num_clss = len(chosen_classes)
-        bbox_model_suffix = '_first_test'
 
         img_size = self.boxes[0].size
         img_width = img_size[0]
         img_height = img_size[1]
 
-        #l = 1
         # Loop on the list of boxlists
         for i in range(len(self.boxes)):
-            # TODO evaluate whether to add tic_toc_print
             if self.feat is None:
-                pth = self.path_to_features % self.boxes[i].get_field('name_file')
-                #print(pth)
-                if '.pkl' in pth:
-                    with open(pth, 'rb') as f:
-                        feat = pickle.load(f)
-                elif '.mat' in pth:
-                    feat = loadmat(pth)
-                num_gt = np.sum(feat['class'] > 0)
-                feat = torch.tensor(feat['feat'][num_gt:]).to('cuda')
+                print('Features not passed, returning')
+                return
             else:
+                # Exclude ground-truth boxes
                 I = np.nonzero(self.feat[i]['gt'] == 0)
                 feat = torch.tensor(self.feat[i]['feat'][I, :][0], device='cuda')
 
-
-            #refined_boxes = torch.empty((0, len(chosen_classes), 4))
+            # Normalize features
             if self.normalize_features:
                 feat = feat - self.stats['mean']
                 feat = feat * (20 / self.stats['mean_norm'].item())
 
             ex_box = self.boxes[i].bbox.to('cuda')
             num_boxes = ex_box.size()[0]
+            # Initialize refined boxes with example boxes in the 0-th dimension
             refined_boxes = ex_box
             for j in range(1, len(chosen_classes)):
-                weights = self.models[j-1]['Beta']['0']['weights'].view(1,2049)
-                
+                weights = self.models[j-1]['Beta']['0']['weights'].view(1,2049) # TODO parametrize
                 for k in range(1, 4):
-                    weights = torch.cat((weights, self.models[j-1]['Beta'][str(k)]['weights'].view(1,2049)))
+                    weights = torch.cat((weights, self.models[j-1]['Beta'][str(k)]['weights'].view(1,2049)))    # TODO parametrize
                 weights = torch.t(weights)
                 Y = torch.matmul(feat, weights[:-1])
-                #print(Y, Y.size())
                 Y += weights[-1]
-                #print(Y, Y.size())
-                #quit()
                 Y = torch.matmul(Y, self.models[j-1]['T_inv'])
                 Y += self.models[j-1]['mu']
-
 
                 dst_ctr_x = Y[:,0]
                 dst_ctr_y = Y[:,1]
@@ -137,8 +84,10 @@ class RegionPredictor():
                     pred_boxes[:, 1] = torch.max(pred_boxes[:, 1], torch.ones(pred_boxes[:,1].size(), device='cuda'))
                     pred_boxes[:, 2] = torch.min(pred_boxes[:, 2], torch.full(pred_boxes[:,2].size(), img_width, device='cuda'))
                     pred_boxes[:, 3] = torch.min(pred_boxes[:, 3], torch.full(pred_boxes[:,3].size(), img_height, device='cuda'))
+                # Concatenate box predictions for each class
                 refined_boxes = torch.cat((refined_boxes, pred_boxes), dim=1)
 
+            
             refined_boxes = refined_boxes.view((num_boxes, len(chosen_classes), 4))
 
             self.boxes[i].bbox = refined_boxes

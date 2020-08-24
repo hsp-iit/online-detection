@@ -45,9 +45,6 @@ class GeneralizedRCNN(nn.Module):
             raise ValueError("In training mode, targets should be passed")
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        #print(features[0].size())
-        #torch.save(features, 'features_backbone')
-        #quit()
         proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, targets, gt_bbox=gt_bbox, img_size=img_size, img_name = image_name, compute_average_recall_RPN=compute_average_recall_RPN, start_time = start_time, is_train = is_train)
         return average_recall_RPN
 

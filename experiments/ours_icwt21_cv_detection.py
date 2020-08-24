@@ -112,8 +112,8 @@ test_boxes = feature_extractor.extractFeatures()
 
 print('Start cross validation')
 
-lambdas = [0.000001, 0.0000001, 0.0001, 0.00001, 0.001, 0.01]
-sigmas = [10, 15, 20, 25, 30, 50, 100, 1, 5, 1000, 10000]
+lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
+sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
 for lam in lambdas:
     for sigma in sigmas:
         print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' %(str(lam), str(sigma)))
@@ -130,7 +130,9 @@ for lam in lambdas:
         if models is None:
             # Region Refiner initialization
             region_refiner = RegionRefiner(cfg_online_path)
-            region_refiner.COXY = normalize_COXY(COXY, stats)
+            #region_refiner.COXY = normalize_COXY(COXY, stats)
+            # TODO decide if using normalization for regressors
+            region_refiner.COXY = COXY
             models = region_refiner.trainRegionRefiner()
 
         # ----------------------------------------------------------------------------------

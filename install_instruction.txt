@@ -83,7 +83,7 @@ rm part4.tar.xz
 cd ..
 mkdir Annotations
 cd Annotations
-wget https://zenodo.org/record/1227305/files/Annotations.tar.gz                         # Probably must be substituted with Annotations_refined
+wget https://zenodo.org/record/1227305/files/Annotations_refined.tar.gz
 tar -xvf Annotations.tar.gz --strip 1
 rm Annotations.tar.gz
 

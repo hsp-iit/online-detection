@@ -161,20 +161,7 @@ class RPNModule(torch.nn.Module):
                 self.diag_list.append(torch.arange(0,i**2, i+1, dtype=torch.long, device='cuda'))
 
     def forward(self, images, features, targets=None, gt_bbox=None, img_size = None, img_name = None, compute_average_recall_RPN = False, num_classes = None, start_time = None, is_train = None):
-        """
-        Arguments:
-            images (ImageList): images for which we want to compute the predictions
-            features (list[Tensor]): features computed from the images that are
-                used for computing the predictions. Each tensor in the list
-                correspond to different feature levels
-            targets (list[BoxList): ground-truth boxes present in the image (optional)
 
-        Returns:
-            boxes (list[BoxList]): the predicted boxes from the RPN, one BoxList per
-                image.
-            losses (dict[Tensor]): the losses for the model during training. During
-                testing, it is an empty dict.
-        """
         features = self.head(features)
         if self.anchors is None:
             features = features[0][0]
@@ -320,7 +307,6 @@ class RPNModule(torch.nn.Module):
                 feat = feat[list(range(0,ids_size**2+ids_size-1, ids_size+1))]
             # Add positive features for the i-th anchor to the i-th positives list
             self.positives[i] = torch.cat((self.positives[i], feat))
-
 
             # COXY computation for regressors
             ex_boxes = anchors_i.bbox

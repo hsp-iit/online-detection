@@ -6,14 +6,12 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
 
 import RegionClassifierAbstract as rcA
-from py_od_utils import computeFeatStatistics #loadFeature # zScores,
-import h5py
+from py_od_utils import computeFeatStatistics
 import numpy as np
 import torch
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 import time
 
-from py_od_utils import getFeatPath
 import yaml
 import copy
 
@@ -29,7 +27,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
             self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
-            #self.feature_folder = getFeatPath(self.cfg)
             self.mean = 0
             self.std = 0
             self.mean_norm = 0
