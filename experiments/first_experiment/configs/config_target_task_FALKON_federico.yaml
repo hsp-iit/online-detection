@@ -1,4 +1,4 @@
-OUTPUT_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/%s_ep%s_FT%s_TT%s_test_times_detector_online_rpn" #RPN_online"
+OUTPUT_DIR: "" #"/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/Data/feat_cache/%s_ep%s_FT%s_TT%s_test_times_detector_online_rpn" #RPN_online"
 PATHS_CATALOG: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/maskrcnn_pytorch/benchmark/config/paths_catalog.py"
 DATA_DIR: "/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/"
 MODEL:

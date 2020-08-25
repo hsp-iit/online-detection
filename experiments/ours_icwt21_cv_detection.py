@@ -82,6 +82,12 @@ if update_rpn:
     torch.save(models_reg_rpn, os.path.join(regionClassifier.output_folder, 'regressor_rpn'))
     torch.save(stats_rpn, os.path.join(regionClassifier.output_folder, 'stats_rpn'))
 
+# Setting trained RPN models in the pipeline
+feature_extractor.falkon_rpn_models = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/classifier_rpn')
+feature_extractor.regressors_rpn_models = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/regressor_rpn')
+feature_extractor.stats_rpn = torch.load('first_experiment/integration_tests_ep5_icwt_30_online_pipeline/stats_rpn')
+
+
 ## Extract features for the train set
 feature_extractor.is_train = True
 feature_extractor.is_test = False

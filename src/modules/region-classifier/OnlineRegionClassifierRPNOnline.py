@@ -43,7 +43,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.negatives = negatives
         self.positives = positives
         self.num_classes = len(positives)+1
-        # self.experiment_name = experiment_name
         self.stats = stats
         self.mean = self.stats['mean']
         self.std = self.stats['std']

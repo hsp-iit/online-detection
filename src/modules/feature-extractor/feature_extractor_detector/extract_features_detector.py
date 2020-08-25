@@ -13,7 +13,6 @@ import argparse
 import os
 
 import torch
-#from maskrcnn_benchmark.config import cfg
 from maskrcnn_pytorch.benchmark.config import cfg
 
 from maskrcnn_pytorch.benchmark.data import make_data_loader
@@ -39,7 +38,6 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
-
 class FeatureExtractorDetector:
     def __init__(self, cfg_path_target_task=None, local_rank=0):
 
@@ -59,14 +57,7 @@ class FeatureExtractorDetector:
         self.stats_rpn = None
 
     def __call__(self):
-        """
-        for i in range(10, 310, 10):
-            self.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = i
-            print("Number of regions post NMS", i)
-            #self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 31
-            self.train()
-        """
-        return self.train()   #TODO remove previous code and uncomment this
+        return self.train()
 
 
     def load_parameters(self):
@@ -77,10 +68,6 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        try:
-            self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  # # ('R50', 'final', 'COCO', 'COCO') #TODO read these parameters maybe from a config file in the future
-        except:
-            pass        
         #self.cfg.freeze() TODO uncomment this
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -152,7 +139,7 @@ class FeatureExtractorDetector:
             for elem in self.cfg.DATASETS.TEST:
                 dataset_names.append(elem)
 
-        if cfg.OUTPUT_DIR:
+        if self.cfg.OUTPUT_DIR:
             for idx, dataset_name in enumerate(dataset_names):
                 output_folder = os.path.join(self.cfg.OUTPUT_DIR, dataset_name)
                 mkdir(output_folder)
@@ -184,9 +171,8 @@ class FeatureExtractorDetector:
                 data_loader,
                 dataset_name=dataset_name,
                 iou_types=iou_types,
-                box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
+                box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
                 device=cfg.MODEL.DEVICE,
-                output_folder=output_folder,
                 is_target_task=self.is_target_task,
                 icwt_21_objs=self.icwt_21_objs,
                 is_train = self.is_train,

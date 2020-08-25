@@ -4,9 +4,7 @@ import time
 import os
 
 import torch
-from tqdm import tqdm
 
-#from maskrcnn_pytorch.benchmark.data.datasets.evaluation import evaluate
 
 from maskrcnn_benchmark.utils.comm import is_main_process, get_world_size
 from maskrcnn_benchmark.utils.comm import all_gather
@@ -18,16 +16,11 @@ import matplotlib.pyplot as plt
 import matplotlib.pylab as pylab
 import matplotlib.image as mplimg
 
-#import requests
-#from io import BytesIO
 from PIL import Image
 import numpy as np
 
-#from maskrcnn_benchmark_adapt.config import cfg
 from maskrcnn_benchmark.structures.bounding_box import BoxList
-#from predictor_getProposals import COCODemo
 
-import os
 import argparse
 
 # To parse the annotation .xml files
@@ -38,7 +31,6 @@ import time
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.image_list import to_image_list
 
-import cv2
 
 OBJECTNAME_TO_ID = {
     "__background__":0,
@@ -98,12 +90,11 @@ def build_transform(cfg):
 	)
 	return transform
 
-def extract_feature_proposals(cfg, dataset, model, transforms, output_folder, icwt_21_objs=False, compute_average_recall_RPN = False, num_classes=30, is_train = True):
+def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, num_classes=30, is_train = True):
 
     img_dir=dataset._imgpath
     anno_dir=dataset._annopath
     imgset_path=dataset._imgsetpath
-    features_directory = output_folder
 
     model.eval()
     start = time.time()
@@ -119,8 +110,6 @@ def extract_feature_proposals(cfg, dataset, model, transforms, output_folder, ic
     for img_path in imset:
         img_path = img_path.strip('\n')
         count_procImg = count_procImg +1
-
-
 
         filename_path = img_dir % img_path
         img_RGB = Image.open(filename_path)
@@ -203,7 +192,6 @@ def inference(
         iou_types=("bbox",),
         box_only=False,
         device="cuda",
-        output_folder=None,
         draw_preds=False,
         is_target_task=False,
         icwt_21_objs=False,
@@ -227,9 +215,9 @@ def inference(
         num_classes = 30
     #num_classes = 80            #TODO remove this
     if is_train:
-        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), output_folder, icwt_21_objs, compute_average_recall_RPN=False, num_classes=num_classes, is_train = True)
+        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=False, num_classes=num_classes, is_train = True)
     if is_test:
-        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), output_folder, icwt_21_objs, compute_average_recall_RPN=True, num_classes=num_classes, is_train = False)
+        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=True, num_classes=num_classes, is_train = False)
     print('Average Recall (AR):', AR)
     # wait for all processes to complete before measuring the time
     synchronize()

@@ -13,7 +13,6 @@ import argparse
 import os
 
 import torch
-#from maskrcnn_benchmark.config import cfg
 from maskrcnn_pytorch.benchmark.config import cfg
 
 from maskrcnn_pytorch.benchmark.data import make_data_loader
@@ -65,7 +64,6 @@ class FeatureExtractorRPN:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.OUTPUT_DIR = self.cfg.OUTPUT_DIR % ('R50', '8', 'icwt100', 'icwt21') #('R50', '5', 'icwt100', 'icwt30') #  #TODO read these parameters maybe from a config file in the future
         self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
@@ -137,7 +135,7 @@ class FeatureExtractorRPN:
             for elem in self.cfg.DATASETS.TEST:
                 dataset_names.append(elem)
 
-        if cfg.OUTPUT_DIR:
+        if self.cfg.OUTPUT_DIR:
             for idx, dataset_name in enumerate(dataset_names):
                 output_folder = os.path.join(self.cfg.OUTPUT_DIR, dataset_name)
                 mkdir(output_folder)
@@ -163,9 +161,8 @@ class FeatureExtractorRPN:
                 data_loader,
                 dataset_name=dataset_name,
                 iou_types=iou_types,
-                box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
+                box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
                 device=cfg.MODEL.DEVICE,
-                output_folder=output_folder,
                 is_target_task=self.is_target_task,
                 icwt_21_objs=self.icwt_21_objs,
                 num_classes=None,
