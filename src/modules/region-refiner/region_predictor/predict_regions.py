@@ -8,7 +8,7 @@ class RegionPredictor():
     def __init__(self, cfg, models=None, boxes=None):
         self.cfg = cfg
         self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
-        self.normalize_features = False #True TODO modidy to true
+        self.normalize_features = False
         self.feat = None
         self.boxes = boxes
         self.stats = None

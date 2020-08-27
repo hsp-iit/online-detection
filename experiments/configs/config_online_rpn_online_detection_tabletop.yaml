@@ -1,0 +1,118 @@
+EXPERIMENT_NAME: 'test_integration'
+NUM_CLASSES: 22
+NUM_CLASSES_RPN: 15
+
+#OUTPUT_FOLDER: '/home/IIT.LOCAL/fceola/workspace/ws_mask/python-online-detection/experiments/first_experiment/integration_tests_ep8_validation_set_icwt_21' #_online_rpn'
+OUTPUT_FOLDER: '/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/experiments/first_experiment/integration_tests_ep8_icwt_21_online_pipeline' #_online_rpn'
+
+DATASET:
+    TARGET_TASK:
+        TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white.txt'
+        #TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white_train_sample_50.txt' #
+        TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations_manual/ImageSets/test_TASK2_21objs_pois_odd.txt' 
+        #TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white_val_sample_50.txt' #
+        VAL_IMSET: ''
+
+ONLINE_REGION_CLASSIFIER:
+    CROSS_VAL: False
+    MINIBOOTSTRAP:
+        ITERATIONS: 2
+        BATCH_SIZE: 2000
+        EASY_THRESH: -0.9
+        HARD_THRESH: -0.7
+    CLASSIFIER:
+        lambda: 0.001 #0.000001
+        sigma:  15 #1 
+        M: 2000
+        kernel_type: 'gauss'
+
+REGION_REFINER:
+    opts:
+        min_overlap: 0.6
+        lambda: 1000
+
+FEATURE_INFO:
+    FEAT_TASK_NAME: 'icwt100'
+    TARGET_TASK_NAME: "icwt21"
+    BACKBONE: 'R50'
+    NUM_EPOCHS: 8
+    FORMAT: '.mat'
+
+EVALUATION:
+    SCORE_THRESH: -2
+    NMS: 0.3
+    DETECTIONS_PER_IMAGE: 100
+
+CHOSEN_CLASSES:
+    0: '_background_'
+    1: 'sodabottle3'
+    2: 'sodabottle4'
+    3: 'mug1'
+    4: 'mug3'
+    5: 'mug4'
+    6: 'pencilcase5'
+    7: 'pencilcase3'
+    8: 'ringbinder4'
+    9: 'ringbinder5'
+    10: 'wallet6'
+    11: 'flower7'
+    12: 'flower5'
+    13: 'flower2'
+    14: 'book6'
+    15: 'book9'
+    16: 'hairclip2'
+    17: 'hairclip8'
+    18: 'hairclip6'
+    19: 'sprayer6'
+    20: 'sprayer8'
+    21: 'sprayer9'
+
+RPN:
+    EXPERIMENT_NAME: 'test_integration'
+    NUM_CLASSES: 22
+    NUM_CLASSES_RPN: 15
+
+    OUTPUT_FOLDER: '/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/experiments/first_experiment/integration_tests_ep8_icwt_21_online_pipeline' #_online_rpn'
+
+    DATASET:
+        TARGET_TASK:
+            TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white.txt'
+            #TRAIN_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white_train_sample_50.txt' #
+            TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations_manual/ImageSets/test_TASK2_21objs_pois_odd.txt' 
+            #TEST_IMSET: '/home/IIT.LOCAL/fceola/workspace/ws_mask/maskrcnn-benchmark/datasets/iCWT/iCubWorld-Transformations/ImageSets/test_TASK2_21objs_white_val_sample_50.txt' #
+            VAL_IMSET: ''
+    ONLINE_REGION_CLASSIFIER:
+        CROSS_VAL: False
+        MINIBOOTSTRAP:
+            ITERATIONS: 2
+            BATCH_SIZE: 2000
+            EASY_THRESH: -0.9
+            HARD_THRESH: -0.7
+        CLASSIFIER:
+            lambda: 0.001 #0.00001
+            sigma: 5 #1000
+            M: 1000
+            kernel_type: 'gauss'
+
+    REGION_REFINER:
+        opts:
+            min_overlap: 0.3
+            lambda: 0.01 #0.01
+
+    CHOSEN_CLASSES:
+        0: '0'
+        1: '1'
+        2: '2'
+        3: '3'
+        4: '4'
+        5: '5'
+        6: '6'
+        7: '7'
+        8: '8'
+        9: '9'
+        10: '10'
+        11: '11'
+        12: '12'
+        13: '13'
+        14: '14'
+

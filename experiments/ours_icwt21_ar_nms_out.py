@@ -25,18 +25,18 @@ import AccuracyEvaluator as ae
 import copy
 
 
-cfg_feature_task = 'first_experiment/configs/config_feature_task_federico.yaml'
+cfg_feature_task = 'configs/config_feature_task.yaml'
 is_tabletop = True
 update_rpn = False
 if is_tabletop:
-    cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico_icwt_21_copy.yaml'
-    cfg_rpn = 'first_experiment/configs/config_rpn_federico_icwt_21.yaml'
-    cfg_online_path = 'Configs/config_federico_server_icwt_21_final.yaml'
+    cfg_target_task = 'configs/config_detector_tabletop.yaml'
+    cfg_rpn = 'configs/config_rpn_tabletop.yaml'
+    cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
 
 else:
-    cfg_target_task = 'first_experiment/configs/config_target_task_FALKON_federico.yaml'
-    cfg_rpn = 'first_experiment/configs/config_rpn_federico.yaml'
-    cfg_online_path = 'Configs/config_federico_server_icwt_30_final.yaml'
+    cfg_target_task = 'configs/config_detector_icwt30.yaml'
+    cfg_rpn = 'configs/config_rpn_icwt30.yaml'
+    cfg_online_path = 'configs/config_online_rpn_online_detection_icwt30.yaml'
 
 
 

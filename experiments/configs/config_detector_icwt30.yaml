@@ -1,0 +1,34 @@
+OUTPUT_DIR: ""
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  WEIGHT: "feature_extractor_icwt30_ep5.pth"
+  RPN:
+    RPN_HEAD: "OnlineRPNHead"
+    PRE_NMS_TOP_N_TRAIN: 1000
+    POST_NMS_TOP_N_TRAIN: 300
+    PRE_NMS_TOP_N_TEST: 1000
+    POST_NMS_TOP_N_TEST: 300
+  ROI_BOX_HEAD:
+    NUM_CLASSES: 101 # This will be set to the correct number of classes for the target task in the code, this is just to load correctly the model trained on the feature task
+  MASK_ON: False
+DATASETS:
+  TRAIN: ("icubworld_id_30objects_train_target_task",)
+  TEST: ("icubworld_id_30objects_test_target_task",)
+INPUT:
+  HORIZONTAL_FLIP_PROB_TRAIN: 0.0
+  MAX_SIZE_TEST: 1333
+  MAX_SIZE_TRAIN: 1333
+  MIN_SIZE_TEST: 600
+  MIN_SIZE_TRAIN: (600,)
+DATALOADER:
+  SIZE_DIVISIBILITY: 32
+TEST:
+  IMS_PER_BATCH: 1
+FEATURES_FORMAT: '.mat'
+
+MINIBOOTSTRAP:
+  DETECTOR:
+    NUM_CLASSES: 30
+    ITERATIONS: 10
+    BATCH_SIZE: 2000
+    NEGATIVES_PER_BATCH: 3

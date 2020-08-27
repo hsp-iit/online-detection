@@ -20,6 +20,7 @@ class RegionRefiner(RegionRefinerAbstract):
         self.sigma = None
         self.COXY = None
         self.stats = None
+        self.normalize_features = False
         self.is_rpn = is_rpn
 
     def loadRegionRefiner(self):
@@ -40,6 +41,7 @@ class RegionRefiner(RegionRefinerAbstract):
     def predict(self):
         predictor = RegionPredictor(self.cfg, self.models, self.boxes)
         predictor.feat = self.feat
+        predictor.normalize_features = self.normalize_features
         if self.stats is not None:
             predictor.stats = self.stats
         refined_regions = predictor()

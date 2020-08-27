@@ -111,7 +111,11 @@ class FeatureExtractorRPN:
         )
 
         # Load rpn
-        model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
+        if self.cfg.MODEL.WEIGHT.startswith('/'):
+            model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
+        else:
+            model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
+            model_pretrained = torch.load(model_path)
         model_pretrained_copy = copy.deepcopy(model_pretrained)
         for key in model_pretrained_copy['model'].keys():
             if key.startswith('roi'):

@@ -1,0 +1,26 @@
+OUTPUT_DIR: ""
+MODEL:
+  META_ARCHITECTURE: "GeneralizedRCNN"
+  WEIGHT: "feature_extractor_tabletop_ep8.pth"
+  RPN_ONLY: True
+  RPN:
+    RPN_HEAD: "SingleConvRPNHead_getProposals"
+    PRE_NMS_TOP_N_TRAIN: 1000
+    POST_NMS_TOP_N_TRAIN: 300
+    PRE_NMS_TOP_N_TEST: 1000
+    POST_NMS_TOP_N_TEST: 300
+DATASETS:
+  TRAIN: ("icubworld_id_21objects_train_val_target_task",)
+  TEST: ("icubworld_id_21objects_test_target_task",)
+INPUT:
+  HORIZONTAL_FLIP_PROB_TRAIN: 0.0
+  MAX_SIZE_TEST: 1333
+  MAX_SIZE_TRAIN: 1333
+  MIN_SIZE_TEST: 600
+  MIN_SIZE_TRAIN: (600,)
+DATALOADER:
+  SIZE_DIVISIBILITY: 32
+TEST:
+  IMS_PER_BATCH: 1
+FEATURES_FORMAT: ''
+
