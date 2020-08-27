@@ -173,8 +173,6 @@ class RPNModule(torch.nn.Module):
 
             # Generate anchors
             self.anchors = self.anchor_generator(images, features)[0][0]
-            # COmpute number of anchors for each features tensor
-            self.num_classes = int(self.anchors.bbox.size()[0]/(self.height * self.width))
 
             self.feature_ids = torch.empty((0, 2), dtype=torch.long, device='cuda')
             self.classifiers = torch.empty(0, dtype=torch.uint8, device='cuda')

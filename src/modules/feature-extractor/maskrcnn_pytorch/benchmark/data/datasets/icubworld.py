@@ -181,7 +181,6 @@ class iCubWorldDataset(torch.utils.data.Dataset):
                 bb.find("ymax").text,
             ]
             bndbox = tuple(
-                #map(lambda x: x - TO_REMOVE, list(map(float, box)))             #TODO use the following line
                 map(lambda x: x - TO_REMOVE, list(map(int, box)))          
             )
 

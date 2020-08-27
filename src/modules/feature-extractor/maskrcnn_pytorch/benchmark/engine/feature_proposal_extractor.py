@@ -82,7 +82,7 @@ def build_transform(cfg):
 	transform = T.Compose(
 		[
 		    T.ToPILImage(),
-		    T.Resize(cfg.INPUT.MIN_SIZE_TEST),	#TODO set this using the value in the config file
+		    T.Resize(cfg.INPUT.MIN_SIZE_TEST),
 		    T.ToTensor(),
 		    to_bgr_transform,
 		    normalize_transform,
@@ -150,7 +150,6 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
 
 
         # Save list of boxes as tensor
-        #gt_bbox_tensor = torch.tensor(gt_bboxes_list)
         gt_bbox_tensor = torch.tensor(gt_bboxes_list, device="cuda")
         gt_labels_torch = torch.tensor(gt_labels, device="cuda", dtype=torch.uint8).reshape((len(gt_labels),1))
         # get image size such that later the boxes can be resized to the correct size
@@ -165,11 +164,9 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
             
         # apply pre-processing to image
         image = transforms(image)
-        # convert to an ImageList, padded so that it is divisible by
-        # cfg.DATALOADER.SIZE_DIVISIBILITY
-        image_list = to_image_list(image, 1)#self.cfg.DATALOADER.SIZE_DIVISIBILITY)
+        # convert to an ImageList
+        image_list = to_image_list(image, 1)
         image_list = image_list.to("cuda")
-        #print(gt_bbox_boxlist.bbox)
         # compute predictions
         with torch.no_grad():
             AR = model(image_list, None, gt_bbox=gt_bbox_boxlist, gt_label = gt_labels_torch, img_size = img_sizes, start_time = None,
@@ -196,7 +193,6 @@ def inference(
         is_target_task=False,
         icwt_21_objs=False,
         compute_average_recall_RPN=False,
-        num_classes=30,
         is_train = False,
         is_test = False
 ):
@@ -209,17 +205,11 @@ def inference(
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    if icwt_21_objs:            #TODO read from cfg
-        num_classes = 21
-    else:
-        num_classes = 30
-    #num_classes = 80            #TODO remove this
     if is_train:
-        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=False, num_classes=num_classes, is_train = True)
+        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=False, num_classes=cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES, is_train = True)
     if is_test:
-        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=True, num_classes=num_classes, is_train = False)
+        AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=True, num_classes=cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES, is_train = False)
     print('Average Recall (AR):', AR)
-    # wait for all processes to complete before measuring the time
     synchronize()
     total_time = total_timer.toc()
     total_time_str = get_time_str(total_time)

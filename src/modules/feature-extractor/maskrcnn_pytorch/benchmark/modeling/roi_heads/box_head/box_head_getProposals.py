@@ -41,14 +41,14 @@ class ROIBoxHead(torch.nn.Module):
             self.negatives.append([])
             self.current_batch.append(0)
             self.current_batch_size.append(0)
-            self.positives.append(torch.empty((0, 2048), device='cuda'))    # TODO parametrize
+            self.positives.append(torch.empty((0, self.feature_extractor.out_channels), device='cuda'))
             for j in range(self.iterations):
-                self.negatives[i].append(torch.empty((0, 2048), device='cuda'))  # TODO parametrize
+                self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device='cuda'))
         self.negatives_to_pick = self.cfg.MINIBOOTSTRAP.DETECTOR.NEGATIVES_PER_BATCH
         self.still_to_complete = list(range(self.num_classes))
 
         # Regressor reatures
-        self.X = torch.empty((0, 2048), dtype=torch.float32, device='cuda')
+        self.X = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device='cuda')
         # Regressor target values
         self.Y = torch.empty((0, 4), dtype=torch.float32, device='cuda')
         # Regressor overlap amounts
@@ -121,11 +121,11 @@ class ROIBoxHead(torch.nn.Module):
         # Loop on all the gt boxes
         for i in range(len(gt_labels_list)):
             # Concatenate each gt to the positive tensor for its corresponding class
-            self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, 2048)))
+            self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels)))
 
             # Extract regressor positives, i.e. with overlap > 0.6
             pos_ids = overlap[:,gt_labels_list[i]-1] > 0.6
-            regr_positives_i = x[pos_ids].view(-1, 2048)
+            regr_positives_i = x[pos_ids].view(-1, self.feature_extractor.out_channels)
             # Add class and features to C and X
             self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
             self.X = torch.cat((self.X, regr_positives_i))
@@ -158,11 +158,11 @@ class ROIBoxHead(torch.nn.Module):
         for i in self.still_to_complete:
             # Add random negatives, if there isn't a gt corresponding to that class
             if i+1 not in gt_labels_list:
-                neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, 2048)
+                neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
             # Add random examples with iou < 0.3 otherwise
             else:
-                neg_i = x[overlap[:,i] < 0.3].view(-1, 2048)
-                neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, 2048)
+                neg_i = x[overlap[:,i] < 0.3].view(-1, self.feature_extractor.out_channels)
+                neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
             # Add negatives splitting them into batches
             neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
             ind_to_add = 0
@@ -174,7 +174,7 @@ class ROIBoxHead(torch.nn.Module):
                     continue
                 else:
                     end_interval = int(ind_to_add + min(neg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add))
-                    self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, 2048)))
+                    self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels)))
                     ind_to_add = end_interval
                     if ind_to_add == self.negatives_to_pick:
                         break

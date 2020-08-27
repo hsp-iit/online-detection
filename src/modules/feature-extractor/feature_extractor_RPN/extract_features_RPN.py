@@ -28,7 +28,7 @@ from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
-from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor_new import inference
+from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor import inference
 import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
@@ -122,8 +122,6 @@ class FeatureExtractorRPN:
                 del model_pretrained['model'][key]
         checkpointer._load_model(model_pretrained)
 
-        #TODO add pick final o something similar in checkpointer.load from other training files in the server
-
         if self.distributed:
             model = model.module
 
@@ -169,7 +167,6 @@ class FeatureExtractorRPN:
                 device=cfg.MODEL.DEVICE,
                 is_target_task=self.is_target_task,
                 icwt_21_objs=self.icwt_21_objs,
-                num_classes=None,
                 is_train = self.is_train,
                 is_test = self.is_test
             )

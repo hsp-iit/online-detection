@@ -74,12 +74,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         X_pos = cache['pos']
         num_neg = len(X_neg)
         num_pos = len(X_pos)
-        # X = np.vstack((X_pos, X_neg))
-        # y = np.vstack((np.transpose(np.ones(num_pos)[np.newaxis]), -np.transpose(np.ones(num_neg)[np.newaxis])))
         X = torch.cat((X_pos, X_neg), 0)
         y = torch.cat((torch.transpose(torch.ones(num_pos), 0, 0), -torch.transpose(torch.ones(num_neg), 0, 0)), 0)
 
-        # return self.classifier.train(X, y, self.classifier_options)
         if self.sigma is not None and self.lam is not None:
             print('Updating model with lambda: {} and sigma: {}'.format(self.lam, self.sigma))
             return self.classifier.train(X, y, sigma=self.sigma, lam=self.lam)
@@ -134,21 +131,16 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))
-        # model_name = 'model_' + self.experiment_name
-        # torch.save(model, model_name)
         return model
 
     def trainRegionClassifier(self, opts=None):
         if opts is not None:
             self.processOptions(opts)
         print('Training Online Region Classifier')
-        # Still to implement early stopping of negatives selection
         negatives = self.negatives
         positives = self.positives
 
         if not self.normalized:
-            #self.mean, self.std, self.mean_norm = computeFeatStatistics(positives, negatives, self.feature_folder, self.is_rpn)
-            #print(self.stats)
             for i in range(self.num_classes-1):
                 if len(positives[i]):
                     positives[i] = self.zScores(positives[i])
@@ -169,7 +161,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         total_testing_time = 0
         try:
             for c in range(0, self.num_classes-1):
-                model[c].ny_points_ = model[c].ny_points_.to('cuda')  # TODO Check if helps
+                model[c].ny_points_ = model[c].ny_points_.to('cuda')
                 model[c].alpha_ = model[c].alpha_.to('cuda')
         except:
             pass

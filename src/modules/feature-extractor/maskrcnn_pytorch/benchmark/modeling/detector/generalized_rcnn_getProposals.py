@@ -10,7 +10,6 @@ from maskrcnn_benchmark.structures.image_list import to_image_list
 
 from maskrcnn_benchmark.modeling.backbone import build_backbone
 from maskrcnn_pytorch.benchmark.modeling.rpn.rpn import build_rpn
-#from maskrcnn_benchmark.modeling.rpn.rpn import build_rpn
 from ..roi_heads.roi_heads_getProposals import build_roi_heads
 
 import time
@@ -45,46 +44,19 @@ class GeneralizedRCNN(nn.Module):
                 like `scores`, `labels` and `mask` (for Mask R-CNN models).
 
         """
-        #print('Generalized',gt_bbox.bbox)
-        # TODO ms-thesis-segmentation Adapt here to only use the mask branch and the passed values
-        if self.training and targets is None:
-            raise ValueError("In training mode, targets should be passed")
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        # TODO ms-thesis-segmentation adapt here
-        #features = {}
-        #proposals = {}
-        #  TODO ms-thesis-segmentation add the ground truth proposal to the vector
-        #quit()
         proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN)
-        #print(average_recall_RPN)
-        #return average_recall_RPN       #TODO remove this
-        #print(proposals, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])))
         if gt_bbox is not None:
             # Resize the ground truth boxes to the correct format
             width, height = proposals[0].size
             gt_bbox = gt_bbox.resize((width, height))
             # Add the ground truth proposals to the proposal vector
             proposals[0].bbox = torch.cat((gt_bbox.bbox, proposals[0].bbox), 0)
-            #proposals[0].extra_fields['objectness'] = torch.cat((1.0 * torch.ones(gt_bbox.bbox.size()[0]), proposals[0].extra_fields['objectness']), 0)
-
             proposals[0].extra_fields['objectness'] = torch.cat((1.0 * torch.ones(gt_bbox.bbox.size()[0], device="cuda"), proposals[0].extra_fields['objectness']), 0)
 
-        #print('Generalized after resize',gt_bbox.bbox)
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, image_name, targets, gt_bbox = gt_bbox, gt_label= gt_label, img_size=img_size, start_time=start_time, num_classes=num_classes, gt_labels_list = gt_labels_list, is_train = is_train)
-            #print("Here")
-        #else:
-            # RPN-only models don't have roi_heads
-            #x = features
-            #result = proposals
-            #detector_losses = {}
-
-        #if self.training:
-            #losses = {}
-            #losses.update(detector_losses)
-            #losses.update(proposal_losses)
-            #return losses
 
         return average_recall_RPN
 

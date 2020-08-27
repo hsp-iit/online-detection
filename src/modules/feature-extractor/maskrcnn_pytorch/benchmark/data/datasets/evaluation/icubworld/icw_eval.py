@@ -146,7 +146,7 @@ def draw_preds_icw(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, is_target_task=False, icwt_21_objs=False):
+def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, is_target_task=False, icwt_21_objs=False, use_07_metric=True):
 
     pred_boxlists = []
     gt_boxlists = []
@@ -173,7 +173,7 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
         iou_thresh=0.5,
-        use_07_metric=True, # TODO need to make the use_07_metric format available for the user to choose
+        use_07_metric=use_07_metric,
     )
 
     result_str = "mAP: {:.4f}\n".format(result["map"])

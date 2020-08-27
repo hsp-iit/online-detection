@@ -2,16 +2,8 @@
 import torch
 
 from .box_head.box_head_getProposals import build_roi_box_head
-#from .mask_head.mask_head import build_roi_mask_head
 from maskrcnn_benchmark.modeling.roi_heads.keypoint_head.keypoint_head import build_roi_keypoint_head
 from maskrcnn_benchmark.structures.bounding_box import BoxList
-
-# to save objects
-import pickle
-# to save as .mat
-# TODO ms-thesis-segmentation important!! install scipy to your virtual environment
-import scipy.io
-
 
 class CombinedROIHeads(torch.nn.ModuleDict):
     """

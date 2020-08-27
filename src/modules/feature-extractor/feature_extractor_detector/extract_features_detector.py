@@ -28,7 +28,7 @@ from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
-from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor_new import inference
+from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor import inference
 import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
@@ -68,7 +68,7 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        #self.cfg.freeze() TODO uncomment this
+        #self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)

@@ -136,9 +136,9 @@ class RPNHead(nn.Module):
         for j in range(self.num_clss):
             # Refine boxes with RLS regressors
             if self.regressors[j]['Beta'] is not None:
-                weights = torch.empty((0,self.feat_size+1), device='cuda') #TODO read this value automatically
+                weights = torch.empty((0,self.feat_size+1), device='cuda')
                 for k in range(0, 4):
-                    weights = torch.cat((weights, self.regressors[j]['Beta'][str(k)]['weights'].view(1,self.feat_size+1)))#TODO read this value automatically
+                    weights = torch.cat((weights, self.regressors[j]['Beta'][str(k)]['weights'].view(1,self.feat_size+1)))
 
                 weights = torch.t(weights)
                 Y = torch.matmul(features, weights[:-1])

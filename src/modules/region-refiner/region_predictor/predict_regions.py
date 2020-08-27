@@ -47,9 +47,9 @@ class RegionPredictor():
             # Initialize refined boxes with example boxes in the 0-th dimension
             refined_boxes = ex_box
             for j in range(1, len(chosen_classes)):
-                weights = self.models[j-1]['Beta']['0']['weights'].view(1,2049) # TODO parametrize
+                weights = self.models[j-1]['Beta']['0']['weights'].view(1,-1)
                 for k in range(1, 4):
-                    weights = torch.cat((weights, self.models[j-1]['Beta'][str(k)]['weights'].view(1,2049)))    # TODO parametrize
+                    weights = torch.cat((weights, self.models[j-1]['Beta'][str(k)]['weights'].view(1,-1)))
                 weights = torch.t(weights)
                 Y = torch.matmul(feat, weights[:-1])
                 Y += weights[-1]
