@@ -49,8 +49,6 @@ pip install ./keops
 pip install scipy==1.4.1
 pip install .
 
-pip install h5py==2.10.0
-
 # Datasets download
 cd ../../Data/datasets/iCWT/TABLE-TOP
 wget https://zenodo.org/record/3970624/files/table_top_annotations.tar.xz
@@ -84,8 +82,8 @@ cd ..
 mkdir Annotations
 cd Annotations
 wget https://zenodo.org/record/1227305/files/Annotations_refined.tar.gz
-tar -xvf Annotations.tar.gz --strip 1
-rm Annotations.tar.gz
+tar -xvf Annotations_refined.tar.gz --strip 1
+rm Annotations_refined.tar.gz
 
 cd ../..
 mkdir iCubWorld-Transformations_manual

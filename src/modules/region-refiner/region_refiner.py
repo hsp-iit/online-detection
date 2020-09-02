@@ -6,43 +6,28 @@ import yaml
 
 
 class RegionRefiner(RegionRefinerAbstract):
-    def __init__(self, cfg_path_region_refiner, models=None, boxes=None, is_rpn=False):
+    def __init__(self, cfg_path_region_refiner, is_rpn=False):
         self.cfg = yaml.load(open(cfg_path_region_refiner), Loader=yaml.FullLoader)
         if is_rpn:
             self.cfg = self.cfg['RPN']
-        self.models = models
-        self.boxes = boxes
-        self.feat = None
         try:
             self.lambd = self.cfg['REGION_REFINER']['opts']['lambda']
         except:
             self.lambd = None
-        self.sigma = None
-        self.COXY = None
-        self.stats = None
-        self.normalize_features = False
         self.is_rpn = is_rpn
 
     def loadRegionRefiner(self):
         return
 
-    def trainRegionRefiner(self):
-        trainer = RegionRefinerTrainer(self.cfg)
-        trainer.lambd = self.lambd
-        trainer.sigma = self.sigma
-        trainer.COXY = self.COXY
-        trainer.is_rpn = self.is_rpn
-        self.models = trainer()
+    def trainRegionRefiner(self, COXY):
+        trainer = RegionRefinerTrainer(self.cfg, lmbd=self.cfg['REGION_REFINER']['opts']['lambda'], is_rpn=self.is_rpn)
+        self.models = trainer(COXY)
         return self.models
 
     def testRegionRefiner(self):
         return
 
-    def predict(self):
-        predictor = RegionPredictor(self.cfg, self.models, self.boxes)
-        predictor.feat = self.feat
-        predictor.normalize_features = self.normalize_features
-        if self.stats is not None:
-            predictor.stats = self.stats
-        refined_regions = predictor()
+    def predict(self, boxes, features, normalize_features=False, stats=None):
+        predictor = RegionPredictor(self.cfg, self.models)
+        refined_regions = predictor(boxes, features, normalize_features=normalize_features, stats=stats)
         return refined_regions

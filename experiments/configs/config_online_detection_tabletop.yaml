@@ -43,35 +43,3 @@ CHOSEN_CLASSES:
     20: 'sprayer8'
     21: 'sprayer9'
 
-RPN:
-    ONLINE_REGION_CLASSIFIER:
-        MINIBOOTSTRAP:
-            EASY_THRESH: -0.9
-            HARD_THRESH: -0.7
-        CLASSIFIER:
-            lambda: 0.001
-            sigma: 5
-            M: 1000
-            kernel_type: 'gauss'
-
-    REGION_REFINER:
-        opts:
-            lambda: 0.01
-
-    CHOSEN_CLASSES:
-        0: '0'
-        1: '1'
-        2: '2'
-        3: '3'
-        4: '4'
-        5: '5'
-        6: '6'
-        7: '7'
-        8: '8'
-        9: '9'
-        10: '10'
-        11: '11'
-        12: '12'
-        13: '13'
-        14: '14'
-

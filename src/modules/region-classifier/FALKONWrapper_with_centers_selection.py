@@ -10,6 +10,7 @@ import yaml
 import copy
 
 from MyCenterSelector import MyCenterSelector
+from falkon.options import *
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
@@ -46,12 +47,14 @@ class FALKONWrapper(ca.ClassifierAbstract):
         # Compute indices of nystrom centers
         indices = self.compute_indices_selection(y)
         center_selector = MyCenterSelector(indices)
+        opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0)
         # Initialize FALKON model
         self.model = Falkon(
             kernel=self.kernel,
             penalty=lam,
             M=len(indices),
-            center_selection = center_selector
+            center_selection = center_selector,
+            options=opt
         )
         # Train FALKON model
         if self.model is not None:

@@ -1,4 +1,3 @@
-import h5py
 import numpy as np
 import os
 import time
@@ -7,20 +6,20 @@ import torch
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
-sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
-sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir, os.path.pardir)))
 
 
 class RegionRefinerTrainer():
-    def __init__(self, cfg):
+    def __init__(self, cfg, lmbd, is_rpn):
         self.cfg = cfg
-        self.lambd = self.cfg['REGION_REFINER']['opts']['lambda']
+        self.lambd = lmbd
         self.percentile = 0
-
         self.COXY = None
-        self.is_rpn = False
+        self.is_rpn = is_rpn
 
-    def __call__(self):
+    def __call__(self, COXY):
+        self.COXY = COXY
         models = self.train()
         return models
 
@@ -40,10 +39,7 @@ class RegionRefinerTrainer():
         for i in range(start_index, num_clss):
             print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
             # Compute indices where bboxes of class i overlap with the ground truth
-            if self.COXY['O'] is not None:
-                I = (self.COXY['O'] >= opts['min_overlap']) & (self.COXY['C'] == i)
-            else:
-                I = self.COXY['C'] == i
+            I = self.COXY['C'] == i
             I = torch.where(I == True)[0]
             print('Training with %i examples' %len(I))
             if len(I) == 0:
@@ -98,7 +94,7 @@ class RegionRefinerTrainer():
             print('Mean losses:', mean_losses)
 
         end_time = time.time()
-        print('Time required to train %d regressors: %f seconds.' % (num_clss, end_time - start_time))
+        print('Time required to train %d regressors: %f seconds.' % (num_clss-1, end_time - start_time))
         return models
 
 

@@ -120,6 +120,3 @@ class FALKONWrapper(ca.ClassifierAbstract):
 
 def binary_loss(true, pred):
     return torch.mean((true != torch.sign(pred)).to(torch.float32))
-
-
-

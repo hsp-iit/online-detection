@@ -1,34 +1,27 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
-# https://github.com/hsp-iit/ms-thesis-segmentation/blob/master/maskrcnn_pytorch/tools/train_net.py
 r"""
 Basic training script for PyTorch
 """
-
-# Set up custom environment before nearly anything else is imported
-# NOTE: this should be the first import (do not reorder)
-
-# from maskrcnn_benchmark.utils.env import setup_environment  # noqa F401 isort:skip
 
 import argparse
 import os
 
 import torch
-from maskrcnn_pytorch.benchmark.config import cfg
+from mrcnn_modified.config import cfg
 
-from maskrcnn_pytorch.benchmark.data import make_data_loader
-# from maskrcnn_benchmark.data import make_data_loader
+from mrcnn_modified.data import make_data_loader
 
 from maskrcnn_benchmark.solver import make_lr_scheduler
 from maskrcnn_benchmark.solver import make_optimizer
 
-from maskrcnn_pytorch.benchmark.modeling.rpn.rpn_getProposals_RPN import build_detection_model
+from mrcnn_modified.modeling.rpn.rpn_getProposals_RPN import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer, Checkpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
-from maskrcnn_pytorch.benchmark.engine.feature_proposal_extractor import inference
+from mrcnn_modified.engine.feature_proposal_extractor import inference
 import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
@@ -49,11 +42,8 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-        self.is_train = False
-        self.is_test = False
-
-    def __call__(self):
-        return self.train()
+    def __call__(self, is_train):
+        return self.train(is_train)
 
 
     def load_parameters(self):
@@ -64,7 +54,6 @@ class FeatureExtractorRPN:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        self.cfg.freeze()
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)
@@ -80,7 +69,7 @@ class FeatureExtractorRPN:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self):
+    def train(self, is_train):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -128,14 +117,11 @@ class FeatureExtractorRPN:
         iou_types = ("bbox",)
         torch.cuda.empty_cache()  # TODO check if it helps
 
-        output_folders = [None] * (len(self.cfg.DATASETS.TRAIN) + len(self.cfg.DATASETS.TEST))
-        if len(self.cfg.DATASETS.TRAIN) + len(self.cfg.DATASETS.TEST) == 2:
-            dataset_names = ['train_val', 'test']
+        output_folders = [None]
+        if is_train:
+            dataset_names = ['train']
         else:
-            for elem in self.cfg.DATASETS.TRAIN:
-                dataset_names.append(elem)
-            for elem in self.cfg.DATASETS.TEST:
-                dataset_names.append(elem)
+            dataset_names = ['test']
 
         if self.cfg.OUTPUT_DIR:
             for idx, dataset_name in enumerate(dataset_names):
@@ -143,21 +129,10 @@ class FeatureExtractorRPN:
                 mkdir(output_folder)
                 output_folders[idx] = output_folder
 
-        data_loaders = make_data_loader(self.cfg, is_train=True, is_distributed=self.distributed,
-                                            is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
-        data_loaders_test = make_data_loader(self.cfg, is_train=False, is_distributed=self.distributed,
-                                            is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
-        for elem in data_loaders_test:
-            data_loaders.append(elem)
-        for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
-            if 'train' in dataset_name:
-                if not self.is_train:
-                    continue
-            else:
-                if not self.is_test:
-                    continue
+        data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
-            inference(  # TODO change parameters according to the function definition in feature_proposal_extractor
+        for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
+            inference(
                 self.cfg,
                 model,
                 data_loader,
@@ -167,8 +142,7 @@ class FeatureExtractorRPN:
                 device=cfg.MODEL.DEVICE,
                 is_target_task=self.is_target_task,
                 icwt_21_objs=self.icwt_21_objs,
-                is_train = self.is_train,
-                is_test = self.is_test
+                is_train = is_train,
             )
             synchronize()
         logger = logging.getLogger("maskrcnn_benchmark")

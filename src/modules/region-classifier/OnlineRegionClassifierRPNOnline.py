@@ -3,7 +3,7 @@ import os
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
-sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
 
 import RegionClassifierAbstract as rcA
 from py_od_utils import computeFeatStatistics
@@ -23,9 +23,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             if is_rpn:
                 self.cfg = self.cfg['RPN']
-            self.experiment_name = self.cfg['EXPERIMENT_NAME']
-            self.train_imset = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
-            self.test_imset = self.cfg['DATASET']['TARGET_TASK']['TEST_IMSET']
             self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
             self.mean = 0
             self.std = 0
@@ -33,7 +30,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.is_rpn = is_rpn
             self.lam = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['lambda']
             self.sigma = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['sigma']
-            self.output_folder = self.cfg['OUTPUT_FOLDER']
 
         else:
             print('Config file path not given. cfg variable set to None.')
@@ -155,8 +151,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
     def testRegionClassifier(self, model, test_boxes):
         print('Online Region Classifier testing')
-        with open(self.test_imset, 'r') as f:
-            path_list = f.readlines()
         predictions = []
         total_testing_time = 0
         try:
@@ -165,11 +159,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 model[c].alpha_ = model[c].alpha_.to('cuda')
         except:
             pass
-        for i in range(len(path_list)):
-            print('Testing {}/{} : {}'.format(i, len(path_list), path_list[i].rstrip()))
+        for i in range(len(test_boxes)):
             l = test_boxes[i]
             if l is not None:
-                print('Processing image {}'.format(path_list[i]))
                 I = np.nonzero(l['gt'] == 0)
                 boxes = l['boxes'][I, :][0]
                 X_test = torch.tensor(l['feat'][I, :][0], device='cuda')
@@ -182,16 +174,12 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     scores[:, c+1] = torch.squeeze(pred)
 
                 total_testing_time = total_testing_time + time.time() - t0
-                b = BoxList(torch.from_numpy(boxes), (640, 480), mode="xyxy")    # TO parametrize image shape
-                # b.add_field("scores", torch.from_numpy(np.float32(scores)))
+                b = BoxList(torch.from_numpy(boxes), (l['img_size'][0], l['img_size'][1]), mode="xyxy")
                 b.add_field("scores", scores.to('cpu'))
-                b.add_field("name_file", path_list[i].rstrip())
                 predictions.append(b)
-            else:
-                print('None feature loaded. Skipping image {}.'.format(path_list[i]))
 
-        avg_time = total_testing_time/len(path_list)
-        print('Testing an image in {} seconds.'.format(avg_time))
+        avg_time = total_testing_time/len(test_boxes)
+        print('Average image testing time: {} seconds.'.format(avg_time))
         return predictions
     
     def predict(self, dataset) -> None:

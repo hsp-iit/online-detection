@@ -4,17 +4,6 @@ import os
 import torch
 
 
-def getFeatPath(cfg):
-    s =  '' + cfg['FEATURE_INFO']['BACKBONE'] + '_ep' \
-            + str(cfg['FEATURE_INFO']['NUM_EPOCHS']) + '_FT' \
-            + cfg['FEATURE_INFO']['FEAT_TASK_NAME'] + '_TT' \
-            + cfg['FEATURE_INFO']['TARGET_TASK_NAME'] + ''
-    if 'DETECTOR_WITH_ONLINE_RPN' in cfg.keys():
-        if cfg['DETECTOR_WITH_ONLINE_RPN']:
-            s += '_RPN_online'
-    return s
-
-
 def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000,):
     basedir = os.path.dirname(__file__)
     if not is_rpn:
@@ -111,20 +100,6 @@ def zScores(feat, mean, mean_norm, target_norm=20):
     feat = feat * (target_norm / mean_norm)
     return feat
 
-
-def loadFeature(feat_path, file_name, type='mat'):
-    file_path_noExt = os.path.join(feat_path, file_name)
-    if type == 'mat':
-        import scipy.io
-        file_path = file_path_noExt + '.mat'
-        feature = scipy.io.loadmat(file_path)
-    elif type == 'torch':
-        feature = torch.load(file_path_noExt).to('cpu')
-    else:
-        print('Unrecognized feature type: {}'.format(type))
-        feature = None
-
-    return feature
 
 def normalize_COXY(COXY, stats):
     COXY['X'] = COXY['X'] - stats['mean']
