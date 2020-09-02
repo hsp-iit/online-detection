@@ -38,7 +38,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.classifier = classifier
         self.negatives = negatives
         self.positives = positives
-        self.num_classes = len(positives)+1
+        self.num_classes = len(self.cfg['CHOSEN_CLASSES'])
+        if is_rpn:
+            self.num_classes += 1
         self.stats = stats
         self.mean = self.stats['mean']
         self.std = self.stats['std']
@@ -80,7 +82,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             print('Updating model with default lambda and sigma')
             return self.classifier.train(X, y)
 
-    def trainWithMinibootstrap(self, negatives, positives):
+    def trainWithMinibootstrap(self, negatives, positives, output_dir=None):
         iterations = len(negatives[0])
         caches = []
         model = []
@@ -127,9 +129,15 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))
+        if output_dir and self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("RPN's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
         return model
 
-    def trainRegionClassifier(self, opts=None):
+    def trainRegionClassifier(self, opts=None, output_dir=None):
         if opts is not None:
             self.processOptions(opts)
         print('Training Online Region Classifier')
@@ -146,7 +154,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.normalized = True
 
         
-        model = self.trainWithMinibootstrap(negatives, positives)
+        model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
         return model
 
     def testRegionClassifier(self, model, test_boxes):

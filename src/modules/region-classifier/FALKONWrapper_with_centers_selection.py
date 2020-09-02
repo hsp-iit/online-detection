@@ -47,7 +47,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
         # Compute indices of nystrom centers
         indices = self.compute_indices_selection(y)
         center_selector = MyCenterSelector(indices)
-        opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0)
+        opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0,  keops_active="no")
         # Initialize FALKON model
         self.model = Falkon(
             kernel=self.kernel,

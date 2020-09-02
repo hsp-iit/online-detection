@@ -10,7 +10,6 @@ from .loss import make_rpn_loss_evaluator
 from .anchor_generator import make_anchor_generator
 from .inference import make_rpn_postprocessor
 
-import time
 from .average_recall import compute_average_recall
 
 class RPNHeadConvRegressor(nn.Module):
@@ -122,13 +121,9 @@ class RPNHead(nn.Module):
                 t = t - self.stats['mean']
                 t = t * (20 / self.stats['mean_norm'])
                 # Compute objectness with FALKON
-                #a = time.time()
                 logits.append(self.compute_objectness_FALKON(t))
-                #b = time.time()
-                #print('clss', b-a)
                 # Refine boxes
                 bbox_reg.append(self.refine_boxes(t))
-                #print('reg', time.time()- b)
             # Else use pretrained weights
             else:
                 logits.append(self.cls_logits(t))
@@ -157,19 +152,15 @@ class RPNHead(nn.Module):
         return refined_boxes
     
     def compute_objectness_FALKON(self, features):
-        #a=time.time()
         objectness_scores = torch.empty((1, 0, self.height, self.width), device='cuda')
-        #print('init_time', time.time()-a)
         for classifier in self.classifiers:
             # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
-            #a = time.time()
             if classifier is None:
                 predictions = torch.full((self.area, 1), -2, device='cuda')
             # Compute objectness with falkon classifier
             else:
                 predictions = classifier.predict(features)
             objectness_scores = torch.cat((objectness_scores, torch.t(predictions).reshape(1,1,self.height,self.width)), dim=1)
-            #print(classifier, time.time()-a, predictions.device)
         return objectness_scores
 
 

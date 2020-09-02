@@ -18,12 +18,12 @@ class RegionRefinerTrainer():
         self.COXY = None
         self.is_rpn = is_rpn
 
-    def __call__(self, COXY):
+    def __call__(self, COXY, output_dir=None):
         self.COXY = COXY
-        models = self.train()
+        models = self.train(output_dir=output_dir)
         return models
 
-    def train(self):
+    def train(self, output_dir=None):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
         start_index = 1
 
@@ -94,7 +94,16 @@ class RegionRefinerTrainer():
             print('Mean losses:', mean_losses)
 
         end_time = time.time()
-        print('Time required to train %d regressors: %f seconds.' % (num_clss-1, end_time - start_time))
+        training_time = end_time - start_time
+        print('Time required to train %d regressors: %f seconds.' % (num_clss-1, training_time))
+
+        if output_dir and self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("RPN's Online Region Refiner training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Detector's Online Region Refiner training time: {}min:{}s \n \n".format(int(training_time/60), round(training_time%60)))
+
         return models
 
 

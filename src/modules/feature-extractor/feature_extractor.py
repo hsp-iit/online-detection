@@ -18,15 +18,15 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.stats_rpn = None
         self.regions_post_nms = None
 
-    def extractRPNFeatures(self, is_train):
+    def extractRPNFeatures(self, is_train, output_dir=None):
         # call class to extract rpn features:
         feature_extractor = FeatureExtractorRPN(self.cfg_path_RPN)
-        features = feature_extractor(is_train)
+        features = feature_extractor(is_train, output_dir=output_dir)
 
         return features
 
 
-    def extractFeatures(self, is_train):
+    def extractFeatures(self, is_train, output_dir=None):
         # call class to extract detector features:
         feature_extractor = FeatureExtractorDetector(self.cfg_path_target_task)
         feature_extractor.falkon_rpn_models = self.falkon_rpn_models
@@ -34,6 +34,6 @@ class FeatureExtractor(FeatureExtractorAbstract):
         feature_extractor.stats_rpn = self.stats_rpn
         if self.regions_post_nms is not None:
             feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
-        features = feature_extractor(is_train)
+        features = feature_extractor(is_train, output_dir=output_dir)
 
         return features

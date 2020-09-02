@@ -192,6 +192,7 @@ def inference(
         icwt_21_objs=False,
         compute_average_recall_RPN=False,
         is_train = True,
+        result_dir=None,
 ):
     # convert to a torch.device for efficiency
     device = torch.device(device)
@@ -207,6 +208,11 @@ def inference(
     else:
         AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN=True, is_train = False)
     print('Average Recall (AR):', AR)
+
+    if result_dir and not is_train:
+        with open(os.path.join(result_dir, "result.txt"), "a") as fid:
+            fid.write('Average Recall (AR): {} \n \n'.format(AR))
+
     synchronize()
     total_time = total_timer.toc()
     total_time_str = get_time_str(total_time)
@@ -215,6 +221,7 @@ def inference(
             total_time_str, total_time * num_devices / len(dataset), num_devices
         )
     )
+
     total_infer_time = get_time_str(inference_timer.total_time)
     logger.info(
         "Model inference time: {} ({} s / img per device, on {} devices)".format(
@@ -224,4 +231,4 @@ def inference(
         )
     )
 
-    return
+    return total_time

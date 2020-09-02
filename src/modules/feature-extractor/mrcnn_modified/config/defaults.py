@@ -34,8 +34,6 @@ _C.MODEL.CLS_AGNOSTIC_SEGM = False
 # the path in paths_catalog. Else, it will use it as the specified absolute
 # path
 _C.MODEL.WEIGHT = ""
-_C.MODEL.PRETRAINED_DETECTION_WEIGHTS = ""
-
 
 # -----------------------------------------------------------------------------
 # INPUT

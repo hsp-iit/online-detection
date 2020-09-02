@@ -42,8 +42,8 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, is_train):
-        return self.train(is_train)
+    def __call__(self, is_train, output_dir=None):
+        return self.train(is_train, result_dir=output_dir)
 
 
     def load_parameters(self):
@@ -69,7 +69,7 @@ class FeatureExtractorRPN:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train):
+    def train(self, is_train, result_dir=None):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -132,18 +132,23 @@ class FeatureExtractorRPN:
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
-            inference(
-                self.cfg,
-                model,
-                data_loader,
-                dataset_name=dataset_name,
-                iou_types=iou_types,
-                box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
-                device=cfg.MODEL.DEVICE,
-                is_target_task=self.is_target_task,
-                icwt_21_objs=self.icwt_21_objs,
-                is_train = is_train,
-            )
+            feat_extraction_time = inference(self.cfg,
+                                             model,
+                                             data_loader,
+                                             dataset_name=dataset_name,
+                                             iou_types=iou_types,
+                                             box_only=False if self.cfg.MODEL.RETINANET_ON else self.cfg.MODEL.RPN_ONLY,
+                                             device=cfg.MODEL.DEVICE,
+                                             is_target_task=self.is_target_task,
+                                             icwt_21_objs=self.icwt_21_objs,
+                                             is_train = is_train,
+                                             result_dir=result_dir,
+                                            )
+
+            if result_dir and is_train:
+                with open(os.path.join(result_dir, "result.txt"), "a") as fid:
+                    fid.write("RPN's feature extraction time: {}min:{}s \n".format(int(feat_extraction_time/60), round(feat_extraction_time%60)))
+
             synchronize()
         logger = logging.getLogger("maskrcnn_benchmark")
         logger.handlers=[]

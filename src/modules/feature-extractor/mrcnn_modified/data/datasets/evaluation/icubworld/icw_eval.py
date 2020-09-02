@@ -183,6 +183,7 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
         result_str += "{:<16}: {:.4f}\n".format(
             dataset.map_class_id_to_class_name(i, is_target_task = is_target_task, icwt_21_objs=icwt_21_objs), ap
         )
+    result_str += "\n"    
 
     logger.info(result_str)
 

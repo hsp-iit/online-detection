@@ -1,8 +1,11 @@
 import os
 import sys
+import torch
+import math
+import argparse
 
 basedir = os.path.dirname(__file__)
-sys.path.append(os.path.abspath(os.path.join(basedir, '..', '..')))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-classifier')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-refiner')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'feature-extractor')))
@@ -16,13 +19,11 @@ import OnlineRegionClassifierRPNOnline as ocr
 import FALKONWrapper_with_centers_selection as falkon
 
 from region_refiner import RegionRefiner
-import torch
-import math
-from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda
-import AccuracyEvaluator as ae
-import copy
 
-import argparse
+from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda
+
+import AccuracyEvaluator as ae
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--icwt30', action='store_true', help='Run the iCWT experiment reported in the paper (i.e. use as TARGET-TASK the 30 objects identification task from the iCubWorld Transformations dataset). By default, run the experiment referred to as TABLE-TOP in the paper.')
@@ -82,7 +83,7 @@ feature_extractor = FeatureExtractor(cfg_target_task, cfg_rpn)
 if not args.only_ood and not args.load_RPN_models:
     # Extract RPN features for the training set
     feature_extractor.is_train = True
-    negatives, positives, COXY = feature_extractor.extractRPNFeatures(is_train=True)
+    negatives, positives, COXY = feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir)
     stats_rpn = computeFeatStatistics_torch(positives, negatives,  features_dim=positives[0].size()[1])
 
     # RPN Region Classifier initialization
@@ -90,13 +91,13 @@ if not args.only_ood and not args.load_RPN_models:
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats_rpn, cfg_path=cfg_online_path, is_rpn=True)
 
     # Train RPN region classifier
-    models_falkon_rpn = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'is_rpn': True}))
+    models_falkon_rpn = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'is_rpn': True}, output_dir=output_dir))
 
     # RPN Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
 
     # Train RPN region Refiner
-    models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats_rpn))
+    models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats_rpn), output_dir=output_dir)
 
     # Set trained RPN models in the pipeline
     feature_extractor.falkon_rpn_models = models_falkon_rpn
@@ -124,9 +125,14 @@ if args.load_detector_models:
     model = torch.load(os.path.join(output_dir, 'classifier_detector'))
     models = torch.load(os.path.join(output_dir, 'regressor_detector'))
     stats = torch.load(os.path.join(output_dir, 'stats_detector'))
+    # Detector Region Classifier initialization
+    classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+    regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
+    region_refiner = RegionRefiner(cfg_online_path)
+
 else:
     # Extract detector features for the train set
-    negatives, positives, COXY = feature_extractor.extractFeatures(is_train=True)
+    negatives, positives, COXY = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir)
     stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1])
 
     # Detector Region Classifier initialization
@@ -134,15 +140,15 @@ else:
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
     # Train detector Region Classifier
-    model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier())
+    model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
 
     # Detector Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path)
     if args.normalize_features_regressor_detector:
-        models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats))
+        models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats), output_dir=output_dir)
     else:
         # Train Detector Region Refiner
-        models = region_refiner.trainRegionRefiner(COXY)
+        models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
 
 # Save detector models, if requested
 if args.save_detector_models:
@@ -152,7 +158,7 @@ if args.save_detector_models:
 
 # Test models
 print('Extracting features for the test set')
-test_boxes = feature_extractor.extractFeatures(is_train=False)
+test_boxes = feature_extractor.extractFeatures(is_train=False, output_dir=output_dir)
 
 # Compute classification predictions
 print('Computing classification predictions')
@@ -160,7 +166,7 @@ predictions = regionClassifier.testRegionClassifier(model, test_boxes)
 
 # Refine predictions with the region refiners
 print('Refining predictions with bounding box regressors')
-refined_predictions = region_refiner.predict(predictions, test_boxes, normalize_features=args.normalize_features_regressor_detector, stats=stats)
+refined_predictions = region_refiner.predict(predictions, test_boxes, models=models, normalize_features=args.normalize_features_regressor_detector, stats=stats)
 
 # Test dataset creation for accuracy evaluation
 print('Computing test dataset for accuracy evaluation')

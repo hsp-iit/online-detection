@@ -19,15 +19,18 @@ class RegionRefiner(RegionRefinerAbstract):
     def loadRegionRefiner(self):
         return
 
-    def trainRegionRefiner(self, COXY):
+    def trainRegionRefiner(self, COXY, output_dir=None):
         trainer = RegionRefinerTrainer(self.cfg, lmbd=self.cfg['REGION_REFINER']['opts']['lambda'], is_rpn=self.is_rpn)
-        self.models = trainer(COXY)
+        self.models = trainer(COXY, output_dir=output_dir)
         return self.models
 
     def testRegionRefiner(self):
         return
 
-    def predict(self, boxes, features, normalize_features=False, stats=None):
-        predictor = RegionPredictor(self.cfg, self.models)
+    def predict(self, boxes, features, models=None, normalize_features=False, stats=None):
+        if models is None:
+            predictor = RegionPredictor(self.cfg, self.models)
+        else:
+            predictor = RegionPredictor(self.cfg, models)
         refined_regions = predictor(boxes, features, normalize_features=normalize_features, stats=stats)
         return refined_regions
