@@ -1,3 +1,5 @@
+
+
 # Fast Region Proposal Learning for Object Detection for Robotics
 
 This repository contains the source code used to run the experiments of the paper _Fast Region Proposal Learning for Object Detection for Robotics_.
@@ -9,9 +11,8 @@ Object detection is a fundamental task for robots to operate in unstructured env
 The following instructions will guide you in preparing your system before running the experiments proposed in the paper.
 
 ### Software Requirements
-- NVIDIA's cuda *version*
-- Python 3.6
-- ... #FEDERICO
+- NVIDIA's cuda *version* 10.1
+- Python 3.6.9
 
 ### Required Python Packages
 ```
@@ -19,12 +20,14 @@ pip install ninja==1.9.0.post1 yacs==0.1.7 cython==0.29.17 matplotlib==3.2.1
 pip install tqdm==4.45.0 opencv-python==4.2.0.34
 pip install torchvision==0.5.0
 pip install scipy==1.4.1
-pip install h5py==2.10.0
 ```
 
 ### Source Code Preparation
+To start source code preparation, copy `python-online-detection.zip` in the folder where you want to place the code and from that folder execute the following commands.
 ```
-unzip instructions #FEDERICO
+unzip python-online-detection.zip
+cd python-online-detection
+export HOME_DIR=$PWD
 ```
 
 ### Mask R-CNN Installation
@@ -32,8 +35,9 @@ One of the dependencies of this code is the source code of Mask R-CNN [2]. The f
 
 #### Set installation directory
 ```
-mkdir external/mask_rcnn
-cd external/mask_rcnn
+cd $HOME_DIR/external
+mkdir mask_rcnn
+cd mask_rcnn
 export INSTALL_DIR=$PWD
 ```
 #### Install pycocotools
@@ -44,7 +48,7 @@ cd cocoapi/PythonAPI
 python setup.py build_ext install
 ```
 #### Install cityscapesScripts
-In order to complete the installation of the repository `cityscapesScripts`, after cloning the repository, you may need to change in the `setup.py` file the line 27. Specifically, from `with open("README.md") as f:`  to `open("README.md", encoding='utf-8') as f:` 
+In order to complete the installation of the repository `cityscapesScripts`, after cloning the repository, you may need to change in the `setup.py` file the line 27. Specifically, from `with open("README.md") as f:`  to `with open("README.md", encoding='utf-8') as f:` 
 ```
 cd $INSTALL_DIR
 git clone https://github.com/mcordts/cityscapesScripts.git
@@ -71,27 +75,106 @@ Note: at the end of the installation of Mask R-CNN source code, remember to `uns
 ### FALKON
 One of the dependencies of this code is the repository of FALKON [3]. The following instructions will guide you in the installation of the source code. 
 ```
-cd ../..
+cd $HOME_DIR/external
 git clone --recurse-submodules https://github.com/FalkonML/falkon.git
 cd falkon
-git checkout faster-mmv
-git checkout b0e45e5495a4e9801f9bf4608a92fb4a7f95d4df
 pip install ./keops
 pip install .
 ```
 
+### Datasets Download
+
+Depending on the experiment that you want to run, you need to download the required dataset. Namely, if you want to run the experiment on the **30 objects identification task from the iCubWorld Transformations dataset (iCWT)**, you need to download such dataset, following the subsequent instructions.
+```
+cd $HOME_DIR/Data/datasets/iCWT/iCubWorld-Transformations
+mkdir Images
+cd Images
+wget https://zenodo.org/record/835510/files/part1.tar.gz
+tar -xvf part1.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part2.tar.gz
+tar -xvf part2.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part3.tar.gz
+tar -xvf part3.tar.gz --strip 1
+wget https://zenodo.org/record/835510/files/part4.tar.gz
+tar -xvf part4.tar.gz --strip 1
+
+rm part1.tar.gz
+rm part2.tar.gz
+rm part3.tar.gz
+rm part4.tar.gz
+
+cd $HOME_DIR/Data/datasets/iCWT/iCubWorld-Transformations
+mkdir Annotations
+cd Annotations
+wget https://zenodo.org/record/1227305/files/Annotations_refined.tar.gz
+tar -xvf Annotations_refined.tar.gz --strip 1
+rm Annotations_refined.tar.gz
+
+cd $HOME_DIR/Data/datasets/iCWT/iCubWorld-Transformations_manual
+ln -s $HOME_DIR/Data/datasets/iCWT/iCubWorld-Transformations/Images .
+mkdir Annotations
+cd Annotations
+wget https://zenodo.org/record/2563223/files/Annotations_manual.tar.gz
+tar -xvf Annotations_manual.tar.gz --strip 1
+rm Annotations_manual.tar.gz
+```
+Similarly, if you want to run the experiment on the **21 objects identification task from the TABLE-TOP dataset**, you need to download such dataset, following the subsequent instructions.
+
+```
+cd $HOME_DIR/Data/datasets/iCWT/TABLE-TOP
+mkdir Annotations
+cd Annotations
+wget https://zenodo.org/record/3970624/files/table_top_annotations.tar.xz
+tar -xvf table_top_annotations.tar.xz --strip 1
+rm table_top_annotations.tar.xz
+
+cd $HOME_DIR/Data/datasets/iCWT/TABLE-TOP
+mkdir Images
+cd Images
+wget https://zenodo.org/record/3970624/files/table_top_images.tar.xz
+tar -xvf table_top_images.tar.xz --strip 1
+rm table_top_images.tar.xz
+```
+Note: at the end of the installation, remember to `unset HOME_DIR`
 
 ## Usage
-By modifying the configuration files in the `Conf` folder and by substituting the files `name_file` with the proper ones for your data, this code allows you to run customized experiments. However, in this repository we provide you with the  configuration files and scripts that are required to reproduce the main experiments in the presented paper.
+By modifying the configuration files in the `experiments/configs` folder and by substituting the files with the proper ones for your data, this code allows you to run customized experiments. However, in this repository we provide you with the  configuration files and scripts that are required to reproduce the main experiments in the presented paper.
+For all the experiments that you want to reproduce, you have to run the script `experiments/run_experiment.py` and to properly set command line arguments. Some examples will be provided in the two following subsections. For additional information please refer to the helper of the script, running the command `python run_experiment.py -h` in the  `experiments` directory.
+
+In the `experiments/configs` you can find four categories of configuration files:
+ - config_rpn_*experiment_name*.yaml: sets parameters for RPN's feature extraction.
+ - config_detector_*experiment_name*.yaml: sets parameters for detector's feature extraction.
+ - config_online_detection_*experiment_name*.yaml: sets parameters for the **O-OD** experiment (3rd row of *Table 1* and *Table 2* in the paper).
+ - config_online_online_rpn_detection_*experiment_name*.yaml: sets parameters for the **Ours** experiment (5th row of *Table 1* and *Table 2* in the paper).
+
+**Important**: if you have more than one GPU available, before running an experiment, you have to set the number of the GPU that you want to use (only one) with the command `echo $CUDA_VISIBLE_DEVICE=number_of_the_gpu`
+
 
 ### iCWT: different objects, same setting.
-#FEDERICO
+To reproduce the results of the **O-OD** experiment on the **iCWT** dataset reported in the **Table 1** of the paper, in the `experiments` folder you have to run the command
+
+`python run_experiment.py --icwt30 --only_ood`.
+
+To reproduce **Ours** experiment you have to run the command
+
+`python run_experiment.py --icwt30`.
+
+If you do not set from command line an output directory, experiment's results will be saved in the `experiments/icwt30_experiment/result.txt` file.
 
 ### TABLE-TOP: different objects and setting.
-#FEDERICO
+Similarly to the iCWT experiment, to reproduce the results of the **O-OD** experiment on the **TABLE-TOP** dataset reported in the **Table 2** of the paper, in the `experiments` folder you have to run the command
+
+`python run_experiment.py --only_ood`.
+
+To reproduce **Ours** experiment you have to run the command
+
+`python run_experiment.py`.
+
+If you do not set from command line an output directory, experiment's results will be saved in the `experiments/tabletop_experiment/result.txt` file.
+
 
 ## Statement of Contribution
-The code contained in this repository is part of the contribution of the presented work. Specifically, we produced all the code except for the repositories contained in the `external` folder. Please, also note that the code contained in `folder_name #FEDERICO`  contains a modified version of some Mask R-CNN's functions that we changed for the implementation of the `On-line RPN` and for feature extraction.
+The code contained in this repository is part of the contribution of the presented work. Specifically, we produced all the code except for the repositories contained in the  `external` folder. Please, also note that the code contained in `src/modules/feature-extractor/mrcnn_modified`  contains a modified version of some Mask R-CNN's functions that we changed for the implementation of the `On-line RPN` and for feature extraction.
 
 
 ## References
@@ -100,3 +183,4 @@ The code contained in this repository is part of the contribution of the present
 [2] K. He, G. Gkioxari, P. Dollár, and R. B. Girshick. Mask r-cnn. 2017 IEEE International Conference on Computer Vision (ICCV), pages 2980–2988, 2017.
 
 [3] A. Rudi, L. Carratino, and L. Rosasco. Falkon: An optimal large scale kernel method. In I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus, S. Vishwanathan, and R. Garnett, editors, Advances in Neural Information Processing Systems 30, pages 3888–3898. Curran Associates, Inc., 2017.
+
