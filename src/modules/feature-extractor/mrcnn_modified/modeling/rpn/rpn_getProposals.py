@@ -296,6 +296,7 @@ class RPNModule(torch.nn.Module):
                 values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
                 positives_i = anchors_to_return[indices.squeeze()]
                 positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
+                positive_anchors = cat_boxlist([positive_anchors, positives_i])
                 
         # Find anchors associated to the positives, to avoid unuseful computation
         pos_inds = torch.unique(positive_anchors.get_field('classifier'))
