@@ -60,15 +60,16 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
     return mean, std, mean_norm
 
 
-def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048):
+def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048, cpu_tensor=False):
+    device = 'cpu' if cpu_tensor else 'cuda'
     print('Computing features statistics')
     pos_fraction = 1/10
     neg_fraction = 9/10
     num_classes = len(positives)
     take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
-    sampled_X = torch.empty((0, features_dim), device='cuda')
-    ns = torch.empty((0,1), device='cuda')
+    sampled_X = torch.empty((0, features_dim), device=device)
+    ns = torch.empty((0,1), device=device)
     for i in range(num_classes):
         if len(positives[i]) != 0:
             sampled_X = positives[i][0].unsqueeze(0)
@@ -89,7 +90,7 @@ def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features
     mean = torch.mean(sampled_X, dim=0)
     std = torch.std(sampled_X, dim=0)
     mean_norm = torch.mean(ns)
-    stats = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
+    stats = {'mean': mean.to('cuda'), 'std': std.to('cuda'), 'mean_norm': mean_norm.to('cuda')}
 
     return stats
 
@@ -101,8 +102,11 @@ def zScores(feat, mean, mean_norm, target_norm=20):
     return feat
 
 
-def normalize_COXY(COXY, stats):
-    COXY['X'] = COXY['X'] - stats['mean']
+def normalize_COXY(COXY, stats, cpu=False):
+    if cpu:
+        COXY['X'] = COXY['X'] - stats['mean'].to('cpu')
+    else:
+        COXY['X'] = COXY['X'] - stats['mean']
     COXY['X'] = COXY['X'] * (20 / stats['mean_norm'].item())
     return COXY
 

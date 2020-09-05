@@ -73,7 +73,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         num_neg = len(X_neg)
         num_pos = len(X_pos)
         X = torch.cat((X_pos, X_neg), 0)
-        y = torch.cat((torch.transpose(torch.ones(num_pos), 0, 0), -torch.transpose(torch.ones(num_neg), 0, 0)), 0)
+        y = torch.cat((torch.transpose(torch.ones(num_pos, device='cuda'), 0, 0), -torch.transpose(torch.ones(num_neg, device='cuda'), 0, 0)), 0)
 
         if self.sigma is not None and self.lam is not None:
             print('Updating model with lambda: {} and sigma: {}'.format(self.lam, self.sigma))
@@ -95,16 +95,16 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     t_iter = time.time()
                     if first_time:
                         dataset = {}
-                        dataset['pos'] = positives[i].cpu()
-                        dataset['neg'] = negatives[i][j].cpu()
+                        dataset['pos'] = positives[i]
+                        dataset['neg'] = negatives[i][j]
                         caches.append(dataset)
                         model.append(None)
                         first_time = False
                     else:
                         t_hard = time.time()
-                        neg_pred = self.classifier.predict(model[i], negatives[i][j].cpu())
+                        neg_pred = self.classifier.predict(model[i], negatives[i][j])
                         hard_idx = torch.where(neg_pred > self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH'])[0]
-                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx].cpu()), 0)
+                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
                         print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
                         print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
 
@@ -144,11 +144,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         negatives = self.negatives
         positives = self.positives
 
-        # Convert stats to data device
-        self.mean = self.mean.to(negatives[0][0].device)
-        self.std = self.std.to(negatives[0][0].device)
-        self.mean_norm = self.mean_norm.to(negatives[0][0].device)
-
         if not self.normalized:
             for i in range(self.num_classes-1):
                 if len(positives[i]):
@@ -172,12 +167,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                 model[c].alpha_ = model[c].alpha_.to('cuda')
         except:
             pass
-
-        # Convert stats to gpu tensors for inference
-        self.mean = self.mean.to('cuda')
-        self.std = self.std.to('cuda')
-        self.mean_norm = self.mean_norm.to('cuda')
-
         for i in range(len(test_boxes)):
             l = test_boxes[i]
             if l is not None:

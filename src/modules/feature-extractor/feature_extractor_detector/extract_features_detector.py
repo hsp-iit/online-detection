@@ -46,9 +46,9 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False):
+        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         return self.train(is_train, result_dir=output_dir)
-
 
     def load_parameters(self):
         if self.distributed:
@@ -70,7 +70,6 @@ class FeatureExtractorDetector:
             config_str = "\n" + cf.read()
             logger.info(config_str)
         logger.info("Running with config:\n{}".format(self.cfg))
-
 
 
     def train(self, is_train, result_dir=None):

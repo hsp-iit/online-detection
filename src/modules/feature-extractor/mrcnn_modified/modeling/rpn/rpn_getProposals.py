@@ -159,6 +159,7 @@ class RPNModule(torch.nn.Module):
             else:
                 self.diag_list.append(torch.arange(0,i**2, i+1, dtype=torch.long, device='cuda'))
         self.negatives_to_pick = None
+        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
 
     def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None):
 
@@ -202,19 +203,19 @@ class RPNModule(torch.nn.Module):
                 self.negatives.append([])
                 self.current_batch.append(0)
                 self.current_batch_size.append(0)
-                self.positives.append(torch.empty((0, self.feat_size), device='cuda'))
+                self.positives.append(torch.empty((0, self.feat_size), device=self.training_device))
                 for j in range(self.iterations):
-                    self.negatives[i].append(torch.empty((0, self.feat_size), device='cuda'))
+                    self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
 
             # Initialize tensors for box regression    
             # Features
-            self.X = torch.empty((0, self.feat_size), dtype=torch.float32, device='cuda')
+            self.X = torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device)
             # Target values
-            self.Y = torch.empty((0, 4), dtype=torch.float32, device='cuda')
+            self.Y = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
             # Overlap
             self.O = None
             # Associated classifier (i.e. anchor)
-            self.C = torch.empty((0), dtype=torch.float32, device='cuda')
+            self.C = torch.empty((0), dtype=torch.float32, device=self.training_device)
             
         else:
             features = features[0][0]
@@ -268,7 +269,10 @@ class RPNModule(torch.nn.Module):
                         feat = feat[self.diag_list[end_interval-ind_to_add]]
                     except:
                         feat = feat[list(range(0,(end_interval-ind_to_add)**2+(end_interval-ind_to_add)-1, (end_interval-ind_to_add)+1))]
-                    self.negatives[i][b] = torch.cat((self.negatives[i][b], feat))
+                    if self.training_device is 'cpu':
+                        self.negatives[i][b] = torch.cat((self.negatives[i][b], feat.cpu()))
+                    else:
+                        self.negatives[i][b] = torch.cat((self.negatives[i][b], feat))
                     # Update indices
                     ind_to_add = end_interval
                     if ind_to_add == self.negatives_to_pick:
@@ -292,7 +296,6 @@ class RPNModule(torch.nn.Module):
                 values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
                 positives_i = anchors_to_return[indices.squeeze()]
                 positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
-                positive_anchors = cat_boxlist([positive_anchors, positives_i])
                 
         # Find anchors associated to the positives, to avoid unuseful computation
         pos_inds = torch.unique(positive_anchors.get_field('classifier'))
@@ -307,13 +310,14 @@ class RPNModule(torch.nn.Module):
             except:
                 feat = feat[list(range(0,ids_size**2+ids_size-1, ids_size+1))]
             # Add positive features for the i-th anchor to the i-th positives list
-            self.positives[i] = torch.cat((self.positives[i], feat))
+            if self.training_device is 'cpu':
+                self.positives[i] = torch.cat((self.positives[i], feat.cpu()))
+            else:
+                self.positives[i] = torch.cat((self.positives[i], feat))
 
             # COXY computation for regressors
             ex_boxes = anchors_i.bbox
             gt_boxes = anchors_i.get_field('gt_bbox')
-            self.X = torch.cat((self.X, feat))
-            self.C = torch.cat((self.C, torch.full((ids_size,1), i, dtype=torch.float32, device='cuda')))
 
             src_w = ex_boxes[:,2] - ex_boxes[:,0] + 1
             src_h = ex_boxes[:,3] - ex_boxes[:,1] + 1
@@ -331,7 +335,14 @@ class RPNModule(torch.nn.Module):
             dst_scl_h = torch.log(gt_h / src_h)
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
-            self.Y = torch.cat((self.Y, target), dim=0)
+            if self.training_device is 'cpu':
+                self.X = torch.cat((self.X, feat.cpu()))
+                self.C = torch.cat((self.C, torch.full((ids_size,1), i, dtype=torch.float32)))
+                self.Y = torch.cat((self.Y, target.cpu()), dim=0)
+            else:
+                self.X = torch.cat((self.X, feat))
+                self.C = torch.cat((self.C, torch.full((ids_size,1), i, dtype=torch.float32, device='cuda')))
+                self.Y = torch.cat((self.Y, target), dim=0)
 
         return {}, {}, 0
 

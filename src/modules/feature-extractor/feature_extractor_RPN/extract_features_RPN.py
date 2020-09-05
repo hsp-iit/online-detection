@@ -42,7 +42,8 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, is_train, output_dir=None):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False):
+        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         return self.train(is_train, result_dir=output_dir)
 
 

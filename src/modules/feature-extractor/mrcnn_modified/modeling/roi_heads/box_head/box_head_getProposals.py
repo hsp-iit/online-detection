@@ -29,6 +29,8 @@ class ROIBoxHead(torch.nn.Module):
         self.loss_evaluator = make_roi_box_loss_evaluator(cfg)
         self.cfg = cfg
 
+        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
@@ -40,9 +42,9 @@ class ROIBoxHead(torch.nn.Module):
             self.negatives.append([])
             self.current_batch.append(0)
             self.current_batch_size.append(0)
-            self.positives.append(torch.empty((0, self.feature_extractor.out_channels), device='cuda'))
+            self.positives.append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
             for j in range(self.iterations):
-                self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device='cuda'))
+                self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
         self.negatives_to_pick = None
         
         self.neg_iou_thresh = self.cfg.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH
@@ -51,15 +53,17 @@ class ROIBoxHead(torch.nn.Module):
         self.reg_min_overlap = self.cfg.REGRESSORS.MIN_OVERLAP
 
         # Regressor reatures
-        self.X = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device='cuda')
+        self.X = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)
         # Regressor target values
-        self.Y = torch.empty((0, 4), dtype=torch.float32, device='cuda')
+        self.Y = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
         # Regressor overlap amounts
         self.O = None
         # Regressor classes
-        self.C = torch.empty((0), dtype=torch.float32, device='cuda')
+        self.C = torch.empty((0), dtype=torch.float32, device=self.training_device)
 
         self.test_boxes = []
+
+
 
     def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True):
         if is_train:
@@ -123,15 +127,15 @@ class ROIBoxHead(torch.nn.Module):
         # Loop on all the gt boxes
         for i in range(len(gt_labels_list)):
             # Concatenate each gt to the positive tensor for its corresponding class
-            self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels)))
+            if self.training_device is 'cpu':
+                self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
+            else:
+                self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels)))
 
             # Extract regressor positives, i.e. with overlap > self.reg_min_overlap and with proposed boxes associated to that gt
             pos_ids = overlap[:,gt_labels_list[i]-1] > self.reg_min_overlap
             pos_ids = pos_ids & torch.eq(associated_gt_id, i)
             regr_positives_i = x[pos_ids].view(-1, self.feature_extractor.out_channels)
-            # Add class and features to C and X
-            self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
-            self.X = torch.cat((self.X, regr_positives_i))
 
             # Compute targets
             ex_boxes = arr_proposals[pos_ids].view(-1, 4)
@@ -153,7 +157,16 @@ class ROIBoxHead(torch.nn.Module):
             dst_scl_h = torch.log(gt_h / src_h)
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
-            self.Y = torch.cat((self.Y, target), dim=0)
+            if self.training_device is 'cpu':
+                self.Y = torch.cat((self.Y, target.cpu()), dim=0)
+                # Add class and features to C and X
+                self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i])))
+                self.X = torch.cat((self.X, regr_positives_i.cpu()))
+            else:
+                self.Y = torch.cat((self.Y, target), dim=0)
+                # Add class and features to C and X
+                self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
+                self.X = torch.cat((self.X, regr_positives_i))
 
         # Fill batches for minibootstrap
         indices_to_remove = []
@@ -177,7 +190,10 @@ class ROIBoxHead(torch.nn.Module):
                     continue
                 else:
                     end_interval = int(ind_to_add + min(neg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add))
-                    self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels)))
+                    if self.training_device is 'cpu':
+                        self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels).cpu()))
+                    else:
+                        self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels)))
                     ind_to_add = end_interval
                     if ind_to_add == self.negatives_to_pick:
                         break

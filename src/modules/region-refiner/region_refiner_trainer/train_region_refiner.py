@@ -55,7 +55,7 @@ class RegionRefinerTrainer():
             Xi = self.COXY['X'][I]
             Yi = self.COXY['Y'][I]
             # Add bias values to Xi
-            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float32).to("cuda")
+            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float32, device=Xi.device)
             Xi = torch.cat((Xi, bias), dim=1)
 
             # Center and decorrelate targets
@@ -81,13 +81,13 @@ class RegionRefinerTrainer():
                 Beta = self.solve(Xi, Yi, self.lambd, Xi_test, Yi_test, indices)
 
             models = np.append(models, {
-                'mu': mu,
-                'T': T,
-                'T_inv': T_inv,
+                'mu': mu.to("cuda"),
+                'T': T.to("cuda"),
+                'T_inv': T_inv.to("cuda"),
                 'Beta': Beta
             })
 
-            mean_losses = torch.empty(0).to("cuda")
+            mean_losses = torch.empty(0, device=Xi.device)
 
             for elem in models[i - start_index]['Beta']:
                 mean_losses = torch.cat((mean_losses, torch.mean(models[i - start_index]['Beta'][elem]['losses'], dim=0, keepdim=True)))
@@ -109,7 +109,7 @@ class RegionRefinerTrainer():
 
     def solve(self, X, y, lmbd, X_test=None, Y_test=None, indices=None):
         if indices is None:
-            X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1]).to("cuda")
+            X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
             R = torch.cholesky(X_transposed_X)
         to_return = {}
         X_original = X.clone()
@@ -118,13 +118,13 @@ class RegionRefinerTrainer():
             if indices is not None:
                 X = X_original[indices[i]]
                 y = y_original[indices[i]]
-                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1]).to("cuda")
+                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
                 R = torch.cholesky(X_transposed_X)
             y_torch_i = y[:, i]
             z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(X.size()[1], 1), R, upper=False).solution
             w = torch.triangular_solve(z, torch.t(R)).solution.view(X.size()[1])
             losses = 0.5 * torch.pow((torch.matmul(X, w) - y_torch_i), 2)
-            to_return[str(i)] = {'weights': w,
+            to_return[str(i)] = {'weights': w.to('cuda'),
                                  'losses': losses}
         return to_return
 
