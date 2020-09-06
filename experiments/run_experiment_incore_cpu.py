@@ -116,6 +116,10 @@ if not args.only_ood and not args.load_RPN_models:
         torch.save(models_reg_rpn, os.path.join(output_dir, 'regressor_rpn'))
         torch.save(stats_rpn, os.path.join(output_dir, 'stats_rpn'))
 
+    # Delete already used data
+    del negatives, positives, COXY
+    torch.cuda.empty_cache()
+
 # Load trained RPN models and set them in the pipeline, if requested
 elif not args.only_ood and args.load_RPN_models:
     feature_extractor.falkon_rpn_models = torch.load(os.path.join(output_dir, 'classifier_rpn'))
@@ -155,6 +159,10 @@ else:
     else:
         # Train Detector Region Refiner
         models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
+
+    # Delete already used data
+    del negatives, positives, COXY
+    torch.cuda.empty_cache()
 
 # Save detector models, if requested
 if args.save_detector_models:
