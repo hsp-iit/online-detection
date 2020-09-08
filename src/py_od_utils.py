@@ -2,6 +2,7 @@ import math
 import numpy as np
 import os
 import torch
+import glob
 
 
 def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000,):
@@ -117,4 +118,50 @@ def falkon_models_to_cuda(models):
             models[i].alpha_ = models[i].alpha_.to('cuda')
     return models
 
+def load_features_classifier(features_dir):
+    positives_to_load = len(glob.glob(os.path.join(features_dir, 'positives_*')))
+    positives_loaded = 0
+    negatives_to_load = len(glob.glob(os.path.join(features_dir, 'negatives_*')))
+    negatives_loaded = 0
+    positives = []
+    negatives = []
+    clss_id = 0
+    while positives_loaded < positives_to_load and negatives_loaded < negatives_to_load:
+        # Load positives with class id clss_id
+        positives_to_load_i = len(glob.glob(os.path.join(features_dir, 'positives_cl_{}_*'.format(clss_id))))
+        positives_i = []
+        for batch in range(positives_to_load_i):
+            positives_i.append(torch.load(os.path.join(features_dir,'positives_cl_{}_batch_{}'.format(clss_id, batch))))
+            positives_loaded += 1
+        # If there are not positives for this class, add an empty tensor
+        try:
+            positives.append(torch.cat(positives_i))
+        except:
+            positives.append(torch.empty((0)))
+        # Load positives with class id clss_id
+        negatives_to_load_i = len(glob.glob(os.path.join(features_dir, 'negatives_cl_{}_*'.format(clss_id))))
+        negatives_i = []
+        for batch in range(negatives_to_load_i):
+            negatives_i.append(torch.load(os.path.join(features_dir,'negatives_cl_{}_batch_{}'.format(clss_id, batch))))
+            negatives_loaded += 1
+        negatives.append(negatives_i)
+        clss_id += 1
 
+    return positives, negatives
+
+def load_features_regressor(features_dir):
+    reg_num_batches = len(glob.glob(os.path.join(features_dir, 'reg_x_*')))
+    X_list = []
+    C_list = []
+    Y_list = []
+    for i in range(reg_num_batches):
+        X_list.append(torch.load(os.path.join(features_dir, 'reg_x_batch_{}'.format(i))))
+        C_list.append(torch.load(os.path.join(features_dir, 'reg_c_batch_{}'.format(i))))
+        Y_list.append(torch.load(os.path.join(features_dir, 'reg_y_batch_{}'.format(i))))
+
+    COXY = {'C': torch.cat(C_list),
+            'O': None,
+            'X': torch.cat(X_list),
+            'Y': torch.cat(Y_list)
+            }
+    return COXY

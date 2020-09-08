@@ -27,7 +27,7 @@ class GeneralizedRCNN(nn.Module):
         self.backbone = build_backbone(cfg)
         self.rpn = build_rpn(cfg, self.backbone.out_channels)
 
-    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True):
+    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -42,6 +42,6 @@ class GeneralizedRCNN(nn.Module):
         """
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox=gt_bbox, img_size=img_size, compute_average_recall_RPN=compute_average_recall_RPN, is_train = is_train)
+        proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox=gt_bbox, img_size=img_size, compute_average_recall_RPN=compute_average_recall_RPN, is_train = is_train, result_dir = result_dir)
         return average_recall_RPN
 

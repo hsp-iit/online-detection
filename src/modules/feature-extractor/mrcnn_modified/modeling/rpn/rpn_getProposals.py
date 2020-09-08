@@ -161,7 +161,7 @@ class RPNModule(torch.nn.Module):
         self.negatives_to_pick = None
         self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
 
-    def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None):
+    def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None, result_dir = None):
 
         if self.negatives_to_pick is None:
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)

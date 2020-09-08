@@ -30,21 +30,23 @@ class ROIBoxHead(torch.nn.Module):
         self.cfg = cfg
 
         self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        self.save_features = self.cfg.SAVE_FEATURES
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
-        self.negatives = []
         self.positives = []
+        self.negatives = []
         self.current_batch = []
         self.current_batch_size = []
         for i in range(self.num_classes):
             self.negatives.append([])
             self.current_batch.append(0)
             self.current_batch_size.append(0)
-            self.positives.append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
             for j in range(self.iterations):
                 self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+
         self.negatives_to_pick = None
         
         self.neg_iou_thresh = self.cfg.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH
@@ -52,26 +54,27 @@ class ROIBoxHead(torch.nn.Module):
 
         self.reg_min_overlap = self.cfg.REGRESSORS.MIN_OVERLAP
 
-        # Regressor reatures
-        self.X = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)
+        # Regressor features
+        self.X = [torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)]
+
         # Regressor target values
-        self.Y = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
+        self.Y = [torch.empty((0, 4), dtype=torch.float32, device=self.training_device)]
         # Regressor overlap amounts
         self.O = None
         # Regressor classes
-        self.C = torch.empty((0), dtype=torch.float32, device=self.training_device)
+        self.C = [torch.empty((0), dtype=torch.float32, device=self.training_device)]
 
         self.test_boxes = []
 
 
 
-    def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True):
+    def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True, result_dir = None):
         if is_train:
-            return self.forward_train(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list)
+            return self.forward_train(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list, result_dir = result_dir)
         else:
             return self.forward_test(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list)
 
-    def forward_train(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None):
+    def forward_train(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, result_dir = None):
 
         if self.negatives_to_pick is None:
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)
@@ -130,7 +133,13 @@ class ROIBoxHead(torch.nn.Module):
             if self.training_device is 'cpu':
                 self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
             else:
-                self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels)))
+                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
+                if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
+                        torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
+                        self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                    self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
             # Extract regressor positives, i.e. with overlap > self.reg_min_overlap and with proposed boxes associated to that gt
             pos_ids = overlap[:,gt_labels_list[i]-1] > self.reg_min_overlap
@@ -161,12 +170,33 @@ class ROIBoxHead(torch.nn.Module):
                 self.Y = torch.cat((self.Y, target.cpu()), dim=0)
                 # Add class and features to C and X
                 self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i])))
-                self.X = torch.cat((self.X, regr_positives_i.cpu()))
+                self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], regr_positives_i.cpu()))
+                if self.X[len(self.X)-1].size()[0] >= self.batch_size:
+                    self.X.append(torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device))
+
             else:
-                self.Y = torch.cat((self.Y, target), dim=0)
+                self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target), dim=0)
                 # Add class and features to C and X
-                self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
-                self.X = torch.cat((self.X, regr_positives_i))
+                self.C[len(self.C)-1] = torch.cat((self.C[len(self.C)-1], torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
+                self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], regr_positives_i))
+                if self.X[len(self.X)-1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector','reg_x_batch_{}'.format(len(self.X)-1))
+                        torch.save(self.X[len(self.X)-1], path_to_save)
+                        self.X[len(self.X)-1] = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)
+
+                        path_to_save = os.path.join(result_dir, 'features_detector','reg_c_batch_{}'.format(len(self.C)-1))
+                        torch.save(self.C[len(self.C)-1], path_to_save)
+                        self.C[len(self.C)-1] = torch.empty((0), dtype=torch.float32, device=self.training_device)
+
+                        path_to_save = os.path.join(result_dir, 'features_detector','reg_y_batch_{}'.format(len(self.Y)-1))
+                        torch.save(self.Y[len(self.Y)-1], path_to_save)
+                        self.Y[len(self.Y)-1] = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
+
+                    self.X.append(torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device))
+                    self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
+                    self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
+
 
         # Fill batches for minibootstrap
         indices_to_remove = []
@@ -184,6 +214,11 @@ class ROIBoxHead(torch.nn.Module):
             ind_to_add = 0
             for b in range(self.current_batch[i], self.iterations):
                 if self.negatives[i][b].size()[0] >= self.batch_size:
+                    # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(i, b))
+                        torch.save(self.negatives[i][b], path_to_save)
+                        self.negatives[i][b] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
                     self.current_batch[i] += 1
                     if self.current_batch[i] >= self.iterations:
                         indices_to_remove.append(i)

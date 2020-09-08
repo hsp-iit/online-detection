@@ -87,7 +87,7 @@ def build_transform(cfg):
 	)
 	return transform
 
-def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True):
+def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True, result_dir = None):
 
     img_dir=dataset._imgpath
     anno_dir=dataset._annopath
@@ -168,7 +168,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         image_list = image_list.to("cuda")
         # compute predictions
         with torch.no_grad():
-            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label = gt_labels_torch, img_size = img_sizes, compute_average_recall_RPN = compute_average_recall_RPN, gt_labels_list = gt_labels, is_train = is_train)
+            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label = gt_labels_torch, img_size = img_sizes, compute_average_recall_RPN = compute_average_recall_RPN, gt_labels_list = gt_labels, is_train = is_train, result_dir = result_dir)
             if compute_average_recall_RPN:
                 average_recall_RPN += AR
     
@@ -203,7 +203,7 @@ def inference(
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train = is_train)
+    AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train = is_train, result_dir = result_dir)
     print('Average Recall (AR):', AR)
 
     if result_dir and not is_train:

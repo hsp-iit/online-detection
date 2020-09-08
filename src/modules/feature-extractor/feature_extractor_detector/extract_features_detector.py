@@ -46,8 +46,17 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        self.cfg.SAVE_FEATURES = save_features
+        if save_features:
+            if output_dir:
+                features_path = os.path.join(output_dir, 'features_detector')
+                if not os.path.exists(features_path):
+                    os.mkdir(features_path)
+            else:
+                print('Output directory must be specified. Quitting.')
+                quit()
         return self.train(is_train, result_dir=output_dir)
 
     def load_parameters(self):
@@ -72,7 +81,7 @@ class FeatureExtractorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=None):
+    def train(self, is_train, result_dir=False):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -156,14 +165,39 @@ class FeatureExtractorDetector:
 
             synchronize()
             if is_train:
-                COXY = {'C': model.roi_heads.box.C,
-                        'O': model.roi_heads.box.O,
-                        'X': model.roi_heads.box.X,
-                        'Y': model.roi_heads.box.Y
-                        }
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
-                return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+
+                if self.cfg.SAVE_FEATURES:
+                    # Save features still not saved
+                    for clss in range(len(model.roi_heads.box.negatives)):
+                        for batch in range(len(model.roi_heads.box.negatives[clss])):
+                            if model.roi_heads.box.negatives[clss][batch].size()[0] > 0:
+                                path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(clss, batch))
+                                torch.save(model.roi_heads.box.negatives[clss][batch], path_to_save)
+                        for batch in range(len(model.roi_heads.box.positives[clss])):
+                            if model.roi_heads.box.negatives[clss][batch].size()[0] > 0:
+                                path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
+                                torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
+
+                    for i in range(len(model.roi_heads.box.X)):
+                        if model.roi_heads.box.X[i].size()[0] > 0:
+                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_x_batch_{}'.format(i))
+                            torch.save(model.roi_heads.box.X[i], path_to_save)
+
+                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_c_batch_{}'.format(i))
+                            torch.save(model.roi_heads.box.C[i], path_to_save)
+
+                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_y_batch_{}'.format(i))
+                            torch.save(model.roi_heads.box.Y[i], path_to_save)
+                    return
+                else:
+                    COXY = {'C': torch.cat(model.roi_heads.box.C),
+                            'O': model.roi_heads.box.O,
+                            'X': torch.cat(model.roi_heads.box.X),
+                            'Y': torch.cat(model.roi_heads.box.Y)
+                            }
+                    return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]

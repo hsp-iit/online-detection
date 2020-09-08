@@ -147,7 +147,7 @@ In the `experiments/configs` you can find four categories of configuration files
  - config_online_detection_*experiment_name*.yaml: sets parameters for the **O-OD** experiment (3rd row of *Table 1* and *Table 2* in the paper).
  - config_online_online_rpn_detection_*experiment_name*.yaml: sets parameters for the **Ours** experiment (5th row of *Table 1* and *Table 2* in the paper).
 
-**Important**: if you have more than one GPU available, before running an experiment, you have to set the number of the GPU that you want to use (only one) with the command `echo $CUDA_VISIBLE_DEVICE=number_of_the_gpu`
+**Important**: if you have more than one GPU available, before running an experiment, you have to set the number of the GPU that you want to use (only one) with the command `export CUDA_VISIBLE_DEVICE=number_of_the_gpu`
 
 
 ### iCWT: different objects, same setting.
