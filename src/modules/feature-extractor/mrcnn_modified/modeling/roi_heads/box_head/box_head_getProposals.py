@@ -131,15 +131,15 @@ class ROIBoxHead(torch.nn.Module):
         for i in range(len(gt_labels_list)):
             # Concatenate each gt to the positive tensor for its corresponding class
             if self.training_device is 'cpu':
-                self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
+                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
             else:
                 self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
-                if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
-                    if self.save_features:
-                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
-                        torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
-                        self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
-                    self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
+                    torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
             # Extract regressor positives, i.e. with overlap > self.reg_min_overlap and with proposed boxes associated to that gt
             pos_ids = overlap[:,gt_labels_list[i]-1] > self.reg_min_overlap
@@ -167,35 +167,32 @@ class ROIBoxHead(torch.nn.Module):
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
             if self.training_device is 'cpu':
-                self.Y = torch.cat((self.Y, target.cpu()), dim=0)
+                self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target.cpu()), dim=0)
                 # Add class and features to C and X
-                self.C = torch.cat((self.C, torch.full((torch.sum(pos_ids), 1), gt_labels_list[i])))
+                self.C[len(self.C)-1] = torch.cat((self.C[len(self.C)-1], torch.full((torch.sum(pos_ids), 1), gt_labels_list[i])))
                 self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], regr_positives_i.cpu()))
-                if self.X[len(self.X)-1].size()[0] >= self.batch_size:
-                    self.X.append(torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device))
-
             else:
                 self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target), dim=0)
                 # Add class and features to C and X
                 self.C[len(self.C)-1] = torch.cat((self.C[len(self.C)-1], torch.full((torch.sum(pos_ids), 1), gt_labels_list[i], device='cuda')))
                 self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], regr_positives_i))
-                if self.X[len(self.X)-1].size()[0] >= self.batch_size:
-                    if self.save_features:
-                        path_to_save = os.path.join(result_dir, 'features_detector','reg_x_batch_{}'.format(len(self.X)-1))
-                        torch.save(self.X[len(self.X)-1], path_to_save)
-                        self.X[len(self.X)-1] = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)
+            if self.X[len(self.X)-1].size()[0] >= self.batch_size:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_detector','reg_x_batch_{}'.format(len(self.X)-1))
+                    torch.save(self.X[len(self.X)-1], path_to_save)
+                    self.X[len(self.X)-1] = torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)
 
-                        path_to_save = os.path.join(result_dir, 'features_detector','reg_c_batch_{}'.format(len(self.C)-1))
-                        torch.save(self.C[len(self.C)-1], path_to_save)
-                        self.C[len(self.C)-1] = torch.empty((0), dtype=torch.float32, device=self.training_device)
+                    path_to_save = os.path.join(result_dir, 'features_detector','reg_c_batch_{}'.format(len(self.C)-1))
+                    torch.save(self.C[len(self.C)-1], path_to_save)
+                    self.C[len(self.C)-1] = torch.empty((0), dtype=torch.float32, device=self.training_device)
 
-                        path_to_save = os.path.join(result_dir, 'features_detector','reg_y_batch_{}'.format(len(self.Y)-1))
-                        torch.save(self.Y[len(self.Y)-1], path_to_save)
-                        self.Y[len(self.Y)-1] = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
+                    path_to_save = os.path.join(result_dir, 'features_detector','reg_y_batch_{}'.format(len(self.Y)-1))
+                    torch.save(self.Y[len(self.Y)-1], path_to_save)
+                    self.Y[len(self.Y)-1] = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
 
-                    self.X.append(torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device))
-                    self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
-                    self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
+                self.X.append(torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device))
+                self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
+                self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
 
 
         # Fill batches for minibootstrap
@@ -279,7 +276,6 @@ class ROIBoxHead(torch.nn.Module):
         self.test_boxes.append({'boxes': arr_proposals.cpu().numpy(), 'feat': x.cpu().numpy(), 'gt': arr_gt.cpu().numpy(), 'img_size': np.array(img_size)})
 
         return None, None, None
-
 
 
 def build_roi_box_head(cfg, in_channels):

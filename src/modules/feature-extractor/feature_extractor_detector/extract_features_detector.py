@@ -197,6 +197,8 @@ class FeatureExtractorDetector:
                             'X': torch.cat(model.roi_heads.box.X),
                             'Y': torch.cat(model.roi_heads.box.Y)
                             }
+                    for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
+                        model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
                     return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
