@@ -16,6 +16,7 @@ import time
 import os
 
 import math
+import copy
 
 class RPNHeadConvRegressor(nn.Module):
     """
@@ -119,20 +120,21 @@ class RPNModule(torch.nn.Module):
         super(RPNModule, self).__init__()
 
         self.cfg = cfg.clone()
+        self.save_features = self.cfg.SAVE_FEATURES_RPN
 
-        anchor_generator = make_anchor_generator(cfg)
+        anchor_generator = make_anchor_generator(self.cfg)
 
-        rpn_head = registry.RPN_HEADS[cfg.MODEL.RPN.RPN_HEAD]
+        rpn_head = registry.RPN_HEADS[self.cfg.MODEL.RPN.RPN_HEAD]
         head = rpn_head(
-            cfg, in_channels, anchor_generator.num_anchors_per_location()[0]
+            self.cfg, in_channels, anchor_generator.num_anchors_per_location()[0]
         )
 
         rpn_box_coder = BoxCoder(weights=(1.0, 1.0, 1.0, 1.0))
 
-        box_selector_train = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=True)
-        box_selector_test = make_rpn_postprocessor(cfg, rpn_box_coder, is_train=False)
+        box_selector_train = make_rpn_postprocessor(self.cfg, rpn_box_coder, is_train=True)
+        box_selector_test = make_rpn_postprocessor(self.cfg, rpn_box_coder, is_train=False)
 
-        loss_evaluator = make_rpn_loss_evaluator(cfg, rpn_box_coder)
+        loss_evaluator = make_rpn_loss_evaluator(self.cfg, rpn_box_coder)
 
         self.anchor_generator = anchor_generator
         self.head = head
@@ -196,26 +198,34 @@ class RPNModule(torch.nn.Module):
             for i in self.still_to_complete:
                 if self.anchors[self.anchors.get_field('classifier') == i].bbox.size()[0] == 0:
                     self.still_to_complete.remove(i)
-                    print('Anchor %i does not have visible regions.' %i ,'Removed from the list.') 
+                    print('Anchor %i does not have visible regions.' %i ,'Removed from the list.')
+                    if self.save_features:
+                        # Saving empty tensors
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, 0))
+                        torch.save(torch.empty((0, self.feat_size), device=self.training_device), path_to_save)
+
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(i, 0))
+                        torch.save(torch.empty((0, self.feat_size), device=self.training_device), path_to_save)
+            self.anchors_ids = copy.deepcopy(self.still_to_complete)
 
             # Initialize batches for minibootstrap
             for i in range(self.num_classes):
                 self.negatives.append([])
                 self.current_batch.append(0)
                 self.current_batch_size.append(0)
-                self.positives.append(torch.empty((0, self.feat_size), device=self.training_device))
+                self.positives.append([torch.empty((0, self.feat_size), device=self.training_device)])
                 for j in range(self.iterations):
                     self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
 
-            # Initialize tensors for box regression    
-            # Features
-            self.X = torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device)
-            # Target values
-            self.Y = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
-            # Overlap
+            # Initialize tensors for box regression
+            # Regressor features
+            self.X = [torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device)]
+            # Regressor target values
+            self.Y = [torch.empty((0, 4), dtype=torch.float32, device=self.training_device)]
+            # Regressor overlap amounts
             self.O = None
-            # Associated classifier (i.e. anchor)
-            self.C = torch.empty((0), dtype=torch.float32, device=self.training_device)
+            # Regressor classes
+            self.C = [torch.empty((0), dtype=torch.float32, device=self.training_device)]
             
         else:
             features = features[0][0]
@@ -254,10 +264,16 @@ class RPNModule(torch.nn.Module):
             for b in range(self.current_batch[i], self.iterations):
                 # If the batch is full, start from the subsequent
                 if self.negatives[i][b].size()[0] >= self.batch_size:
+                    # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, b))
+                        torch.save(self.negatives[i][b], path_to_save)
+                    self.negatives[i][b] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
                     self.current_batch[i] += 1
                     if self.current_batch[i] >= self.iterations:
                         indices_to_remove.append(i)
                     continue
+
                 else:
                     # Compute the end index of negatives to add to the batch
                     end_interval = int(ind_to_add + min(reg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add, ids_size -ind_to_add))
@@ -312,9 +328,15 @@ class RPNModule(torch.nn.Module):
                 feat = feat[list(range(0,ids_size**2+ids_size-1, ids_size+1))]
             # Add positive features for the i-th anchor to the i-th positives list
             if self.training_device is 'cpu':
-                self.positives[i] = torch.cat((self.positives[i], feat.cpu()))
+                self.positives[i][len(self.positives[i]) - 1] = torch.cat((self.positives[i][len(self.positives[i]) - 1], feat.cpu()))
             else:
-                self.positives[i] = torch.cat((self.positives[i], feat))
+                self.positives[i][len(self.positives[i]) - 1] = torch.cat((self.positives[i][len(self.positives[i]) - 1], feat))
+            if self.positives[i][len(self.positives[i]) - 1].size()[0] >= self.batch_size:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(i, len(self.positives[i]) - 1))
+                    torch.save(self.positives[i][len(self.positives[i]) - 1], path_to_save)
+                    self.positives[i][len(self.positives[i]) - 1] = torch.empty((0, self.feat_size), device=self.training_device)
+                self.positives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
 
             # COXY computation for regressors
             ex_boxes = anchors_i.bbox
@@ -337,13 +359,32 @@ class RPNModule(torch.nn.Module):
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
             if self.training_device is 'cpu':
-                self.X = torch.cat((self.X, feat.cpu()))
-                self.C = torch.cat((self.C, torch.full((ids_size,1), i, dtype=torch.float32)))
-                self.Y = torch.cat((self.Y, target.cpu()), dim=0)
+                self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target.cpu()), dim=0)
+                # Add class and features to C and X
+                self.C[len(self.C)-1] = torch.cat((self.C[len(self.C)-1], torch.full((ids_size,1), i, dtype=torch.float32)))
+                self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], feat.cpu()))
             else:
-                self.X = torch.cat((self.X, feat))
-                self.C = torch.cat((self.C, torch.full((ids_size,1), i, dtype=torch.float32, device='cuda')))
-                self.Y = torch.cat((self.Y, target), dim=0)
+                self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target), dim=0)
+                # Add class and features to C and X
+                self.C[len(self.C)-1] = torch.cat((self.C[len(self.C)-1], torch.full((ids_size,1), i, dtype=torch.float32, device='cuda')))
+                self.X[len(self.X)-1] = torch.cat((self.X[len(self.X)-1], feat))
+            if self.X[len(self.X)-1].size()[0] >= self.batch_size:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_RPN','reg_x_batch_{}'.format(len(self.X)-1))
+                    torch.save(self.X[len(self.X)-1], path_to_save)
+                    self.X[len(self.X)-1] = torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device)
+
+                    path_to_save = os.path.join(result_dir, 'features_RPN','reg_c_batch_{}'.format(len(self.C)-1))
+                    torch.save(self.C[len(self.C)-1], path_to_save)
+                    self.C[len(self.C)-1] = torch.empty((0), dtype=torch.float32, device=self.training_device)
+
+                    path_to_save = os.path.join(result_dir, 'features_RPN','reg_y_batch_{}'.format(len(self.Y)-1))
+                    torch.save(self.Y[len(self.Y)-1], path_to_save)
+                    self.Y[len(self.Y)-1] = torch.empty((0, 4), dtype=torch.float32, device=self.training_device)
+
+                self.X.append(torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device))
+                self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
+                self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
 
         return {}, {}, 0
 

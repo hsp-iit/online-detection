@@ -30,7 +30,7 @@ class ROIBoxHead(torch.nn.Module):
         self.cfg = cfg
 
         self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
-        self.save_features = self.cfg.SAVE_FEATURES
+        self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
@@ -56,7 +56,6 @@ class ROIBoxHead(torch.nn.Module):
 
         # Regressor features
         self.X = [torch.empty((0, self.feature_extractor.out_channels), dtype=torch.float32, device=self.training_device)]
-
         # Regressor target values
         self.Y = [torch.empty((0, 4), dtype=torch.float32, device=self.training_device)]
         # Regressor overlap amounts

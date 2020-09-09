@@ -99,7 +99,7 @@ if not args.only_ood and not args.load_RPN_models:
     else:
         if args.save_RPN_features:
             feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
-        positives, negatives = load_features_classifier(features_dir = output_dir)
+        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
     stats_rpn = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
 
     # RPN Region Classifier initialization
@@ -111,6 +111,8 @@ if not args.only_ood and not args.load_RPN_models:
 
     # RPN Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
+    if args.save_RPN_features or args.load_RPN_features:
+        COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_RPN'))
 
     # Train RPN region Refiner
     models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats_rpn, args.CPU), output_dir=output_dir)

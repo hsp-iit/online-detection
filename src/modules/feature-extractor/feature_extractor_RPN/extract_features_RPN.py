@@ -42,8 +42,18 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        self.cfg.SAVE_FEATURES_RPN = save_features
+        if save_features:
+            if output_dir:
+                features_path = os.path.join(output_dir, 'features_RPN')
+                if not os.path.exists(features_path):
+                    os.mkdir(features_path)
+            else:
+                print('Output directory must be specified. Quitting.')
+                quit()
+
         return self.train(is_train, result_dir=output_dir)
 
 
@@ -153,9 +163,38 @@ class FeatureExtractorRPN:
             synchronize()
         logger = logging.getLogger("maskrcnn_benchmark")
         logger.handlers=[]
-        COXY = {'C': model.rpn.C,
-                'O': model.rpn.O,
-                'X': model.rpn.X,
-                'Y': model.rpn.Y
-                }
-        return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)
+        if self.cfg.SAVE_FEATURES_RPN:
+            # Save features still not saved
+            for clss in model.rpn.anchors_ids:
+                for batch in range(len(model.rpn.negatives[clss])):
+                    if model.rpn.negatives[clss][batch].size()[0] > 0:
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(clss, batch))
+                        torch.save(model.rpn.negatives[clss][batch], path_to_save)
+                if len(model.rpn.positives[clss]):
+                    path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(clss, 0))
+                    torch.save(torch.empty((0, model.rpn.feat_size), device=model.rpn.negatives[clss][0].device), path_to_save)
+                for batch in range(len(model.rpn.positives[clss])):
+                    if model.rpn.positives[clss][batch].size()[0] > 0:
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(clss, batch))
+                        torch.save(model.rpn.positives[clss][batch], path_to_save)
+
+            for i in range(len(model.rpn.X)):
+                if model.rpn.X[i].size()[0] > 0:
+                    path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_x_batch_{}'.format(i))
+                    torch.save(model.rpn.X[i], path_to_save)
+
+                    path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_c_batch_{}'.format(i))
+                    torch.save(model.rpn.C[i], path_to_save)
+
+                    path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_y_batch_{}'.format(i))
+                    torch.save(model.rpn.Y[i], path_to_save)
+            return
+        else:
+            COXY = {'C': torch.cat(model.rpn.C),
+                    'O': model.rpn.O,
+                    'X': torch.cat(model.rpn.X),
+                    'Y': torch.cat(model.rpn.Y)
+                    }
+            for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
+                model.rpn.positives[i] = torch.cat(model.rpn.positives[i])
+            return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)
