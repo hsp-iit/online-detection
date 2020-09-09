@@ -146,7 +146,6 @@ def load_features_classifier(features_dir):
             negatives_loaded += 1
         negatives.append(negatives_i)
         clss_id += 1
-
     return positives, negatives
 
 def load_features_regressor(features_dir):

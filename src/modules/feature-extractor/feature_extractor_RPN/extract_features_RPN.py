@@ -166,17 +166,20 @@ class FeatureExtractorRPN:
         if self.cfg.SAVE_FEATURES_RPN:
             # Save features still not saved
             for clss in model.rpn.anchors_ids:
+                # Save negatives batches
                 for batch in range(len(model.rpn.negatives[clss])):
                     if model.rpn.negatives[clss][batch].size()[0] > 0:
                         path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(clss, batch))
                         torch.save(model.rpn.negatives[clss][batch], path_to_save)
-                if len(model.rpn.positives[clss]):
+                # If a class does not have positive examples, save an empty tensor
+                if model.rpn.positives[clss][0].size()[0] == 0 and len(model.rpn.positives[clss]) == 1:
                     path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(clss, 0))
                     torch.save(torch.empty((0, model.rpn.feat_size), device=model.rpn.negatives[clss][0].device), path_to_save)
-                for batch in range(len(model.rpn.positives[clss])):
-                    if model.rpn.positives[clss][batch].size()[0] > 0:
-                        path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(clss, batch))
-                        torch.save(model.rpn.positives[clss][batch], path_to_save)
+                else:
+                    for batch in range(len(model.rpn.positives[clss])):
+                        if model.rpn.positives[clss][batch].size()[0] > 0:
+                            path_to_save = os.path.join(result_dir, 'features_RPN', 'positives_cl_{}_batch_{}'.format(clss, batch))
+                            torch.save(model.rpn.positives[clss][batch], path_to_save)
 
             for i in range(len(model.rpn.X)):
                 if model.rpn.X[i].size()[0] > 0:
@@ -195,6 +198,7 @@ class FeatureExtractorRPN:
                     'X': torch.cat(model.rpn.X),
                     'Y': torch.cat(model.rpn.Y)
                     }
-            for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
+            for i in range(self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES):
                 model.rpn.positives[i] = torch.cat(model.rpn.positives[i])
+
             return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)
