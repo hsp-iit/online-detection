@@ -268,7 +268,7 @@ class RPNModule(torch.nn.Module):
                     if self.save_features:
                         path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, b))
                         torch.save(self.negatives[i][b], path_to_save)
-                    self.negatives[i][b] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                        self.negatives[i][b] = torch.empty((0, self.feat_size), device=self.training_device)
                     self.current_batch[i] += 1
                     if self.current_batch[i] >= self.iterations:
                         indices_to_remove.append(i)
