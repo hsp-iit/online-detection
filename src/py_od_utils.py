@@ -71,10 +71,10 @@ def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
     sampled_X = torch.empty((0, features_dim), device=device)
     ns = torch.empty((0,1), device=device)
-    for i in range(num_classes):
-        if len(positives[i]) != 0:
-            sampled_X = positives[i][0].unsqueeze(0)
-            ns = torch.cat((ns, torch.norm(positives[i][0].view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
+    #for i in range(num_classes):
+    #    if len(positives[i]) != 0:
+    #        sampled_X = positives[i][0].unsqueeze(0)
+    #        ns = torch.cat((ns, torch.norm(positives[i][0].view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
     for i in range(num_classes):
         if len(positives[i]) != 0:
             pos_idx = torch.randint(len(positives[i]), (take_from_pos,))
