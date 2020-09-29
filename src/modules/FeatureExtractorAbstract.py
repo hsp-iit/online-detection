@@ -14,7 +14,7 @@ class FeatureExtractorAbstract(ABC):
         pass
 
     @abstractmethod
-    def extractRPNFeatures(self, dataset) -> None:
+    def extractRPNFeatures(self) -> None:
         pass
 
     @abstractmethod

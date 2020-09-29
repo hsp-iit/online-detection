@@ -1,4 +1,4 @@
-from maskrcnn_pytorch.benchmark.modeling.roi_heads.box_head.inference import PostProcessor
+from mrcnn_modified.modeling.roi_heads.box_head.inference import PostProcessor
 import torch.nn.functional as F
 import torch
 

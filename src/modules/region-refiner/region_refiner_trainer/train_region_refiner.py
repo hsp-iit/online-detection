@@ -1,62 +1,47 @@
-import h5py
 import numpy as np
 import os
 import time
 import sys
-#import warnings
-from scipy import linalg
 import torch
-from utils import list_features, features_to_COXY
 
 basedir = os.path.dirname(__file__)
-from py_od_utils import getFeatPath
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir, os.path.pardir)))
+
 
 class RegionRefinerTrainer():
-    def __init__(self, cfg):
+    def __init__(self, cfg, lmbd, is_rpn):
         self.cfg = cfg
-        self.features_format = self.cfg['FEATURE_INFO']['FORMAT']
-        feature_folder = getFeatPath(self.cfg)
-        feat_path = os.path.join(basedir, '..', '..', '..', '..', 'Data', 'feat_cache', feature_folder, 'train_val')
-        self.path_to_features = feat_path + '/%s.' + self.features_format
-        self.path_to_imgset_train = self.cfg['DATASET']['TARGET_TASK']['TRAIN_IMSET']
-        self.path_to_imgset_val = self.cfg['DATASET']['TARGET_TASK']['VAL_IMSET']
-        self.features_dictionary_train = list_features(self.path_to_imgset_train)
-        return
+        self.lambd = lmbd
+        self.percentile = 0
+        self.COXY = None
+        self.is_rpn = is_rpn
 
-    def __call__(self):
-        models = self.train()
+    def __call__(self, COXY, output_dir=None):
+        self.COXY = COXY
+        models = self.train(output_dir=output_dir)
         return models
 
-    def train(self):
+    def train(self, output_dir=None):
         chosen_classes = self.cfg['CHOSEN_CLASSES']
+        start_index = 1
+
+        if self.is_rpn:
+            start_index = 0
         opts = self.cfg['REGION_REFINER']['opts']
 
-        feat_path = self.path_to_features
-        positives_file = os.path.join(feat_path[:-16], 'bbox_positives')
-        try:
-            COXY = torch.load(positives_file)
-        except:
-            COXY = features_to_COXY(self.path_to_features, self.features_dictionary_train, min_overlap=opts['min_overlap'])
-            torch.save(COXY, positives_file)
-
-        # cache_dir = 'bbox_reg/'
-        # if not os.path.exists(cache_dir):
-        #    os.mkdir(cache_dir)
         num_clss = len(chosen_classes)
-        bbox_model_suffix = '_first_test'
 
         models = np.empty((0))
-        # print(models)
 
         start_time = time.time()
-        for i in range(1, num_clss):
+        for i in range(start_index, num_clss):
             print('Training regressor for class %s (%d/%d)' % (chosen_classes[i], i, num_clss - 1))
             # Compute indices where bboxes of class i overlap with the ground truth
-            #I = np.logical_and(COXY['O'] > opts['min_overlap'], COXY['C'] == i)
-            I = (COXY['O'] > opts['min_overlap']) & (COXY['C'] == i)
-            #I = np.squeeze(np.where(I == True))
+            I = self.COXY['C'] == i
             I = torch.where(I == True)[0]
-            #print(I)
+            print('Training with %i examples' %len(I))
             if len(I) == 0:
                 models = np.append(models, {'mu': None,
                                             'T': None,
@@ -67,78 +52,80 @@ class RegionRefinerTrainer():
                 continue
             # Extract the corresponding values in the X matrix
             # Transpose is used to set the number of features as the number of columns (instead of the number of rows)
-            Xi = COXY['X'][I]
-            Yi = COXY['Y'][I]
-            # TODO check if Oi and Ci computations are required
+            Xi = self.COXY['X'][I]
+            Yi = self.COXY['Y'][I]
             # Add bias values to Xi
-            #bias = np.ones((Xi.shape[0], 1), dtype=np.float32)
-            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float32).to("cuda")
-            #Xi = np.append(Xi, bias, axis=1)
+            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float32, device=Xi.device)
             Xi = torch.cat((Xi, bias), dim=1)
 
             # Center and decorrelate targets
-            #mu = np.mean(Yi, axis=0)
             mu = torch.mean(Yi, dim=0)
-            #Yi -= np.broadcast_arrays(Yi, mu)[1]  # Resize mu as Yi with broadcast_arrays in [1], subtract mu to Yi
             Yi -= mu
-            # TODO understand where this formula comes from
-            #S = np.matmul(Yi.T, Yi) / Yi.shape[0]
             S = torch.matmul(torch.t(Yi), Yi) / Yi.size()[0]
-            #D, W = np.linalg.eig(S)  # D in python is a vector, in matlab is a diagonal matrix
             D, W = torch.eig(S, eigenvectors=True)
             D = D[:, 0]
-            #T = np.matmul(np.matmul(W, np.diag(1 / np.sqrt(D + 0.001))), W.T)
             T = torch.matmul(torch.matmul(W, torch.diag(torch.sqrt(D + 0.001).pow_(-1))), torch.t(W))
-            #T_inv = np.matmul(np.matmul(W, np.diag(np.sqrt(D + 0.001))), W.T)
             T_inv = torch.matmul(torch.matmul(W, torch.diag(torch.sqrt(D + 0.001))), torch.t(W))
-            #Yi = np.matmul(Yi, T)
             Yi = torch.matmul(Yi, T)
-            #print(Yi.shape)
 
-            Beta = self.solve(Xi, Yi, opts['lambda'])
+
+            Beta = self.solve(Xi, Yi, self.lambd)
+
+            if self.percentile > 0:
+                indices = []
+                for elem in Beta:
+                    losses_i = Beta[elem]['losses']
+                    threshold_i = np.percentile(losses_i.cpu(), self.percentile)
+                    indices_i = torch.where(losses_i > threshold_i)[0]
+                    indices.append(indices_i)
+                Beta = self.solve(Xi, Yi, self.lambd, Xi_test, Yi_test, indices)
 
             models = np.append(models, {
-                'mu': mu,
-                'T': T,
-                'T_inv': T_inv,
+                'mu': mu.to("cuda"),
+                'T': T.to("cuda"),
+                'T_inv': T_inv.to("cuda"),
                 'Beta': Beta
             })
 
-            mean_losses = torch.empty(0).to("cuda")
-            for elem in models[i - 1]['Beta']:
-                mean_losses = torch.cat((mean_losses, torch.mean(models[i - 1]['Beta'][elem]['losses'], dim=0, keepdim=True)))
+            mean_losses = torch.empty(0, device=Xi.device)
+
+            for elem in models[i - start_index]['Beta']:
+                mean_losses = torch.cat((mean_losses, torch.mean(models[i - start_index]['Beta'][elem]['losses'], dim=0, keepdim=True)))
             print('Mean losses:', mean_losses)
 
-            # break
         end_time = time.time()
-        print('Time required to train %d regressors: %f seconds.' % (num_clss - 1, end_time - start_time))
-        torch.save(models, 'models_regressor')
+        training_time = end_time - start_time
+        print('Time required to train %d regressors: %f seconds.' % (num_clss-1, training_time))
+
+        if output_dir and self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("RPN's Online Region Refiner training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Detector's Online Region Refiner training time: {}min:{}s \n \n".format(int(training_time/60), round(training_time%60)))
 
         return models
 
-    def solve(self, X, y, lmbd):
-        #X_torch = torch.from_numpy(X).to("cuda")
-        #y_torch = torch.from_numpy(y).to("cuda")
-        #start_mult = time.time()
-        X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(2049).to("cuda")
-        #start_cho = time.time()
-        #print('Cho: %f seconds.' % (start_cho - start_mult))
-        R = torch.cholesky(X_transposed_X)
-        #end_cho = time.time()
-        #print('Cho: %f seconds.' % (end_cho - start_cho))
+
+    def solve(self, X, y, lmbd, X_test=None, Y_test=None, indices=None):
+        if indices is None:
+            X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
+            R = torch.cholesky(X_transposed_X)
         to_return = {}
+        X_original = X.clone()
+        y_original = y.clone()
         for i in range(0, 4):
+            if indices is not None:
+                X = X_original[indices[i]]
+                y = y_original[indices[i]]
+                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
+                R = torch.cholesky(X_transposed_X)
             y_torch_i = y[:, i]
-            #torch.matmul(torch.t(X_torch), y_torch_i)
-            z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(2049, 1), R, upper=False).solution
-            #end_ls1 = time.time()
-            #print('LS1: %f seconds.' % (end_ls1 - end_cho))
-            w = torch.triangular_solve(z, torch.t(R)).solution.view(2049)
-            #end_ls2 = time.time()
-            #print('LS2: %f seconds.' % (end_ls2 - end_ls1))
+            z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(X.size()[1], 1), R, upper=False).solution
+            w = torch.triangular_solve(z, torch.t(R)).solution.view(X.size()[1])
             losses = 0.5 * torch.pow((torch.matmul(X, w) - y_torch_i), 2)
-            #losses = losses.cpu().numpy()
-            #w = w.cpu().numpy()
-            to_return[str(i)] = {'weights': w,
+            to_return[str(i)] = {'weights': w.to('cuda'),
                                  'losses': losses}
         return to_return
+
+

@@ -1,0 +1,55 @@
+NUM_CLASSES: 31
+
+ONLINE_REGION_CLASSIFIER:
+    MINIBOOTSTRAP:
+        EASY_THRESH: -0.9
+        HARD_THRESH: -0.7
+    CLASSIFIER:
+        lambda: 0.0001
+        sigma: 5 
+        M: 2000
+        kernel_type: 'gauss'
+
+REGION_REFINER:
+    opts:
+        lambda: 1000
+
+EVALUATION:
+    SCORE_THRESH: -2
+    NMS: 0.3
+    DETECTIONS_PER_IMAGE: 100
+
+CHOSEN_CLASSES:
+    0: '_background_'
+    1: 'flower2'
+    2: 'flower5'
+    3: 'flower7'
+    4: 'mug1'
+    5: 'mug3'
+    6: 'mug4'
+    7: 'wallet6'
+    8: 'wallet7'
+    9: 'wallet10'
+    10: 'sodabottle2'
+    11: 'sodabottle3'
+    12: 'sodabottle4'
+    13: 'book4'
+    14: 'book6'
+    15: 'book9'
+    16: 'ringbinder4'
+    17: 'ringbinder5'
+    18: 'ringbinder6'
+    19: 'bodylotion2'
+    20: 'bodylotion5'
+    21: 'bodylotion8'
+    22: 'sprayer6'
+    23: 'sprayer8'
+    24: 'sprayer9'
+    25: 'pencilcase3'
+    26: 'pencilcase5'
+    27: 'pencilcase6'
+    28: 'hairclip2'
+    29: 'hairclip6'
+    30: 'hairclip8'
+
+
