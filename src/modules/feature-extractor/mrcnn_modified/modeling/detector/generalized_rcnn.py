@@ -10,7 +10,7 @@ from maskrcnn_benchmark.structures.image_list import to_image_list
 
 from maskrcnn_benchmark.modeling.backbone import build_backbone
 from mrcnn_modified.modeling.rpn.rpn import build_rpn
-from ..roi_heads.roi_heads_getProposals import build_roi_heads
+from ..roi_heads.roi_heads import build_roi_heads
 
 import time
 
@@ -47,7 +47,7 @@ class GeneralizedRCNN(nn.Module):
         images = to_image_list(images)
         features = self.backbone(images.tensors)
         proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN)
-        if gt_bbox is not None:
+        if gt_bbox is not None and is_train:
             # Resize the ground truth boxes to the correct format
             width, height = proposals[0].size
             gt_bbox = gt_bbox.resize((width, height))
@@ -57,5 +57,6 @@ class GeneralizedRCNN(nn.Module):
 
         if self.roi_heads:
             x, result, detector_losses = self.roi_heads(features, proposals, gt_bbox = gt_bbox, gt_label= gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir)
-        return average_recall_RPN
+
+        return average_recall_RPN, result
 

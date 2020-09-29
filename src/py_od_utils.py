@@ -164,3 +164,37 @@ def load_features_regressor(features_dir):
             'Y': torch.cat(Y_list)
             }
     return COXY
+
+def decode_boxes_detector(boxes, bbox_pred, num_classes):
+
+        ex_box = boxes.bbox
+        num_boxes = ex_box.size()[0]
+        # Initialize refined boxes with example boxes in the 0-th dimension
+        refined_boxes = ex_box
+
+        dst_ctr_x = bbox_pred[:, 0::4]
+        dst_ctr_y = bbox_pred[:, 1::4]
+        dst_scl_x = bbox_pred[:, 2::4]
+        dst_scl_y = bbox_pred[:, 3::4]
+
+        src_w = ex_box[:, 2] - ex_box[:, 0] + np.spacing(1)
+        src_h = ex_box[:, 3] - ex_box[:, 1] + np.spacing(1)
+        src_ctr_x = ex_box[:, 0] + 0.5 * src_w
+        src_ctr_y = ex_box[:, 1] + 0.5 * src_h
+        pred_ctr_x = (dst_ctr_x * src_w[:, None]) + src_ctr_x[:, None]
+        pred_ctr_y = (dst_ctr_y * src_h[:, None]) + src_ctr_y[:, None]
+        pred_w = torch.exp(dst_scl_x) * src_w[:, None]
+        pred_h = torch.exp(dst_scl_y) * src_h[:, None]
+        pred_boxes = torch.zeros_like(bbox_pred)
+        pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+        pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
+        pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w
+        pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h
+
+        # Set boxes in Matlab format
+        pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.ones(pred_boxes[:, 0::4].size(), device='cuda'))
+        pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.ones(pred_boxes[:, 1::4].size(), device='cuda'))
+        pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0], device='cuda'))
+        pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1], device='cuda'))
+
+        return pred_boxes

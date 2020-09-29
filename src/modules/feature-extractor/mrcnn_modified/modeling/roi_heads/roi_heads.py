@@ -1,7 +1,7 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
 
-from .box_head.box_head_getProposals import build_roi_box_head
+from .box_head.box_head import build_roi_box_head
 
 from maskrcnn_benchmark.modeling.roi_heads.keypoint_head.keypoint_head import build_roi_keypoint_head
 from maskrcnn_benchmark.structures.bounding_box import BoxList

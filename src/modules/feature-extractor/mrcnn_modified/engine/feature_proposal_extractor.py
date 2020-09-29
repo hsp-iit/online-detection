@@ -59,33 +59,33 @@ OBJECTNAME_TO_ID_21 = {
 
 
 def build_transform(cfg):
-	"""
-	Creates a basic transformation that was used to train the models
-	"""
+    """
+    Creates a basic transformation that was used to train the models
+    """
 
-	# we are loading images with OpenCV, so we don't need to convert them
-	# to BGR, they are already! So all we need to do is to normalize
-	# by 255 if we want to convert to BGR255 format, or flip the channels
-	# if we want it to be in RGB in [0-1] range.
-	if cfg.INPUT.TO_BGR255:
-		to_bgr_transform = T.Lambda(lambda x: x * 255)
-	else:
-		to_bgr_transform = T.Lambda(lambda x: x[[2, 1, 0]])
+    # we are loading images with OpenCV, so we don't need to convert them
+    # to BGR, they are already! So all we need to do is to normalize
+    # by 255 if we want to convert to BGR255 format, or flip the channels
+    # if we want it to be in RGB in [0-1] range.
+    if cfg.INPUT.TO_BGR255:
+        to_bgr_transform = T.Lambda(lambda x: x * 255)
+    else:
+        to_bgr_transform = T.Lambda(lambda x: x[[2, 1, 0]])
 
-	normalize_transform = T.Normalize(
-		mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD
-	)
+    normalize_transform = T.Normalize(
+        mean=cfg.INPUT.PIXEL_MEAN, std=cfg.INPUT.PIXEL_STD
+    )
 
-	transform = T.Compose(
-		[
-		    T.ToPILImage(),
-		    T.Resize(cfg.INPUT.MIN_SIZE_TEST),
-		    T.ToTensor(),
-		    to_bgr_transform,
-		    normalize_transform,
-		]
-	)
-	return transform
+    transform = T.Compose(
+        [
+            T.ToPILImage(),
+            T.Resize(cfg.INPUT.MIN_SIZE_TEST),
+            T.ToTensor(),
+            to_bgr_transform,
+            normalize_transform,
+        ]
+    )
+    return transform
 
 def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True, result_dir = None):
 

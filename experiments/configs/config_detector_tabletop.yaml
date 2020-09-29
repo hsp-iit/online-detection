@@ -10,6 +10,9 @@ MODEL:
     POST_NMS_TOP_N_TEST: 300
   ROI_BOX_HEAD:
     NUM_CLASSES: 101 # This will be set to the correct number of classes for the target task in the code, this is just to load correctly the model trained on the feature task
+  ROI_HEADS:
+    SCORE_THRESH: -2.0
+    NMS: 0.3
   MASK_ON: False
 DATASETS:
   TRAIN: ("icubworld_id_21objects_train_val_target_task",)
@@ -24,6 +27,7 @@ DATALOADER:
   SIZE_DIVISIBILITY: 32
 TEST:
   IMS_PER_BATCH: 1
+  DETECTIONS_PER_IMG: 100
 
 MINIBOOTSTRAP:
   DETECTOR:
