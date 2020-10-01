@@ -59,7 +59,6 @@ is_tabletop = not args.icwt30
 # Set configuration files
 if is_tabletop:
     cfg_target_task = 'configs/config_detector_tabletop.yaml'
-    #cfg_target_task = 'configs/config_detector_tabletop_integrate_ood.yaml'
     if not args.only_ood:
         cfg_rpn = 'configs/config_rpn_tabletop.yaml'
         cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
