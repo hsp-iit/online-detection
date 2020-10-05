@@ -23,6 +23,7 @@ class ROIBoxHead(torch.nn.Module):
     def __init__(self, cfg, in_channels):
         super(ROIBoxHead, self).__init__()
         self.feature_extractor = make_roi_box_feature_extractor(cfg, in_channels)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.predictor = make_roi_box_predictor(
             cfg, self.feature_extractor.out_channels)
         self.post_processor = make_roi_box_post_processor(cfg)
@@ -79,7 +80,9 @@ class ROIBoxHead(torch.nn.Module):
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)
 
         # Extract features that will be fed to the final classifier.
-        x = self.feature_extractor(features, proposals)
+        feat = self.feature_extractor(features, proposals)
+        x = self.avgpool(feat)
+        x = x.view(x.size(0), -1)
         proposals[0] = proposals[0].resize((img_size[0], img_size[1]))
         gt_bbox = gt_bbox.resize((img_size[0], img_size[1]))
 
@@ -204,7 +207,8 @@ class ROIBoxHead(torch.nn.Module):
             # Add random examples with iou < 0.3 otherwise
             else:
                 neg_i = x[overlap[:,i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
-                neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                if neg_i.size()[0] > 0:                                                                         # TODO maybe add this in the rpn
+                    neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
             # Add negatives splitting them into batches
             neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
             ind_to_add = 0
@@ -231,13 +235,15 @@ class ROIBoxHead(torch.nn.Module):
         for index in indices_to_remove:
             self.still_to_complete.remove(index)
         
-        return None, None, None
+        return feat, None, None
 
 
     def forward_test(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None):
 
         # Extract features that will be fed to the final classifier.
         x = self.feature_extractor(features, proposals)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
         proposals[0] = proposals[0].resize((img_size[0], img_size[1]))
         gt_bbox = gt_bbox.resize((img_size[0], img_size[1]))
         

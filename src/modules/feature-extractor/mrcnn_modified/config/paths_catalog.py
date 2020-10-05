@@ -153,7 +153,17 @@ class DatasetCatalog(object):
             "data_dir": "iCWT/TABLE-TOP",
             "image_set": "",
             "split": "test_TASK2_21objs_pois_odd"
-        }
+        },
+        "icubworld_id_21objects_train_target_task_with_masks": {
+            "data_dir": "iCWT/TABLE-TOP-single-object-masks/train",
+            "image_set": "",
+            "split": "train_val_AutomSegm_tabletop_21objs"
+        },
+        "icubworld_id_21objects_test_target_task_with_masks": {
+            "data_dir": "iCWT/TABLE-TOP-single-object-masks/train",
+            "image_set": "",
+            "split": "test_AutomSegm_tabletop_21objs"
+        },
     }
 
     @staticmethod

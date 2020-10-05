@@ -41,14 +41,14 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
         self.out_channels = head.out_channels
 
         #As below
-        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        # self.avgpool = nn.AdaptiveAvgPool2d(1)
 
     def forward(self, x, proposals):
         x = self.pooler(x, proposals)
         x = self.head(x)
         # The two following lines have been copied from the "FastRCNNPredictor" in roi_box_predictors.py
-        x = self.avgpool(x)
-        x = x.view(x.size(0), -1)
+        # x = self.avgpool(x)
+        # x = x.view(x.size(0), -1)
         return x
 
 

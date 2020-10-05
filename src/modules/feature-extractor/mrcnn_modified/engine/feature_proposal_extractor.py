@@ -19,6 +19,8 @@ from PIL import Image
 import numpy as np
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
+from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
+
 
 import argparse
 
@@ -27,7 +29,6 @@ import xml.etree.ElementTree as ET
 
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.image_list import to_image_list
-
 
 OBJECTNAME_TO_ID = {
     "__background__":0,
@@ -89,9 +90,10 @@ def build_transform(cfg):
 
 def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True, result_dir = None):
 
-    img_dir=dataset._imgpath
-    anno_dir=dataset._annopath
-    imgset_path=dataset._imgsetpath
+    img_dir = dataset._imgpath
+    anno_dir = dataset._annopath
+    imgset_path = dataset._imgsetpath
+    mask_dir = dataset._maskpath
 
     model.eval()
 
@@ -111,12 +113,19 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         img_path = img_path.strip('\n')
 
         filename_path = img_dir % img_path
+        print(filename_path)
         img_RGB = Image.open(filename_path)
         # convert to BGR format
         try:
             image = np.array(img_RGB)[:, :, [2, 1, 0]]
         except:
             image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+        mask_path = (mask_dir % img_path)
+
+        mask = None
+        if os.path.exists(mask_path):
+            #mask = T.ToTensor()(T.Resize(cfg.INPUT.MIN_SIZE_TEST)(Image.open(mask_path))).to('cuda')
+            mask = T.ToTensor()(Image.open(mask_path)).to('cuda')
         # Read in annotation file
         anno_file = anno_dir % img_path
         tree = ET.parse(anno_file, ET.XMLParser(encoding='utf-8'))
@@ -124,6 +133,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         # Read label
         gt_labels = []
         gt_bboxes_list = []
+        masks = []
         for object in root.findall('object'):
             try:
                 name = object.find('name').text
@@ -146,6 +156,8 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
                 ymin = 1
             # add box to list and convert it to 0-based
             gt_bboxes_list.append([float(xmin) -1, float(ymin)-1, float(xmax)-1, float(ymax)-1])
+            if mask is not None:
+                masks.append(mask)      #TODO it needs to be adapted for images with more than a gt
 
 
         # Save list of boxes as tensor
@@ -155,9 +167,17 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         width, height = img_RGB.size
         img_sizes = [width, height]
 
+        if len(masks) > 0:
+            mask_lists = SegmentationMask(torch.cat(masks), img_sizes, mode='mask')
+
+
         # create box list containing the ground truth bounding boxes
         try:
             gt_bbox_boxlist = BoxList(gt_bbox_tensor, image_size=(width, height), mode='xyxy')
+            try:
+                gt_bbox_boxlist.add_field("masks", mask_lists)
+            except:
+                pass
         except:
             gt_bbox_boxlist = BoxList(torch.empty((0,4), device="cuda"), image_size=(width, height), mode='xyxy')
             

@@ -15,7 +15,7 @@ class FastRCNNPredictor(nn.Module):
 
         num_classes = config.MODEL.ROI_BOX_HEAD.NUM_CLASSES
         #As below
-        #self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.cls_score = nn.Linear(num_inputs, num_classes)
         num_bbox_reg_classes = 2 if config.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
         self.bbox_pred = nn.Linear(num_inputs, num_bbox_reg_classes * 4)
@@ -28,8 +28,8 @@ class FastRCNNPredictor(nn.Module):
 
     def forward(self, x, proposals=None):
         #Removed from here and added in "ResNet50Conv5ROIFeatureExtractor" in roi_box_feature_extractors.py
-        #x = self.avgpool(x)
-        #x = x.view(x.size(0), -1)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
         # If FALKON classifiers, regressors and stats are defined use online pipeline
         if hasattr(self, 'classifiers'):
             # TODO read from config if features must be normalized for box refinement
@@ -82,6 +82,7 @@ class FastRCNNPredictor(nn.Module):
         return objectness_scores
 
         return None
+
 
 
 @registry.ROI_BOX_PREDICTOR.register("FPNPredictor")

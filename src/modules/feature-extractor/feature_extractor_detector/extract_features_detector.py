@@ -46,7 +46,7 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
@@ -57,7 +57,7 @@ class FeatureExtractorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir)
+        return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation)
 
     def load_parameters(self):
         if self.distributed:
@@ -81,8 +81,7 @@ class FeatureExtractorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False):
-
+    def train(self, is_train, result_dir=False, extract_features_segmentation=False):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -213,7 +212,10 @@ class FeatureExtractorDetector:
                             }
                     for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
                         model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
-                    return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                    if extract_features_segmentation:
+                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                    else:
+                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
