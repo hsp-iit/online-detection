@@ -160,7 +160,7 @@ class DatasetCatalog(object):
             "split": "train_val_AutomSegm_tabletop_21objs"
         },
         "icubworld_id_21objects_test_target_task_with_masks": {
-            "data_dir": "iCWT/TABLE-TOP-single-object-masks/train",
+            "data_dir": "iCWT/TABLE-TOP-single-object-masks/test",
             "image_set": "",
             "split": "test_AutomSegm_tabletop_21objs"
         },

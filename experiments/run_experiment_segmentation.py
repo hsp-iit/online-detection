@@ -162,12 +162,28 @@ if args.load_detector_models:
     regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
     region_refiner = RegionRefiner(cfg_online_path)
 
+    """
+    #TODO just for test purposes, change this later
+    elif True:
+        positives = torch.load('pos_segm')
+        negatives = torch.load('neg_segm')
+        stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
+        # Detector Region Classifier initialization
+        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
+        model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+        torch.save(model, os.path.join(output_dir, 'classifier_segmentation'))
+        torch.save(stats, os.path.join(output_dir, 'stats_segmentation'))
+        quit()
+    
+    """
+
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
         negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation = True)
-        torch.save(negatives_segmentation, 'neg_segm')
-        torch.save(positives_segmentation, 'pos_segm')
+        #torch.save(negatives_segmentation, 'neg_segm')
+        #torch.save(positives_segmentation, 'pos_segm')
 
     else:
         if args.save_detector_features:

@@ -59,7 +59,7 @@ class ROIMaskHead(torch.nn.Module):
         self.negatives = []
         for i in range(self.num_classes):
             self.positives.append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
-            self.negatives.append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
+            self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
 
 
     def forward(self, features, proposals, gt_labels_list, gt_bbox, targets=None):
@@ -91,9 +91,9 @@ class ROIMaskHead(torch.nn.Module):
             mask_features = masks_features[i].permute(1, 2, 0).view(-1, masks_features.size()[1])
             masks_gt = masks_gts[i].view(mask_features.size()[0])
             positives_indices = torch.where(masks_gt >= 0.5)
-            self.positives[gt_labels_list[i-1]] = torch.cat((self.positives[gt_labels_list[i-1]], mask_features[positives_indices]))
+            self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], mask_features[positives_indices]))
             negatives_indices = torch.where(masks_gt < 0.5)
-            self.negatives[gt_labels_list[i-1]] = torch.cat((self.negatives[gt_labels_list[i-1]], mask_features[negatives_indices]))
+            self.negatives[gt_labels_list[i]-1][0] = torch.cat((self.negatives[gt_labels_list[i]-1][0], mask_features[negatives_indices]))
 
         return None, None, None
 
