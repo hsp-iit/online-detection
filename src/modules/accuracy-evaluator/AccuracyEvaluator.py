@@ -5,7 +5,7 @@ from mrcnn_modified.data.datasets.evaluation import evaluate
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 
-import OnlineDetectionPostProcessor as odp
+import OnlineDetectionPostProcessor_old as odp
 import yaml
 
 class AccuracyEvaluator():

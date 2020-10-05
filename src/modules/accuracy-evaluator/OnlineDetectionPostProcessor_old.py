@@ -6,11 +6,9 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_nms
 from maskrcnn_benchmark.structures.boxlist_ops import cat_boxlist
 
-from py_od_utils import decode_boxes_detector
-
 
 class OnlineDetectionPostProcessor(PostProcessor):
-    def forward(self, x, proposals, num_classes, img_size):
+    def forward(self, boxes, num_classes):
         """
         Arguments:
             x (tuple[tensor, tensor]): x contains the class logits
@@ -21,7 +19,7 @@ class OnlineDetectionPostProcessor(PostProcessor):
             results (list[BoxList]): one BoxList for each image, containing
                 the extra fields labels and scores
         """
-        cls_scores, bbox_pred = x
+        # class_logits, proposals = x
         # class_prob = F.softmax(torch.from_numpy(class_logits))
         # class_prob = torch.from_numpy(class_logits)
         # proposals = torch.from_numpy(proposals)
@@ -43,7 +41,7 @@ class OnlineDetectionPostProcessor(PostProcessor):
         # proposals = proposals.split(boxes_per_image, dim=0)
         # class_prob = class_prob.split(boxes_per_image, dim=0)
 
-        # results = []
+        results = []
         # for prob, boxes_per_img, image_shape in zip(
         #         class_prob, proposals, image_shapes
         # ):
@@ -52,25 +50,14 @@ class OnlineDetectionPostProcessor(PostProcessor):
         #     boxlist = self.filter_results(boxlist, num_classes)
         #     results.append(boxlist)
 
-        proposals = proposals[0].resize(img_size)
-
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = proposals.bbox + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
-
-        proposals.bbox = arr_proposals
-
-        refined_boxes = decode_boxes_detector(proposals, bbox_pred, num_classes)
-
-        boxlist = self.prepare_boxlist(refined_boxes, cls_scores, proposals.size)
-        boxlist = boxlist.clip_to_image(remove_empty=False)
-        boxlist = self.filter_results(boxlist, num_classes)
-
-        #print(boxlist)
-        return boxlist
+        for box in boxes:
+            if self.cls_agnostic_bbox_reg:
+                box.bbox = box.bbox.repeat(1, num_classes)
+            boxlist = self.prepare_boxlist(box.bbox, box.get_field('scores'), box.size)
+            boxlist = boxlist.clip_to_image(remove_empty=False)
+            boxlist = self.filter_results(boxlist, num_classes)
+            results.append(boxlist)
+        return results
 
     def filter_results(self, boxlist, num_classes):
         """Returns bounding-box detection results by thresholding on scores and

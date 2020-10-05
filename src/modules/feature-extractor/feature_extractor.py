@@ -16,6 +16,9 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.falkon_rpn_models = None
         self.regressors_rpn_models = None
         self.stats_rpn = None
+        self.falkon_detector_models = None
+        self.regressors_detector_models = None
+        self.stats_detector = None
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
 
@@ -33,6 +36,9 @@ class FeatureExtractor(FeatureExtractorAbstract):
         feature_extractor.falkon_rpn_models = self.falkon_rpn_models
         feature_extractor.regressors_rpn_models = self.regressors_rpn_models
         feature_extractor.stats_rpn = self.stats_rpn
+        feature_extractor.falkon_detector_models = self.falkon_detector_models
+        feature_extractor.regressors_detector_models = self.regressors_detector_models
+        feature_extractor.stats_detector = self.stats_detector
         if self.regions_post_nms is not None:
             feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
         features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, extract_features_segmentation = extract_features_segmentation)

@@ -14,14 +14,14 @@ from mrcnn_modified.data import make_data_loader
 from maskrcnn_benchmark.solver import make_lr_scheduler
 from maskrcnn_benchmark.solver import make_optimizer
 
-from mrcnn_modified.modeling.detector.detectors_getProposals import build_detection_model
+from mrcnn_modified.modeling.detector.detectors import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer, Checkpointer
 from maskrcnn_benchmark.utils.collect_env import collect_env_info
 from maskrcnn_benchmark.utils.comm import synchronize, get_rank
 from maskrcnn_benchmark.utils.logger import setup_logger
 from maskrcnn_benchmark.utils.miscellaneous import mkdir
 
-from mrcnn_modified.engine.feature_proposal_extractor import inference
+from mrcnn_modified.engine.inference import inference
 import copy
 import logging
 # See if we can use apex.DistributedDataParallel instead of the torch default,
@@ -31,7 +31,7 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
-class FeatureExtractorDetector:
+class AccuracyEvaluatorDetector:
     def __init__(self, cfg_path_target_task=None, local_rank=0):
 
         self.is_target_task = True
@@ -46,7 +46,7 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
@@ -57,7 +57,7 @@ class FeatureExtractorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation)
+        return self.train(is_train, result_dir=output_dir)
 
     def load_parameters(self):
         if self.distributed:
@@ -81,7 +81,8 @@ class FeatureExtractorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False, extract_features_segmentation=False):
+    def train(self, is_train, result_dir=False):
+
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -171,52 +172,4 @@ class FeatureExtractorDetector:
                     fid.write("Detector's feature extraction time: {}min:{}s \n".format(int(feat_extraction_time/60), round(feat_extraction_time%60)))
 
             synchronize()
-            if is_train:
-                logger = logging.getLogger("maskrcnn_benchmark")
-                logger.handlers=[]
-
-                if self.cfg.SAVE_FEATURES_DETECTOR:
-                    # Save features still not saved
-                    for clss in range(len(model.roi_heads.box.negatives)):
-                        for batch in range(len(model.roi_heads.box.negatives[clss])):
-                            if model.roi_heads.box.negatives[clss][batch].size()[0] > 0:
-                                path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(clss, batch))
-                                torch.save(model.roi_heads.box.negatives[clss][batch], path_to_save)
-
-                        # If a class does not have positive examples, save an empty tensor
-                        if model.roi_heads.box.positives[clss][0].size()[0] == 0 and len(model.roi_heads.box.positives[clss]) == 1:
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, 0))
-                            torch.save(torch.empty((0, model.roi_heads.box.feat_size), device=model.roi_heads.box.negatives[clss][0].device), path_to_save)
-                        else:
-                            for batch in range(len(model.roi_heads.box.positives[clss])):
-                                if model.roi_heads.box.positives[clss][batch].size()[0] > 0:
-                                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
-                                    torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
-
-                    for i in range(len(model.roi_heads.box.X)):
-                        if model.roi_heads.box.X[i].size()[0] > 0:
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_x_batch_{}'.format(i))
-                            torch.save(model.roi_heads.box.X[i], path_to_save)
-
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_c_batch_{}'.format(i))
-                            torch.save(model.roi_heads.box.C[i], path_to_save)
-
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'reg_y_batch_{}'.format(i))
-                            torch.save(model.roi_heads.box.Y[i], path_to_save)
-                    return
-                else:
-                    COXY = {'C': torch.cat(model.roi_heads.box.C),
-                            'O': model.roi_heads.box.O,
-                            'X': torch.cat(model.roi_heads.box.X),
-                            'Y': torch.cat(model.roi_heads.box.Y)
-                            }
-                    for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
-                        model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
-                    if extract_features_segmentation:
-                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
-                    else:
-                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
-            else:
-                logger = logging.getLogger("maskrcnn_benchmark")
-                logger.handlers=[]
-                return copy.deepcopy(model.roi_heads.box.test_boxes)
+        return
