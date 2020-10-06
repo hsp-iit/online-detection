@@ -58,7 +58,7 @@ class ROIBoxHead(torch.nn.Module):
             # final classifier that converts the features into predictions
             cls_scores, bbox_pred = self.predictor(x)
             result = self.post_processor((cls_scores, bbox_pred), proposals, self.num_classes, img_size)
-            return x, result, {}
+            return features, result, {}
 
         else:
             if self.post_processor is None:
@@ -66,7 +66,7 @@ class ROIBoxHead(torch.nn.Module):
             # final classifier that converts the features into predictions
             class_logits, box_regression = self.predictor(x)
             result = self.post_processor((class_logits, box_regression), proposals)
-            return x, result, {}
+            return features, result, {}
 
 
 def build_roi_box_head(cfg, in_channels):

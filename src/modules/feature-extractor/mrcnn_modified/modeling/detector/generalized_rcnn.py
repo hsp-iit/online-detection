@@ -46,7 +46,10 @@ class GeneralizedRCNN(nn.Module):
         """
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN)
+        if gt_bbox is not None:
+            proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN)
+        else:
+            proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox, compute_average_recall_RPN=compute_average_recall_RPN)
         if gt_bbox is not None and is_train:
             # Resize the ground truth boxes to the correct format
             width, height = proposals[0].size

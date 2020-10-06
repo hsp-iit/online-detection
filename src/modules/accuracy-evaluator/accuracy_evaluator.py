@@ -18,6 +18,8 @@ class AccuracyEvaluator(AccuracyEvaluatorAbstract):
         self.falkon_detector_models = None
         self.regressors_detector_models = None
         self.stats_detector = None
+        self.falkon_segmentation_models = None
+        self.stats_segmentation = None
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
 
@@ -30,6 +32,8 @@ class AccuracyEvaluator(AccuracyEvaluatorAbstract):
         accuracy_evaluator.falkon_detector_models = self.falkon_detector_models
         accuracy_evaluator.regressors_detector_models = self.regressors_detector_models
         accuracy_evaluator.stats_detector = self.stats_detector
+        accuracy_evaluator.falkon_segmentation_models = self.falkon_segmentation_models
+        accuracy_evaluator.stats_segmentation = self.stats_segmentation
         if self.regions_post_nms is not None:
             accuracy_evaluator.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
         features = accuracy_evaluator(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features)

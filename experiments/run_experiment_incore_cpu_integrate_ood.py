@@ -22,8 +22,6 @@ from region_refiner import RegionRefiner
 
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor
 
-import AccuracyEvaluator as ae
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--icwt30', action='store_true', help='Run the iCWT experiment reported in the paper (i.e. use as TARGET-TASK the 30 objects identification task from the iCubWorld Transformations dataset). By default, run the experiment referred to as TABLE-TOP in the paper.')

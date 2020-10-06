@@ -6,6 +6,8 @@ from maskrcnn_benchmark.layers import Conv2d
 from maskrcnn_benchmark.layers import ConvTranspose2d
 from maskrcnn_benchmark.modeling import registry
 
+import torch
+
 
 @registry.ROI_MASK_PREDICTOR.register("MaskRCNNC4Predictor")
 class MaskRCNNC4Predictor(nn.Module):
@@ -28,7 +30,31 @@ class MaskRCNNC4Predictor(nn.Module):
 
     def forward(self, x):
         x = F.relu(self.conv5_mask(x))
-        return self.mask_fcn_logits(x)
+        feat_width = x.size()[2]
+        if hasattr(self, 'classifiers'):
+            # Normalize features
+            #x = x.view(-1, x.size()[1])
+            x = x.permute(0,2,3,1).reshape(-1,x.size()[1])
+            x = x - self.stats['mean']
+            x = x * (20 / self.stats['mean_norm'])
+            return self.predict_pixel_FALKON(x, feat_width)
+        else:
+            return self.mask_fcn_logits(x)
+
+    def predict_pixel_FALKON(self, features, feat_width):
+        # Set background class to the default negative value -2
+        pixels_scores = torch.full((features.size()[0], 1), -2, device='cuda')
+        for classifier in self.classifiers:
+            # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
+            if classifier is None:
+                predictions = torch.full((features.size()[0], 1), -2, device='cuda')
+            # Compute objectness with falkon classifier
+            else:
+                predictions = classifier.predict(features)
+            pixels_scores = torch.cat((pixels_scores, predictions), dim=1)
+        #pixels_scores = pixels_scores.T
+        #a = pixels_scores.T.reshape(-1, len(self.classifiers)+1, feat_width, feat_width)
+        return pixels_scores.T.reshape(-1, len(self.classifiers)+1, feat_width, feat_width)
 
 
 @registry.ROI_MASK_PREDICTOR.register("MaskRCNNConv1x1Predictor")

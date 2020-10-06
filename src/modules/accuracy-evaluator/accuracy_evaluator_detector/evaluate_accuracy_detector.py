@@ -46,6 +46,10 @@ class AccuracyEvaluatorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
+        self.falkon_segmentation_models = None
+        self.stats_segmentation = None
+
+
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
@@ -132,6 +136,11 @@ class AccuracyEvaluatorDetector:
             model.roi_heads.box.predictor.regressors = self.regressors_detector_models
         if self.stats_detector is not None:
             model.roi_heads.box.predictor.stats = self.stats_detector
+
+        if self.falkon_segmentation_models is not None:
+            model.roi_heads.mask.predictor.classifiers = self.falkon_segmentation_models
+        if self.stats_segmentation is not None:
+            model.roi_heads.mask.predictor.stats = self.stats_segmentation
 
         if self.distributed:
             model = model.module

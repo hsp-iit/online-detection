@@ -81,8 +81,6 @@ class FastRCNNPredictor(nn.Module):
             objectness_scores = torch.cat((objectness_scores, predictions), dim=1)
         return objectness_scores
 
-        return None
-
 
 
 @registry.ROI_BOX_PREDICTOR.register("FPNPredictor")

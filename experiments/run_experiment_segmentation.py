@@ -6,6 +6,7 @@ import argparse
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
+sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-classifier')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'region-refiner')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'feature-extractor')))
@@ -14,6 +15,8 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'mo
 from mrcnn_modified.data import make_data_loader
 from feature_extractor import FeatureExtractor
 from mrcnn_modified.config import cfg
+from accuracy_evaluator import AccuracyEvaluator
+
 
 from region_refiner import RegionRefiner
 
@@ -218,28 +221,14 @@ if args.save_detector_models:
     torch.save(models, os.path.join(output_dir, 'regressor_detector'))
     torch.save(stats, os.path.join(output_dir, 'stats_detector'))
 
-# Test models
-print('Extracting features for the test set')
-test_boxes = feature_extractor.extractFeatures(is_train=False, output_dir=output_dir)
+# Initialize feature extractor
+accuracy_evaluator = AccuracyEvaluator(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)
+# Set detector models in the pipeline
+accuracy_evaluator.falkon_detector_models = model
+accuracy_evaluator.regressors_detector_models = models
+accuracy_evaluator.stats_detector = stats
 
-# Compute classification predictions
-print('Computing classification predictions')
-predictions = regionClassifier.testRegionClassifier(model, test_boxes)
+accuracy_evaluator.falkon_segmentation_models = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
+accuracy_evaluator.stats_segmentation = torch.load(os.path.join(output_dir, 'stats_segmentation'))
 
-# Refine predictions with the region refiners
-print('Refining predictions with bounding box regressors')
-refined_predictions = region_refiner.predict(predictions, test_boxes, models=models, normalize_features=args.normalize_features_regressor_detector, stats=stats)
-
-# Test dataset creation for accuracy evaluation
-print('Computing test dataset for accuracy evaluation')
-cfg.merge_from_file(cfg_target_task)
-cfg.freeze()
-dataset = make_data_loader(cfg, is_train=False, is_distributed=False, is_target_task=True, icwt_21_objs=is_tabletop)
-
-# Detector Accuracy evaluator initialization
-print('Accuracy evaluator initialization')
-accuracy_evaluator = ae.AccuracyEvaluator(cfg_online_path, output_dir)
-
-# Compute accuracy
-print('Computing accuracy')
-result_reg = accuracy_evaluator.evaluate(dataset.dataset, refined_predictions, is_target_task=True, cls_agnostic_bbox_reg=False, icwt_21_objs=is_tabletop)
+test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir)
