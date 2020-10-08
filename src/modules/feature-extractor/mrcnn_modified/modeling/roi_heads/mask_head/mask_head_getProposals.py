@@ -11,6 +11,8 @@ from .roi_mask_predictors import make_roi_mask_predictor
 from .inference import make_roi_mask_post_processor
 from .loss import make_roi_mask_loss_evaluator
 
+import os
+
 def project_masks_on_boxes(segmentation_masks, proposals, discretization_size):
     """
     Given segmentation masks and the bounding boxes corresponding
@@ -53,16 +55,18 @@ class ROIMaskHead(torch.nn.Module):
             cfg, self.feature_extractor.out_channels)
         self.post_processor = make_roi_mask_post_processor(cfg)
         self.loss_evaluator = make_roi_mask_loss_evaluator(cfg)
+        self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
+        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
+        self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.positives = []
         self.negatives = []
         for i in range(self.num_classes):
-            self.positives.append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
+            self.positives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
             self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
 
-
-    def forward(self, features, proposals, gt_labels_list, gt_bbox, targets=None):
+    def forward(self, features, proposals, gt_labels_list, gt_bbox, targets=None, result_dir=None):
         """
         Arguments:
             features (list[Tensor]): feature-maps from possibly several levels
@@ -91,9 +95,21 @@ class ROIMaskHead(torch.nn.Module):
             mask_features = masks_features[i].permute(1, 2, 0).view(-1, masks_features.size()[1])
             masks_gt = masks_gts[i].view(mask_features.size()[0])
             positives_indices = torch.where(masks_gt >= 0.5)
-            self.positives[gt_labels_list[i]-1] = torch.cat((self.positives[gt_labels_list[i]-1], mask_features[positives_indices]))
+            self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], mask_features[positives_indices]))
+            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_segmentation', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
+                    torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device)
+                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device))
             negatives_indices = torch.where(masks_gt < 0.5)
-            self.negatives[gt_labels_list[i]-1][0] = torch.cat((self.negatives[gt_labels_list[i]-1][0], mask_features[negatives_indices]))
+            self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1] = torch.cat((self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], mask_features[negatives_indices]))
+            if self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
+                if self.save_features:
+                    path_to_save = os.path.join(result_dir, 'features_segmentation', 'negatives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.negatives[gt_labels_list[i]-1]) - 1))
+                    torch.save(self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], path_to_save)
+                    self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device)
+                self.negatives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device))
 
         return None, None, None
 

@@ -19,9 +19,9 @@ class CombinedROIHeads(torch.nn.ModuleDict):
         if cfg.MODEL.MASK_ON and cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR:
             self.mask.feature_extractor = self.box.feature_extractor
 
-    def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size = [0,0], gt_labels_list = None, is_train = True, result_dir = None):
+    def forward(self, features, proposals, gt_bbox=None, gt_label=None, img_size=[0,0], gt_labels_list=None, is_train=True, result_dir=None):
         losses = {}
-        x, detections, loss_box = self.box(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir)
+        x, detections, loss_box = self.box(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list, is_train=is_train, result_dir=result_dir)
 
         if self.cfg.MODEL.MASK_ON:
             # optimization: during training, if we share the feature extractor between
@@ -32,7 +32,7 @@ class CombinedROIHeads(torch.nn.ModuleDict):
                 mask_features = features
             # During training, self.box() will return the unaltered proposals as "detections"
             # this makes the API consistent during training and testing
-            x, detections, loss_mask = self.mask(mask_features, proposals, gt_labels_list, gt_bbox)
+            x, detections, loss_mask = self.mask(mask_features, proposals, gt_labels_list, gt_bbox, result_dir=result_dir)
 
         return x, detections, losses
 

@@ -50,7 +50,10 @@ else: #run on all test dataset
     for i in range(len(ids)):
         #image = cv2.imread('/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/{}.jpg'.format(ids[i]),1)
         image = cv2.imread(os.path.abspath(os.path.join(basedir, os.path.pardir, "Data", "datasets", "iCWT", "TABLE-TOP-single-object-masks", "test", "Images", "{}.jpg".format(ids[i]))),1)
-        predictions = coco_demo.run_on_opencv_image(image)
+        try:
+            predictions = coco_demo.run_on_opencv_image(image)
+        except:
+            continue
         if not os.path.exists('test_masks_oos'):
             os.makedirs('test_masks_oos')
         cv2.imwrite('test_masks_oos/{}.jpg'.format(i), predictions)

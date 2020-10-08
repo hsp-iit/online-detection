@@ -164,6 +164,17 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "test_AutomSegm_tabletop_21objs"
         },
+        "ycb_video_train_pbr": {
+            "data_dir": "YCB-Video/train_pbr",
+            "image_set": "",
+            "split": "imageset_train"
+        },
+        "ycb_video_train_real": {
+            "data_dir": "YCB-Video/train_real",
+            "image_set": "",
+            "split": "imageset_train"
+        },
+
     }
 
     @staticmethod
@@ -201,6 +212,19 @@ class DatasetCatalog(object):
             return dict(
                 factory="iCubWorldDataset",
                 args=args,
+            )
+        elif "ycb" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                data_dir=os.path.join(data_dir, attrs["data_dir"]),
+                image_set=attrs["image_set"],
+                split=attrs["split"],
+            )
+            return dict(
+                factory="YCBVideoDataset",
+                args=args,
+                split=attrs["split"],
             )
         raise RuntimeError("Dataset not available: {}".format(name))
 

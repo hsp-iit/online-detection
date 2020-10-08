@@ -47,6 +47,8 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_t
             args["use_difficult"] = not is_train
             args["is_target_task"] = is_target_task
             args["icwt_21_objs"] = icwt_21_objs
+        if data["factory"] == "YCBVideoDataset":
+            args["use_difficult"] = not is_train
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)

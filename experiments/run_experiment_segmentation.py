@@ -75,7 +75,7 @@ else:
         cfg_online_path = 'configs/config_online_detection_icwt30.yaml'
 """
 
-cfg_target_task = 'configs/config_segmentation_elsa.yaml'
+cfg_target_task = 'configs/config_segmentation_ycb.yaml'
 if not args.only_ood:
     cfg_rpn = 'configs/config_rpn_tabletop.yaml'
     cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
@@ -184,13 +184,13 @@ if args.load_detector_models:
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
-        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation = True)
+        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
         #torch.save(negatives_segmentation, 'neg_segm')
         #torch.save(positives_segmentation, 'pos_segm')
 
     else:
         if args.save_detector_features:
-            feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features)
+            feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
         positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
     stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
 

@@ -54,6 +54,10 @@ class FeatureExtractorDetector:
                 features_path = os.path.join(output_dir, 'features_detector')
                 if not os.path.exists(features_path):
                     os.mkdir(features_path)
+                if extract_features_segmentation:
+                    features_path_segm = os.path.join(output_dir, 'features_segmentation')
+                    if not os.path.exists(features_path_segm):
+                        os.mkdir(features_path_segm)
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
