@@ -174,6 +174,16 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_train"
         },
+        "ycb_video_train_real_1_out_of_10": {
+            "data_dir": "YCB-Video/train_real",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_10"
+        },
+        "ycb_video_test": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_test"
+        },
 
     }
 

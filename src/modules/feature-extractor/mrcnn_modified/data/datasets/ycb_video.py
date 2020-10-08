@@ -4,6 +4,7 @@ import torch
 import torch.utils.data
 from PIL import Image
 import sys
+import json
 
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
@@ -92,6 +93,27 @@ class YCBVideoDataset(torch.utils.data.Dataset):
 
         self._imgsetpath = os.path.join(self.root, self.split + ".txt")
 
+        imset = open(self._imgsetpath, "r")
+        folder_list = []
+        folder_list_int = []
+        for line in imset.readlines():
+            folder_num = line.split()[0]
+            if folder_num not in folder_list:
+                folder_list.append(folder_num)
+                folder_list_int.append(int(folder_num))
+        folder_list = sorted(folder_list)
+
+        self.scene_gts = [None] * (max(folder_list_int)+1)
+        self.scene_gt_infos = [None] * (max(folder_list_int)+1)
+        for i in range(len(folder_list)):
+            f = open(self._scene_gt_path % folder_list[i])
+            scene_gt = json.load(f)
+            f.close()
+            self.scene_gts[int(folder_list[i])] = scene_gt
+            f = open(self._scene_gt_info_path % folder_list[i])
+            scene_gt_info = json.load(f)
+            f.close()
+            self.scene_gt_infos[int(folder_list[i])] = scene_gt_info
 
         """
         self._imgsetpath = os.path.join(self.root, "ImageSets", self.image_set, self.split + ".txt")

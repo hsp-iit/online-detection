@@ -165,16 +165,19 @@ def compute_gts_ycbv(dataset, i):
     scene_gt_path = dataset._scene_gt_path%img_path[0]
 
     # print('Loading scene_gt.json')
-    f = open(scene_gt_path)
-    scene_gt = json.load(f)
-    f.close()
+    #f = open(scene_gt_path)
+    #scene_gt = json.load(f)
+    #f.close()
+    scene_gt = dataset.scene_gts[int(img_path[0])]
 
-    scene_gt_info_path = dataset._scene_gt_info_path%img_path[0]
+    #scene_gt_info_path = dataset._scene_gt_info_path%img_path[0]
 
     # print('Loading scene_gt_info.json')
-    f = open(scene_gt_info_path)
-    scene_gt_info = json.load(f)
-    f.close()
+    #f = open(scene_gt_info_path)
+    #scene_gt_info = json.load(f)
+    #f.close()
+    scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
+
 
     print(filename_path)
     img_RGB = Image.open(filename_path)
