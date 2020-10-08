@@ -118,7 +118,7 @@ def falkon_models_to_cuda(models):
             models[i].alpha_ = models[i].alpha_.to('cuda')
     return models
 
-def load_features_classifier(features_dir):
+def load_features_classifier(features_dir, is_segm=False):
     positives_to_load = len(glob.glob(os.path.join(features_dir, 'positives_*')))
     positives_loaded = 0
     negatives_to_load = len(glob.glob(os.path.join(features_dir, 'negatives_*')))
@@ -138,14 +138,29 @@ def load_features_classifier(features_dir):
             positives.append(torch.cat(positives_i))
         except:
             positives.append(torch.empty((0)))
-        # Load positives with class id clss_id
-        negatives_to_load_i = len(glob.glob(os.path.join(features_dir, 'negatives_cl_{}_*'.format(clss_id))))
-        negatives_i = []
-        for batch in range(negatives_to_load_i):
-            negatives_i.append(torch.load(os.path.join(features_dir,'negatives_cl_{}_batch_{}'.format(clss_id, batch))))
-            negatives_loaded += 1
-        negatives.append(negatives_i)
+        if is_segm:
+            negatives_to_load_i = len(glob.glob(os.path.join(features_dir, 'negatives_cl_{}_*'.format(clss_id))))
+            negatives_i = []
+            for batch in range(negatives_to_load_i):
+                negatives_i.append(torch.load(os.path.join(features_dir, 'negatives_cl_{}_batch_{}'.format(clss_id, batch))))
+                negatives_loaded += 1
+            # If there are not negatives for this class, add an empty tensor
+            try:
+                negatives.append(torch.cat(negatives_i))
+            except:
+                negatives.append(torch.empty((0)))
+        else:
+            # Load positives with class id clss_id
+            negatives_to_load_i = len(glob.glob(os.path.join(features_dir, 'negatives_cl_{}_*'.format(clss_id))))
+            negatives_i = []
+            for batch in range(negatives_to_load_i):
+                negatives_i.append(torch.load(os.path.join(features_dir,'negatives_cl_{}_batch_{}'.format(clss_id, batch))))
+                negatives_loaded += 1
+            negatives.append(negatives_i)
         clss_id += 1
+    if is_segm:
+        for i in range(clss_id):
+            negatives[i] = [negatives[i]]
     return positives, negatives
 
 def load_features_regressor(features_dir):

@@ -165,22 +165,6 @@ if args.load_detector_models:
     regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
     region_refiner = RegionRefiner(cfg_online_path)
 
-    """
-    #TODO just for test purposes, change this later
-    elif True:
-        positives = torch.load('pos_segm')
-        negatives = torch.load('neg_segm')
-        stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
-        # Detector Region Classifier initialization
-        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
-        model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
-        torch.save(model, os.path.join(output_dir, 'classifier_segmentation'))
-        torch.save(stats, os.path.join(output_dir, 'stats_segmentation'))
-        quit()
-    
-    """
-
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
@@ -220,6 +204,16 @@ if args.save_detector_models:
     torch.save(model, os.path.join(output_dir, 'classifier_detector'))
     torch.save(models, os.path.join(output_dir, 'regressor_detector'))
     torch.save(stats, os.path.join(output_dir, 'stats_detector'))
+
+# Train segmentation classifiers
+positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True)
+stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
+# Detector Region Classifier initialization
+classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
+model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+torch.save(model, os.path.join(output_dir, 'classifier_segmentation'))
+torch.save(stats, os.path.join(output_dir, 'stats_segmentation'))
 
 # Initialize feature extractor
 accuracy_evaluator = AccuracyEvaluator(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)

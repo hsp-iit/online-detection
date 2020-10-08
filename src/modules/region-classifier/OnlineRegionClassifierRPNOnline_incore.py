@@ -153,7 +153,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         negatives[i][j] = self.zScores(negatives[i][j])
             self.normalized = True
 
-        
         model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
         return model
 

@@ -96,7 +96,7 @@ class ROIMaskHead(torch.nn.Module):
             masks_gt = masks_gts[i].view(mask_features.size()[0])
             positives_indices = torch.where(masks_gt >= 0.5)
             self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], mask_features[positives_indices]))
-            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*100:
+            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
                 if self.save_features:
                     path_to_save = os.path.join(result_dir, 'features_segmentation', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
                     torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
@@ -104,7 +104,7 @@ class ROIMaskHead(torch.nn.Module):
                 self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device))
             negatives_indices = torch.where(masks_gt < 0.5)
             self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1] = torch.cat((self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], mask_features[negatives_indices]))
-            if self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*100:
+            if self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
                 if self.save_features:
                     path_to_save = os.path.join(result_dir, 'features_segmentation', 'negatives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.negatives[gt_labels_list[i]-1]) - 1))
                     torch.save(self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], path_to_save)
