@@ -197,6 +197,37 @@ class FeatureExtractorDetector:
                                     path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
                                     torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
 
+                        if extract_features_segmentation:
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.mask.positives[clss][0].size()[0] == 0 and len(
+                                    model.roi_heads.mask.positives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                            'positives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.mask.feat_size),
+                                                       device=model.roi_heads.mask.negatives[clss][0].device),
+                                           path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.mask.positives[clss])):
+                                    if model.roi_heads.mask.positives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                                    'positives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.mask.positives[clss][batch], path_to_save)
+
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.mask.negatives[clss][0].size()[0] == 0 and len(
+                                    model.roi_heads.mask.negatives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                            'negatives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.mask.feat_size),
+                                                       device=model.roi_heads.mask.negatives[clss][0].device),
+                                           path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.mask.negatives[clss])):
+                                    if model.roi_heads.mask.negatives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                                    'negatives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.mask.negatives[clss][batch], path_to_save)
+
                     for i in range(len(model.roi_heads.box.X)):
                         if model.roi_heads.box.X[i].size()[0] > 0:
                             path_to_save = os.path.join(result_dir, 'features_detector', 'reg_x_batch_{}'.format(i))

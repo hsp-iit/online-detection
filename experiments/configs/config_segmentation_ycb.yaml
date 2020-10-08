@@ -12,7 +12,7 @@ MODEL:
     NUM_CLASSES: 81 # This will be set to the correct number of classes for the target task in the code, this is just to load correctly the model trained on the feature task
   MASK_ON: True
 DATASETS:
-  TRAIN: ("ycb_video_train_real",)
+  TRAIN: ("ycb_video_train_pbr",)
   TEST: ("ycb_video_train_pbr",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
