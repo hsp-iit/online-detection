@@ -60,7 +60,7 @@ class ROIMaskHead(torch.nn.Module):
         """
 
         proposals.bbox = (proposals.bbox -1)
-        proposals = proposals.resize((800,600))
+        proposals = proposals.resize((800,600)) #TODO parametrize
         x = self.feature_extractor(features, [proposals])
         mask_logits = self.predictor(x)
 

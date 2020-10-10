@@ -13,7 +13,7 @@ MODEL:
   MASK_ON: True
 DATASETS:
   TRAIN: ("ycb_video_test_1_out_of_10",) #("ycb_video_train_real_1_out_of_10",)
-  TEST: ("ycb_video_train_pbr",)
+  TEST: ("ycb_video_test_1_out_of_10",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333

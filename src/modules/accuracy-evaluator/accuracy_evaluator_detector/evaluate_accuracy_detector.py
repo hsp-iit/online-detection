@@ -181,4 +181,6 @@ class AccuracyEvaluatorDetector:
                     fid.write("Detector's feature extraction time: {}min:{}s \n".format(int(feat_extraction_time/60), round(feat_extraction_time%60)))
 
             synchronize()
+        logger = logging.getLogger("maskrcnn_benchmark")
+        logger.handlers = []
         return

@@ -8,4 +8,4 @@ from mrcnn_modified.data.datasets.ycb_video import YCBVideoDataset
 
 from maskrcnn_benchmark.data.datasets.concat_dataset import ConcatDataset
 
-__all__ = ["COCODataset", "ConcatDataset", "PascalVOCDataset", "iCubWorldDataset"]
+__all__ = ["COCODataset", "ConcatDataset", "PascalVOCDataset", "iCubWorldDataset", "YCBVideoDataset"]

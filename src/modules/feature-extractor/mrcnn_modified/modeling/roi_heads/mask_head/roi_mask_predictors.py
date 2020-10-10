@@ -45,12 +45,21 @@ class MaskRCNNC4Predictor(nn.Module):
         # Set background class to the default negative value -2
         pixels_scores = torch.full((features.size()[0], 1), -2, device='cuda')
         for classifier in self.classifiers:
+            #print(features.size()[0] / feat_width ** 2)
             # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
             if classifier is None:
                 predictions = torch.full((features.size()[0], 1), -2, device='cuda')
             # Compute objectness with falkon classifier
             else:
                 predictions = classifier.predict(features)
+                """
+                try:
+                    predictions = classifier.predict(features)
+                except:
+                    predictions = torch.empty((features.size()[0], 1), device='cuda')
+                    for i in range(features.size()[0]/feat_width**2):
+                        predictions = torch.cat((predictions, classifier.predict(features[i*feat_width**2:(i+1)*feat_width**2])))
+                """
             pixels_scores = torch.cat((pixels_scores, predictions), dim=1)
         #pixels_scores = pixels_scores.T
         #a = pixels_scores.T.reshape(-1, len(self.classifiers)+1, feat_width, feat_width)

@@ -18,6 +18,7 @@ import logging
 import os
 
 import torch
+from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 
 
 from maskrcnn_benchmark.utils.comm import is_main_process, get_world_size
@@ -35,6 +36,7 @@ import numpy as np
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 
+import glob
 import argparse
 
 # To parse the annotation .xml files
@@ -102,16 +104,125 @@ def build_transform(cfg):
     )
     return transform
 
-
-def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None):
+def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     img_dir = dataset._imgpath
     anno_dir = dataset._annopath
     imgset_path = dataset._imgsetpath
-
-    model.eval()
+    mask_dir = dataset._maskpath
 
     imset = open(imgset_path, "r")
-    num_img = len(open(imgset_path).readlines())
+
+    img_path = imset.readlines()[i].strip('\n')
+
+    filename_path = img_dir % img_path
+    print(filename_path)
+    img_RGB = Image.open(filename_path)
+    # get image size such that later the boxes can be resized to the correct size
+    width, height = img_RGB.size
+    img_sizes = [width, height]
+    # convert to BGR format
+    try:
+        image = np.array(img_RGB)[:, :, [2, 1, 0]]
+    except:
+        image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+    mask_path = (mask_dir % img_path)
+
+    mask = None
+    if os.path.exists(mask_path):
+        # mask = T.ToTensor()(T.Resize(cfg.INPUT.MIN_SIZE_TEST)(Image.open(mask_path))).to('cuda')
+        mask = T.ToTensor()(Image.open(mask_path)).to('cuda')
+    # Read in annotation file
+    anno_file = anno_dir % img_path
+    tree = ET.parse(anno_file, ET.XMLParser(encoding='utf-8'))
+    root = tree.getroot()
+    # Read label
+    gt_labels = []
+    gt_bboxes_list = []
+    masks = []
+    for object in root.findall('object'):
+        try:
+            name = object.find('name').text
+        except:
+            continue
+        gt_label = OBJECTNAME_TO_ID[name] if not icwt_21_objs else OBJECTNAME_TO_ID_21[name]
+        gt_labels.append(gt_label)
+
+        xmin = object.find('bndbox').find('xmin').text
+        ymin = object.find('bndbox').find('ymin').text
+        xmax = object.find('bndbox').find('xmax').text
+        ymax = object.find('bndbox').find('ymax').text
+
+        # If annotations are 1-based this should not happen
+        if xmin == 0:
+            print("Annotations are not 1-based!")
+            xmin = 1
+        elif ymin == 0:
+            print("Annotations are not 1-based!")
+            ymin = 1
+        # add box to list and convert it to 0-based
+        gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        if mask is not None:
+            masks.append(mask)  # TODO it needs to be adapted for images with more than a gt
+    imset.close()
+    return image, gt_bboxes_list, masks, gt_labels, img_sizes
+
+def compute_gts_ycbv(dataset, i):
+    img_dir = dataset._imgpath
+    imgset_path = dataset._imgsetpath
+    mask_dir = dataset._maskpath
+
+    imset = open(imgset_path, "r")
+
+    img_path = imset.readlines()[i].strip('\n').split()
+
+    filename_path = img_dir%(img_path[0], img_path[1])
+    scene_gt_path = dataset._scene_gt_path%img_path[0]
+
+    # print('Loading scene_gt.json')
+    #f = open(scene_gt_path)
+    #scene_gt = json.load(f)
+    #f.close()
+    scene_gt = dataset.scene_gts[int(img_path[0])]
+
+    #scene_gt_info_path = dataset._scene_gt_info_path%img_path[0]
+
+    # print('Loading scene_gt_info.json')
+    #f = open(scene_gt_info_path)
+    #scene_gt_info = json.load(f)
+    #f.close()
+    scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
+
+
+    print(filename_path)
+    img_RGB = Image.open(filename_path)
+    # get image size such that later the boxes can be resized to the correct size
+    width, height = img_RGB.size
+    img_sizes = [width, height]
+    # convert to BGR format
+    try:
+        image = np.array(img_RGB)[:, :, [2, 1, 0]]
+    except:
+        image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+    masks_paths = sorted(glob.glob(mask_dir%(img_path[0], img_path[1]+'*')))
+
+    gt_labels = []
+    gt_bboxes_list = []
+    masks = []
+
+    for j in range(len(masks_paths)):
+        bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
+        if bbox == [-1, -1, -1, -1]:
+            continue
+        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
+        gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
+        masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+
+    return image, gt_bboxes_list, masks, gt_labels, img_sizes
+
+def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None):
+    model.eval()
+
+    num_img = len(dataset.ids)
 
     # Set the number of images that will be used to set minibootstrap parameters
     if hasattr(model, 'rpn'):
@@ -124,58 +235,28 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
 
     predictions = []
 
-    for img_path in imset:
-        img_path = img_path.strip('\n')
-
-        filename_path = img_dir % img_path
-        img_RGB = Image.open(filename_path)
-        # convert to BGR format
-        try:
-            image = np.array(img_RGB)[:, :, [2, 1, 0]]
-        except:
-            image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
-        # Read in annotation file
-        anno_file = anno_dir % img_path
-        tree = ET.parse(anno_file, ET.XMLParser(encoding='utf-8'))
-        root = tree.getroot()
-        # Read label
-        gt_labels = []
-        gt_bboxes_list = []
-        for object in root.findall('object'):
-            try:
-                name = object.find('name').text
-            except:
-                continue
-            gt_label = OBJECTNAME_TO_ID[name] if not icwt_21_objs else OBJECTNAME_TO_ID_21[name]
-            gt_labels.append(gt_label)
-
-            xmin = object.find('bndbox').find('xmin').text
-            ymin = object.find('bndbox').find('ymin').text
-            xmax = object.find('bndbox').find('xmax').text
-            ymax = object.find('bndbox').find('ymax').text
-
-            # If annotations are 1-based this should not happen
-            if xmin == 0:
-                print("Annotations are not 1-based!")
-                xmin = 1
-            elif ymin == 0:
-                print("Annotations are not 1-based!")
-                ymin = 1
-            # add box to list and convert it to 0-based
-            gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+    for i in range(num_img):
+        if type(dataset).__name__ is 'iCubWorldDataset':
+            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
+        elif type(dataset).__name__ is 'YCBVideoDataset':
+            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i)
 
         # Save list of boxes as tensor
         gt_bbox_tensor = torch.tensor(gt_bboxes_list, device="cuda")
         gt_labels_torch = torch.tensor(gt_labels, device="cuda", dtype=torch.uint8).reshape((len(gt_labels), 1))
-        # get image size such that later the boxes can be resized to the correct size
-        width, height = img_RGB.size
-        img_sizes = [width, height]
+
+        if len(masks) > 0:
+            mask_lists = SegmentationMask(torch.cat(masks), img_sizes, mode='mask')
 
         # create box list containing the ground truth bounding boxes
         try:
-            gt_bbox_boxlist = BoxList(gt_bbox_tensor, image_size=(width, height), mode='xyxy')
+            gt_bbox_boxlist = BoxList(gt_bbox_tensor, image_size=img_sizes, mode='xyxy')
+            try:
+                gt_bbox_boxlist.add_field("masks", mask_lists)
+            except:
+                pass
         except:
-            gt_bbox_boxlist = BoxList(torch.empty((0, 4), device="cuda"), image_size=(width, height), mode='xyxy')
+            gt_bbox_boxlist = BoxList(torch.empty((0,4), device="cuda"), image_size=img_sizes, mode='xyxy')
 
         # apply pre-processing to image
         image = transforms(image)
@@ -189,8 +270,6 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
                 average_recall_RPN += AR
             predictions.append(predicted_boxes)
 
-    imset.close()
-
     if compute_average_recall_RPN:
         AR = average_recall_RPN / num_img
         print('Average Recall (AR):', AR)
@@ -198,15 +277,24 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
             with open(os.path.join(result_dir, "result.txt"), "a") as fid:
                 fid.write('Average Recall (AR): {} \n \n'.format(AR))
 
-    extra_args = dict(
-        box_only=False,
-        iou_types=("bbox",),
-        expected_results=(),
-        expected_results_sigma_tol=4,
-        draw_preds=False,
-        is_target_task=True,
-        icwt_21_objs=icwt_21_objs
-    )
+    if type(dataset).__name__ is 'iCubWorldDataset':
+        extra_args = dict(
+            box_only=False,
+            iou_types=("bbox",),
+            expected_results=(),
+            expected_results_sigma_tol=4,
+            draw_preds=False,
+            is_target_task=True,
+            icwt_21_objs=icwt_21_objs
+        )
+    elif type(dataset).__name__ is 'YCBVideoDataset':
+        extra_args = dict(
+            box_only=False,
+            iou_types=("bbox",),
+            expected_results=(),
+            expected_results_sigma_tol=4,
+            draw_preds=False,
+        )
 
     return evaluate(dataset=dataset,
                     predictions=predictions,

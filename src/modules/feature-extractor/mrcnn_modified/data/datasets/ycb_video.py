@@ -6,6 +6,8 @@ from PIL import Image
 import sys
 import json
 
+from torchvision import transforms as T
+
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
@@ -14,6 +16,8 @@ else:
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 
+import numpy as np
+import glob
 
 def _has_only_empty_bbox(anno):
     try:
@@ -169,6 +173,7 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         return len(self.ids)
 
     def get_groundtruth(self, index):
+        """
         img_id = self.ids[index]
         anno = ET.parse(self._annopath % img_id).getroot()
         anno = self._preprocess_annotation(anno)
@@ -178,6 +183,53 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         target = BoxList(anno["boxes"], (width, height), mode="xyxy")
         target.add_field("labels", anno["labels"])
         target.add_field("difficult", anno["difficult"])
+        """
+
+
+        img_dir = self._imgpath
+        imgset_path = self._imgsetpath
+        mask_dir = self._maskpath
+
+        imset = open(imgset_path, "r")
+
+        img_path = imset.readlines()[index].strip('\n').split()
+
+        filename_path = img_dir % (img_path[0], img_path[1])
+        scene_gt_path = self._scene_gt_path % img_path[0]
+
+        scene_gt = self.scene_gts[int(img_path[0])]
+        scene_gt_info = self.scene_gt_infos[int(img_path[0])]
+
+        img_RGB = Image.open(filename_path)
+        # get image size such that later the boxes can be resized to the correct size
+        width, height = img_RGB.size
+        # convert to BGR format
+        try:
+            image = np.array(img_RGB)[:, :, [2, 1, 0]]
+        except:
+            image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+        masks_paths = sorted(glob.glob(mask_dir % (img_path[0], img_path[1] + '*')))
+
+        gt_labels = []
+        gt_bboxes_list = []
+        masks = []
+        difficult_boxes = []
+
+        for j in range(len(masks_paths)):
+            bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
+            if bbox == [-1, -1, -1, -1]:
+                continue
+            gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]])
+            gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])))
+            difficult_boxes.append(False)
+
+
+        target = BoxList(torch.tensor(gt_bboxes_list), (width, height), mode="xyxy")
+        target.add_field("labels", torch.tensor(gt_labels))
+        target.add_field("masks", torch.cat(masks))
+        target.add_field("difficult", torch.tensor(difficult_boxes))
+
         return target
 
     def _preprocess_annotation(self, target):

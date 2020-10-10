@@ -14,8 +14,9 @@ from predictor_online_segmentation import OnlineSegmentationDemo
 import cv2
 import random
 
-config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_elsa.yaml"))
-run_single_image = False
+#config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_elsa.yaml"))
+config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_ycb.yaml"))
+run_single_image = True
 # update the config options with the config file
 cfg.merge_from_file(config_file)
 # manual override some options
@@ -24,12 +25,13 @@ cfg.merge_from_file(config_file)
 
 coco_demo = OnlineSegmentationDemo(
     cfg,
-    confidence_threshold=0.3,
+    confidence_threshold=0.5,
     show_mask_heatmaps=False
 )
 # load image and then run prediction
 if run_single_image:
-    image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000144.jpg'
+    image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000044.jpg'
+    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000059/rgb/000048.png'
     image = cv2.imread(image_path,1)
     predictions = coco_demo.run_on_opencv_image(image)
     cv2.imshow('predictions', predictions)

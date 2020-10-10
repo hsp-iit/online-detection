@@ -7,6 +7,11 @@ from collections import defaultdict
 import numpy as np
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
+from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
+from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
+from py_od_utils import mask_iou
+
+
 
 import cv2
 import torch
@@ -121,7 +126,7 @@ def overlay_labels(image, gt, CATEGORIES):
     return image
 
 
-def draw_preds_icw(dataset, image_id, pred, gt, output_folder):
+def draw_preds_ycbv(dataset, image_id, pred, gt, output_folder):
 
     result = cv2.imread(dataset._imgpath % dataset.ids[image_id])
 
@@ -146,8 +151,8 @@ def draw_preds_icw(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, is_target_task=False, icwt_21_objs=False, use_07_metric=True):
-
+def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, use_07_metric=True):
+    """
     pred_boxlists = []
     gt_boxlists = []
     for image_id, prediction in enumerate(predictions):
@@ -170,9 +175,16 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
         gt_boxlists.append(gt_boxlist)
 
         if draw_preds:
-            draw_preds_icw(dataset, image_id, prediction, gt_boxlist, output_folder)
+            draw_preds_ycbv(dataset, image_id, prediction, gt_boxlist, output_folder)
 
-    result = eval_detection_icw(
+    torch.save(pred_boxlists, 'pred_boxlists')
+    torch.save(gt_boxlists, 'gt_boxlists')
+    """
+    pred_boxlists = torch.load('pred_boxlists')
+    gt_boxlists = torch.load('gt_boxlists')
+
+
+    result = eval_detection_ycbv(
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
         iou_thresh=0.5,
@@ -183,10 +195,10 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
     for i, ap in enumerate(result["ap"]):
         if i == 0:  # skip background
             continue
-        result_str += "{:<16}: {:.4f}\n".format(
-            dataset.map_class_id_to_class_name(i, is_target_task = is_target_task, icwt_21_objs=icwt_21_objs), ap
+        result_str += "{:<26}: {:.4f}\n".format(
+            dataset.map_class_id_to_class_name(i), ap
         )
-    result_str += "\n"    
+    result_str += "\n"
 
     logger.info(result_str)
 
@@ -194,10 +206,33 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
         with open(os.path.join(output_folder, "result.txt"), "a") as fid:
             fid.write(result_str)
 
+    if gt_boxlists[0].has_field('masks'):   #TODO modify this
+        result = eval_segmentation_ycbv(
+            pred_boxlists=pred_boxlists,
+            gt_boxlists=gt_boxlists,
+            iou_thresh=0.5,
+            use_07_metric=use_07_metric,
+        )
+
+        result_str = "mAP: {:.4f}\n".format(result["map"])
+        for i, ap in enumerate(result["ap"]):
+            if i == 0:  # skip background
+                continue
+            result_str += "{:<26}: {:.4f}\n".format(
+                dataset.map_class_id_to_class_name(i), ap
+            )
+        result_str += "\n"
+
+        logger.info(result_str)
+
+        if output_folder:
+            with open(os.path.join(output_folder, "result.txt"), "a") as fid:
+                fid.write(result_str)
+
     return result
 
 
-def eval_detection_icw(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):
+def eval_detection_ycbv(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):
     """Evaluate on voc dataset.
     Args:
         pred_boxlists(list[BoxList]): pred boxlist, has labels and scores fields.
@@ -210,14 +245,14 @@ def eval_detection_icw(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric
     assert len(gt_boxlists) == len(
         pred_boxlists
     ), "Length of gt and pred lists need to be same."
-    prec, rec = calc_detection_icw_prec_rec(
+    prec, rec = calc_detection_ycbv_prec_rec(
         pred_boxlists=pred_boxlists, gt_boxlists=gt_boxlists, iou_thresh=iou_thresh
     )
-    ap = calc_detection_icw_ap(prec, rec, use_07_metric=use_07_metric)
+    ap = calc_detection_ycbv_ap(prec, rec, use_07_metric=use_07_metric)
     return {"ap": ap, "map": np.nanmean(ap)}
 
 
-def calc_detection_icw_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
+def calc_detection_ycbv_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
     """Calculate precision and recall based on evaluation code of PASCAL VOC.
     This function calculates precision and recall of
     predicted bounding boxes obtained from a dataset which has :math:`N`
@@ -316,7 +351,7 @@ def calc_detection_icw_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
     return prec, rec
 
 
-def calc_detection_icw_ap(prec, rec, use_07_metric=False):
+def calc_detection_ycbv_ap(prec, rec, use_07_metric=False):
     """Calculate average precisions based on evaluation code of PASCAL VOC.
     This function calculates average precisions
     from given precisions and recalls.
@@ -373,3 +408,119 @@ def calc_detection_icw_ap(prec, rec, use_07_metric=False):
             ap[l] = np.sum((mrec[i + 1] - mrec[i]) * mpre[i + 1])
 
     return ap
+
+def eval_segmentation_ycbv(pred_boxlists, gt_boxlists, iou_thresh=0.5, use_07_metric=False):
+    """Evaluate on voc dataset.
+    Args:
+        pred_boxlists(list[BoxList]): pred boxlist, has labels and scores fields.
+        gt_boxlists(list[BoxList]): ground truth boxlist, has labels field.
+        iou_thresh: iou thresh
+        use_07_metric: boolean
+    Returns:
+        dict represents the results
+    """
+    assert len(gt_boxlists) == len(
+        pred_boxlists
+    ), "Length of gt and pred lists need to be same."
+    prec, rec = calc_segmentation_voc_prec_rec(
+        pred_boxlists=pred_boxlists, gt_boxlists=gt_boxlists, iou_thresh=iou_thresh
+    )
+    ap = calc_detection_ycbv_ap(prec, rec, use_07_metric=use_07_metric)
+    return {"ap": ap, "map": np.nanmean(ap)}
+
+def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
+    """Calculate precision and recall based on evaluation code of PASCAL VOC.
+    This function calculates precision and recall of
+    predicted bounding boxes obtained from a dataset which has :math:`N`
+    images.
+    The code is based on the evaluation code used in PASCAL VOC Challenge.
+   """
+    n_pos = defaultdict(int)
+    score = defaultdict(list)
+    match = defaultdict(list)
+
+    masker = Masker(threshold=0.5, padding=1) #TODO parametrize
+
+    for gt_boxlist, pred_boxlist in zip(gt_boxlists, pred_boxlists):
+        a = 0
+        pred_label = pred_boxlist.get_field("labels").to('cpu').numpy()
+        pred_score = pred_boxlist.get_field("scores").to('cpu').numpy()
+        gt_masks = np.array([gt_boxlist.get_field("masks").to('cpu').numpy()])
+        gt_masks = np.rint(gt_masks)[0]
+        gt_masks = np.array(gt_masks, dtype=np.uint8)
+        gt_label = gt_boxlist.get_field("labels").to('cpu').numpy()
+        gt_difficult = gt_boxlist.get_field("difficult").to('cpu').numpy()
+
+        if pred_boxlist.has_field("mask"):
+            # if we have masks, paste the masks in the right position
+            # in the image, as defined by the bounding boxes
+            masks = pred_boxlist.get_field("mask").squeeze(1)
+            # always single image is passed at a time
+            #print(masks.shape, len(pred_boxlist))
+            pred_masks = masker([masks], [pred_boxlist])[0].numpy().squeeze(1)
+            #pred_boxlist.add_field("mask", masks)
+        else:
+            pred_masks = np.asarray([])
+
+        for l in np.unique(np.concatenate((pred_label, gt_label)).astype(int)):
+            pred_mask_l = pred_label == l
+            pred_masks_l = pred_masks[pred_mask_l]
+
+            pred_score_l = pred_score[pred_mask_l]
+            # sort by score
+            order = pred_score_l.argsort()[::-1]
+            pred_masks_l = pred_masks_l[order]
+            pred_score_l = pred_score_l[order]
+
+            gt_keep_l = gt_label == l
+            gt_masks_l = gt_masks[gt_keep_l]
+            #gt_difficult_l = gt_difficult[gt_mask_l]
+
+            n_pos[l] += gt_keep_l.sum()
+            score[l].extend(pred_score_l)
+
+            if len(pred_masks_l) == 0:
+                continue
+            if len(gt_masks_l) == 0:
+                match[l].extend((0,) * pred_masks_l.shape[0])
+                continue
+
+
+            iou = mask_iou(pred_masks_l, gt_masks_l)
+            gt_index = iou.argmax(axis=1)
+            # set -1 if there is no matching ground truth
+            gt_index[iou.max(axis=1) < iou_thresh] = -1
+            del iou
+
+            selec = np.zeros(gt_masks_l.shape[0], dtype=bool)
+            for gt_idx in gt_index:
+                if gt_idx >= 0:
+                    if not selec[gt_idx]:
+                        match[l].append(1)
+                    else:
+                        match[l].append(0)
+                    selec[gt_idx] = True
+                else:
+                    match[l].append(0)
+    n_fg_class = max(n_pos.keys()) + 1
+    prec = [None] * n_fg_class
+    rec = [None] * n_fg_class
+
+    for l in n_pos.keys():
+        score_l = np.array(score[l])
+        match_l = np.array(match[l], dtype=np.int8)
+
+        order = score_l.argsort()[::-1]
+        match_l = match_l[order]
+
+        tp = np.cumsum(match_l == 1)
+        fp = np.cumsum(match_l == 0)
+
+        # If an element of fp + tp is 0,
+        # the corresponding element of prec[l] is nan.
+        prec[l] = tp / (fp + tp)
+        # If n_pos[l] is 0, rec[l] is None.
+        if n_pos[l] > 0:
+            rec[l] = tp / n_pos[l]
+
+    return prec, rec

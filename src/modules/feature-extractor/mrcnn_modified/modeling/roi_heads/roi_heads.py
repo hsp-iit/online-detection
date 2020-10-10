@@ -22,7 +22,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
     def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size = [0,0], gt_labels_list = None, is_train = True, result_dir = None):
         losses = {}
         x, detections, loss_box = self.box(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir)
-
+        if len(detections.bbox) == 0:
+            return x, detections, losses
         if self.cfg.MODEL.MASK_ON:
             # optimization: during training, if we share the feature extractor between
             # the box and the mask heads, then we can reuse the features already computed

@@ -59,6 +59,30 @@ class OnlineSegmentationDemo(object):
         'hairclip2', 'hairclip8', 'hairclip6',
         'sprayer6', 'sprayer8', 'sprayer9'
     ]
+    CATEGORIES = [
+        "__background__",
+        "002_master_chef_can",
+        "003_cracker_box",
+        "004_sugar_box",
+        "005_tomato_soup_can",
+        "006_mustard_bottle",
+        "007_tuna_fish_can",
+        "008_pudding_box",
+        "009_gelatin_box",
+        "010_potted_meat_can",
+        "011_banana",
+        "019_pitcher_base",
+        "021_bleach_cleanser",
+        "024_bowl",
+        "025_mug",
+        "035_power_drill",
+        "036_wood_block",
+        "037_scissors",
+        "040_large_marker",
+        "051_large_clamp",
+        "052_extra_large_clamp",
+        "061_foam_brick"
+    ]
 
     def __init__(
         self,
@@ -71,6 +95,7 @@ class OnlineSegmentationDemo(object):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation'))
+        output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_real_test'))
 
         self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_detector'))
         self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir, 'regressor_detector'))
