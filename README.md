@@ -14,13 +14,13 @@ The proposed methods are typically validated on both computer vision and robotic
 This picture presents the current architecture of the pipeline. The Feature Extraction Module relies on Mask R-CNN architecture and the proposed On-line RPN, to extract deep features and predict RoIs from each input image. The On-line Detection Module performs RoIs classification and refinement, providing as output the detections for the input image. The green blocks are trained off-line on the FEATURE-TASK, while the yellow blocks are trained on-line on the TARGET-TASK.
 
 ## Installation guide
-You can find the instructions for installation at this [link]().
+You can find the instructions for installation at this [link](https://github.com/Arya07/python-online-detection/blob/master/INSTALLATION_GUIDE.md).
 
 ## Experiments
 We provide the links to instructions to reproduce the main experiments of the presented works.
 
 ### Fast Region Proposal Learning for Object Detection for Robotics
-You can find the instructions to replicate experiments at this [link]()
+You can find the instructions to replicate experiments at this [link](https://github.com/Arya07/python-online-detection/blob/master/ONLINE_RPN_EXP.md)
 
 ## References
 If you use this code, please, cite the following works:
