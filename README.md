@@ -2,7 +2,7 @@
 
 # On-line Object Detection
 
-This repository contains the source code for the experiments carried out for the On-line Object Detection project.
+This repository contains the python version of the source code for the experiments carried out for the On-line Object Detection project.
 
 ## Abstract
 Object detection is a fundamental ability for robots interacting within an environment. While stunningly effective, state-of-the-art deep learning methods require huge amounts of labeled images and hours of training which does not favour such scenarios. In this project, we aim at designing algorithmic solutions to alleviate these requirements for this task, while preserving the state-of-the-art precision and reliability.
