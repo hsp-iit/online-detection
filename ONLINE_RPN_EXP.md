@@ -1,7 +1,7 @@
 You can run the main experiments reported in the work `Fast Region Proposal Learning for Object Detection for Robotics` by following the reported instructions.
 
 ### Code installation
-Please follow the instructions for installations reported at this [link]().
+Please follow the instructions for installations reported at this [link](https://github.com/Arya07/python-online-detection/blob/master/INSTALLATION_GUIDE.md).
 
 ### Datasets Download
 
