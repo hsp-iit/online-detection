@@ -56,6 +56,28 @@ wget https://zenodo.org/record/3970624/files/table_top_images.tar.xz
 tar -xvf table_top_images.tar.xz --strip 1
 rm table_top_images.tar.xz
 ```
+
+### Pretrained Feature Extractors Download
+Create the `pretrained_feature_extractors` directory, where you will download the pretrained feature extractors that you need to run the experiments.
+
+```
+cd $HOME_DIR/Data
+mkdir pretrained_feature_extractors
+cd pretrained_feature_extractors
+```
+
+If you want to run the experiment on the **30 objects identification task from the iCubWorld Transformations dataset (iCWT)**, you need to download the feature extractor with the following command.
+
+```
+ wget --content-disposition https://istitutoitalianotecnologia-my.sharepoint.com/:u:/g/personal/federico_ceola_iit_it/EW4b1wC905JDgKkrPG6nmmABAlDNqtbiKdnQN7QN0NoO6A?download=1
+```
+
+Similarly, if you want to run the experiment on the **21 objects identification task from the TABLE-TOP dataset**, you need to download the feature extractor with the following command.
+
+```
+wget --content-disposition https://istitutoitalianotecnologia-my.sharepoint.com/:u:/g/personal/federico_ceola_iit_it/EY1Bu31xC_xCviY0qxdPwKIBBRlQfjSJ_MX1xXs97AVH1A?download=1
+```
+
 Note: at the end of the installation, remember to `unset HOME_DIR`
 
 ## Usage
