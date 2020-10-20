@@ -41,6 +41,9 @@ if args.output_dir:
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), args.output_dir))
     print(args.output_dir)
 
+if not os.path.exists(output_dir):
+    os.mkdir(output_dir)
+
 cfg_feature_task = "configs/config_full_train_ycbv.yaml"
 
 # Initialize feature extractor
