@@ -15,6 +15,7 @@ else:
 
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
+from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 
 import numpy as np
 import glob
@@ -150,11 +151,14 @@ class YCBVideoDataset(torch.utils.data.Dataset):
 
         self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
         """
-        self.ids = [0, 1] # TODO modify this
+        with open(self._imgsetpath) as f:
+            self.ids = f.readlines()
+        self.ids = [x.strip("\n") for x in self.ids]
 
     def __getitem__(self, index):
-        img_id = self.ids[index]
-        img = Image.open(self._imgpath % img_id).convert("RGB")
+
+        filename_path = self._imgpath % (self.ids[index].strip('\n').split()[0], self.ids[index].strip('\n').split()[1])
+        img = Image.open(filename_path).convert("RGB")
 
         target = self.get_groundtruth(index)
         target = target.clip_to_image(remove_empty=True)
@@ -224,14 +228,14 @@ class YCBVideoDataset(torch.utils.data.Dataset):
             masks.append(T.ToTensor()(Image.open(masks_paths[j])))
             difficult_boxes.append(False)
 
-
         target = BoxList(torch.tensor(gt_bboxes_list), (width, height), mode="xyxy")
+        masks = SegmentationMask(torch.cat(masks), (width, height), mode="mask")
         target.add_field("labels", torch.tensor(gt_labels))
-        target.add_field("masks", torch.cat(masks))
+        target.add_field("masks", masks)
         target.add_field("difficult", torch.tensor(difficult_boxes))
 
         return target
-
+    """
     def _preprocess_annotation(self, target):
         boxes = []
         gt_classes = []
@@ -274,7 +278,7 @@ class YCBVideoDataset(torch.utils.data.Dataset):
             "im_info": im_info,
         }
         return res
-
+    """
     def get_img_info(self, index):
         return {"height": 480, "width": 640}
 

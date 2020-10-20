@@ -11,7 +11,7 @@ from tqdm import tqdm
 from mrcnn_modified.data import make_data_loader
 from maskrcnn_benchmark.utils.comm import get_world_size, synchronize
 from maskrcnn_benchmark.utils.metric_logger import MetricLogger
-from mrcnn_modified.engine.inference import inference
+from mrcnn_modified.engine.inference_full_mask import inference
 
 from apex import amp
 
