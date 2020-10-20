@@ -94,12 +94,12 @@ class OnlineSegmentationDemo(object):
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
-        output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation'))
+        output_dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_pbr'))
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_real_test'))
 
-        self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_detector'))
-        self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir, 'regressor_detector'))
-        self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(output_dir, 'stats_detector'))
+        self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir1, 'classifier_detector'))
+        self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir1, 'regressor_detector'))
+        self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(output_dir1, 'stats_detector'))
 
         self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
         self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(output_dir, 'stats_segmentation'))
@@ -171,9 +171,11 @@ class OnlineSegmentationDemo(object):
                 the BoxList via `prediction.fields()`
         """
         predictions = self.compute_prediction(image)
-        top_predictions = self.select_top_predictions(predictions)
-
-        result = image.copy()
+        if predictions is not None:
+            top_predictions = self.select_top_predictions(predictions)
+            result = image.copy()
+        else:
+            return image.copy()
         if self.show_mask_heatmaps:
             return self.create_mask_montage(result, top_predictions)
         result = self.overlay_boxes(result, top_predictions)
@@ -205,8 +207,11 @@ class OnlineSegmentationDemo(object):
             predictions = self.model(image_list, img_size=img_size)[1]
         predictions = [o.to(self.cpu_device) for o in predictions]
 
-        # always single image is passed at a time
-        prediction = predictions[0]
+        try:
+            # always single image is passed at a time
+            prediction = predictions[0]
+        except:
+            return None
 
         # reshape prediction (a BoxList) into the original image size
         height, width = original_image.shape[:-1]

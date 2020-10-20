@@ -168,6 +168,7 @@ class ROIBoxHead(torch.nn.Module):
             dst_scl_h = torch.log(gt_h / src_h)
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
+
             if self.training_device is 'cpu':
                 self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target.cpu()), dim=0)
                 # Add class and features to C and X

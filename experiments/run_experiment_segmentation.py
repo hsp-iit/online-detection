@@ -76,7 +76,7 @@ else:
         cfg_online_path = 'configs/config_online_detection_icwt30.yaml'
 """
 
-cfg_target_task = 'configs/config_segmentation_ycb.yaml'
+cfg_target_task = 'configs/config_segmentation_ycb_demo.yaml'
 if not args.only_ood:
     cfg_rpn = 'configs/config_rpn_tabletop.yaml'
     cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
@@ -177,6 +177,7 @@ else:
         if args.save_detector_features:
             feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
         positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
+
     stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
 
     # Detector Region Classifier initialization
@@ -185,6 +186,11 @@ else:
 
     # Train detector Region Classifier
     model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+
+    # Delete already used data
+    del negatives, positives, regionClassifier
+    torch.cuda.empty_cache()
+
 
     # Detector Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path)
@@ -197,7 +203,7 @@ else:
         models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
 
     # Delete already used data
-    del negatives, positives, COXY
+    del COXY
     torch.cuda.empty_cache()
 
 # Save detector models, if requested

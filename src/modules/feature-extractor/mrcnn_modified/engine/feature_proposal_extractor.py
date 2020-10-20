@@ -197,7 +197,7 @@ def compute_gts_ycbv(dataset, i):
 
     for j in range(len(masks_paths)):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
-        if bbox == [-1, -1, -1, -1]:
+        if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
             continue
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])

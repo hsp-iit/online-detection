@@ -11,8 +11,7 @@ from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from py_od_utils import mask_iou
 
-
-
+from PIL import Image
 import cv2
 import torch
 
@@ -152,7 +151,8 @@ def draw_preds_ycbv(dataset, image_id, pred, gt, output_folder):
 
 
 def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, use_07_metric=True):
-    """
+
+    #"""
     pred_boxlists = []
     gt_boxlists = []
     for image_id, prediction in enumerate(predictions):
@@ -176,12 +176,13 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
 
         if draw_preds:
             draw_preds_ycbv(dataset, image_id, prediction, gt_boxlist, output_folder)
-
-    torch.save(pred_boxlists, 'pred_boxlists')
-    torch.save(gt_boxlists, 'gt_boxlists')
-    """
-    pred_boxlists = torch.load('pred_boxlists')
-    gt_boxlists = torch.load('gt_boxlists')
+    #"""
+    
+    #torch.save(pred_boxlists, 'pred_boxlists')
+    #torch.save(gt_boxlists, 'gt_boxlists')
+    
+    #pred_boxlists = torch.load('pred_boxlists')
+    #gt_boxlists = torch.load('gt_boxlists')
 
 
     result = eval_detection_ycbv(
@@ -440,9 +441,9 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
     match = defaultdict(list)
 
     masker = Masker(threshold=0.5, padding=1) #TODO parametrize
-
+    a = 0
     for gt_boxlist, pred_boxlist in zip(gt_boxlists, pred_boxlists):
-        a = 0
+        a += 1
         pred_label = pred_boxlist.get_field("labels").to('cpu').numpy()
         pred_score = pred_boxlist.get_field("scores").to('cpu').numpy()
         gt_masks = np.array([gt_boxlist.get_field("masks").to('cpu').numpy()])
@@ -454,9 +455,11 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
         if pred_boxlist.has_field("mask"):
             # if we have masks, paste the masks in the right position
             # in the image, as defined by the bounding boxes
-            masks = pred_boxlist.get_field("mask").squeeze(1)
+            masks = pred_boxlist.get_field("mask")#.squeeze(1)
             # always single image is passed at a time
             #print(masks.shape, len(pred_boxlist))
+            #if a==466:
+            #    print('here')
             pred_masks = masker([masks], [pred_boxlist])[0].numpy().squeeze(1)
             #pred_boxlist.add_field("mask", masks)
         else:
@@ -485,7 +488,8 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
                 match[l].extend((0,) * pred_masks_l.shape[0])
                 continue
 
-
+            #if l == 15:
+            #    print('here')
             iou = mask_iou(pred_masks_l, gt_masks_l)
             gt_index = iou.argmax(axis=1)
             # set -1 if there is no matching ground truth

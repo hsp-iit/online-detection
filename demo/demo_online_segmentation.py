@@ -25,13 +25,16 @@ cfg.merge_from_file(config_file)
 
 coco_demo = OnlineSegmentationDemo(
     cfg,
-    confidence_threshold=0.5,
+    confidence_threshold=0.3,
     show_mask_heatmaps=False
 )
 # load image and then run prediction
 if run_single_image:
     image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000044.jpg'
-    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000059/rgb/000048.png'
+    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000050/rgb/000007.png'
+    #image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/train_real/000028/rgb/000021.png'
+    #image_path = '/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/train_pbr/000001/rgb/000003.jpg'
+
     image = cv2.imread(image_path,1)
     predictions = coco_demo.run_on_opencv_image(image)
     cv2.imshow('predictions', predictions)

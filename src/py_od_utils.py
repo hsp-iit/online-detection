@@ -4,6 +4,7 @@ import os
 import torch
 import glob
 
+from PIL import Image
 
 def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000,):
     basedir = os.path.dirname(__file__)
@@ -118,7 +119,7 @@ def falkon_models_to_cuda(models):
             models[i].alpha_ = models[i].alpha_.to('cuda')
     return models
 
-def load_features_classifier(features_dir, is_segm=False):
+def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, sample_ratio=1):
     positives_to_load = len(glob.glob(os.path.join(features_dir, 'positives_*')))
     positives_loaded = 0
     negatives_to_load = len(glob.glob(os.path.join(features_dir, 'negatives_*')))
@@ -135,7 +136,15 @@ def load_features_classifier(features_dir, is_segm=False):
             positives_loaded += 1
         # If there are not positives for this class, add an empty tensor
         try:
-            positives.append(torch.cat(positives_i))
+            if not cpu_tensor:
+                to_append_pos_i = torch.cat(positives_i)
+                if sample_ratio < 1:
+                    #print(int(len(to_append_pos_i)*sample_ratio))
+                    indices = torch.randint(len(to_append_pos_i), (int(len(to_append_pos_i)*sample_ratio),))
+                    to_append_pos_i = to_append_pos_i[indices]
+                positives.append(to_append_pos_i)
+            else:
+                positives.append(torch.cat(positives_i).to('cpu'))
         except:
             positives.append(torch.empty((0)))
         if is_segm:
@@ -146,7 +155,15 @@ def load_features_classifier(features_dir, is_segm=False):
                 negatives_loaded += 1
             # If there are not negatives for this class, add an empty tensor
             try:
-                negatives.append(torch.cat(negatives_i))
+                if not cpu_tensor:
+                    to_append_neg_i = torch.cat(negatives_i)
+                    if sample_ratio < 1:
+                        #print(int(len(to_append_neg_i) * sample_ratio),)
+                        indices = torch.randint(len(to_append_neg_i), (int(len(to_append_neg_i) * sample_ratio),))
+                        to_append_neg_i = to_append_neg_i[indices]
+                    negatives.append(to_append_neg_i)
+                else:
+                    negatives.append(torch.cat(negatives_i).to('cpu'))
             except:
                 negatives.append(torch.empty((0)))
         else:
@@ -160,6 +177,7 @@ def load_features_classifier(features_dir, is_segm=False):
         clss_id += 1
     if is_segm:
         for i in range(clss_id):
+            #print(i)
             negatives[i] = [negatives[i]]
     return positives, negatives
 
