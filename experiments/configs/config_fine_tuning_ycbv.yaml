@@ -1,7 +1,7 @@
 OUTPUT_DIR: ""
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "catalog://ImageNetPretrained/MSRA/R-50"
+  WEIGHT: "model_final.pth"
   RPN:
     #RPN_HEAD: "OnlineRPNHead"
     PRE_NMS_TOP_N_TRAIN: 1000
@@ -9,7 +9,7 @@ MODEL:
     PRE_NMS_TOP_N_TEST: 1000
     POST_NMS_TOP_N_TEST: 300
   ROI_BOX_HEAD:
-    NUM_CLASSES: 22
+    NUM_CLASSES: 81
     FEATURE_EXTRACTOR: "ResNet50Conv5ROIFeatureExtractor"
     PREDICTOR: "FastRCNNPredictor"
   ROI_HEADS:

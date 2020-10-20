@@ -46,8 +46,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
 
         return features
 
-    def trainFeatureExtractor(self, output_dir=None):
+    def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False):
         from feature_extractor_trainer import TrainerFeatureTask
         # call class to train from scratch a model on the feature task
         trainer = TrainerFeatureTask(self.cfg_path_feature_task)
-        trainer(output_dir=output_dir)
+        trainer(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers)

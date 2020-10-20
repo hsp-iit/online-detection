@@ -36,8 +36,8 @@ class TrainerFeatureTask:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, output_dir=None):
-        self.train(output_dir=output_dir)
+    def __call__(self, output_dir=None, fine_tune_last_layers=False):
+        self.train(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers)
 
     def load_parameters(self):
         if self.distributed:
@@ -61,27 +61,12 @@ class TrainerFeatureTask:
             logger.info(config_str)
         logger.info("Running with config:\n{}".format(self.cfg))
 
-    def train(self, output_dir=None):
+    def train(self, output_dir=None, fine_tune_last_layers=False):
         if output_dir is not None:
             self.cfg.OUTPUT_DIR = output_dir
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
-
-        optimizer = make_optimizer(self.cfg, model)
-        scheduler = make_lr_scheduler(self.cfg, optimizer)
-
-        # Initialize mixed-precision training
-        use_mixed_precision = self.cfg.DTYPE == "float16"
-        amp_opt_level = 'O1' if use_mixed_precision else 'O0'
-        model, optimizer = amp.initialize(model, optimizer, opt_level=amp_opt_level)
-
-        if self.distributed:
-            model = torch.nn.parallel.DistributedDataParallel(
-                model, device_ids=[self.local_rank], output_device=self.local_rank,
-                # this should be removed if we update BatchNorm stats
-                broadcast_buffers=False,
-            )
 
         arguments = {}
         arguments["iteration"] = 0
@@ -90,10 +75,53 @@ class TrainerFeatureTask:
 
         save_to_disk = get_rank() == 0
         checkpointer = DetectronCheckpointer(
-            self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
+            self.cfg, model, None, None, output_dir, save_to_disk
         )
-        extra_checkpoint_data = checkpointer.load(self.cfg.MODEL.WEIGHT)
-        arguments.update(extra_checkpoint_data)
+
+        if self.cfg.MODEL.WEIGHT.startswith('/'):
+            model_path = self.cfg.MODEL.WEIGHT
+        else:
+            model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
+
+        extra_checkpoint_data = checkpointer.load(model_path)
+
+        if fine_tune_last_layers:
+            checkpointer.model.roi_heads.box.predictor.cls_score = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, bias=True)
+            checkpointer.model.roi_heads.box.predictor.bbox_pred = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1)*4, bias=True)
+            if hasattr(checkpointer.model.roi_heads, 'mask'):
+                checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits = torch.nn.Conv2d(in_channels=checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits.in_channels, out_channels=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, kernel_size=(1, 1), stride=(1, 1))
+            # Freeze backbone layers
+            for elem in checkpointer.model.backbone.parameters():
+                elem.requires_grad = False
+            # Freeze RPN layers
+            for elem in checkpointer.model.rpn.parameters():
+                elem.requires_grad = False
+            # Freeze roi_heads layers with the exception of the predictor ones
+            for elem in checkpointer.model.roi_heads.box.feature_extractor.parameters():
+                elem.requires_grad = False
+            for elem in checkpointer.model.roi_heads.box.predictor.parameters():
+                elem.requires_grad = True
+            if hasattr(checkpointer.model.roi_heads, 'mask'):
+                for elem in checkpointer.model.roi_heads.mask.predictor.parameters():
+                    elem.requires_grad = False
+                for elem in checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits.parameters():
+                    elem.requires_grad = True
+            checkpointer.model.to(device)
+
+        checkpointer.optimizer = make_optimizer(self.cfg, checkpointer.model)
+        checkpointer.scheduler = make_lr_scheduler(self.cfg, checkpointer.optimizer)
+
+        # Initialize mixed-precision training
+        use_mixed_precision = self.cfg.DTYPE == "float16"
+        amp_opt_level = 'O1' if use_mixed_precision else 'O0'
+        model, optimizer = amp.initialize(checkpointer.model, checkpointer.optimizer, opt_level=amp_opt_level)
+
+        if self.distributed:
+            model = torch.nn.parallel.DistributedDataParallel(
+                model, device_ids=[self.local_rank], output_device=self.local_rank,
+                # this should be removed if we update BatchNorm stats
+                broadcast_buffers=False,
+            )
 
         data_loader = make_data_loader(
             self.cfg,
@@ -116,8 +144,8 @@ class TrainerFeatureTask:
             model,
             data_loader,
             data_loader_val,
-            optimizer,
-            scheduler,
+            checkpointer.optimizer,
+            checkpointer.scheduler,
             checkpointer,
             device,
             checkpoint_period,
