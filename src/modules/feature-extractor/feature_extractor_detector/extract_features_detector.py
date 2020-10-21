@@ -115,12 +115,12 @@ class FeatureExtractorDetector:
             self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
         )
 
-        if self.cfg.MODEL.WEIGHT.startswith('/'):
-            model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
+        if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
+            model_path = self.cfg.MODEL.WEIGHT
         else:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
-            model_pretrained = torch.load(model_path)
-        checkpointer._load_model(model_pretrained)
+
+        extra_checkpoint_data = checkpointer.load(model_path)
 
         if self.falkon_rpn_models is not None:
             model.rpn.head.classifiers = self.falkon_rpn_models            
@@ -168,6 +168,7 @@ class FeatureExtractorDetector:
                                              icwt_21_objs=self.icwt_21_objs,
                                              is_train = is_train,
                                              result_dir=result_dir,
+                                             extract_features_segmentation=extract_features_segmentation
                                             )
 
             if result_dir and is_train:
@@ -250,7 +251,7 @@ class FeatureExtractorDetector:
                     if extract_features_segmentation:
                         return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
                     else:
-                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                        return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), None, None
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
