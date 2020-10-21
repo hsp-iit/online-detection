@@ -78,7 +78,7 @@ class TrainerFeatureTask:
             self.cfg, model, None, None, output_dir, save_to_disk
         )
 
-        if self.cfg.MODEL.WEIGHT.startswith('/'):
+        if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
             model_path = self.cfg.MODEL.WEIGHT
         else:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))

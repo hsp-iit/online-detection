@@ -222,8 +222,10 @@ if not loaded_features:
     stats_segm = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=True)
 
 normalized = False
-lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
-sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
+#lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
+#sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
+lambdas = [0.000001]
+sigmas = [20]
 for lam in lambdas:
     for sigma in sigmas:
         print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' %(str(lam), str(sigma)))
