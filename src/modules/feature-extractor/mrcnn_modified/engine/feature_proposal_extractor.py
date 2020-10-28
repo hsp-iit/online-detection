@@ -32,6 +32,8 @@ import xml.etree.ElementTree as ET
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.image_list import to_image_list
 
+import time
+
 OBJECTNAME_TO_ID = {
     "__background__":0,
         "flower2":1, "flower5":2, "flower7":3,
@@ -153,47 +155,42 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
 def compute_gts_ycbv(dataset, i):
+    gt_time = time.time()
+
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
+    print('dirs', time.time()-gt_time)
 
     imset = open(imgset_path, "r")
+    print('imset', time.time()-gt_time)
 
     img_path = imset.readlines()[i].strip('\n').split()
 
     filename_path = img_dir%(img_path[0], img_path[1])
-    scene_gt_path = dataset._scene_gt_path%img_path[0]
 
-    # print('Loading scene_gt.json')
-    #f = open(scene_gt_path)
-    #scene_gt = json.load(f)
-    #f.close()
     scene_gt = dataset.scene_gts[int(img_path[0])]
-
-    #scene_gt_info_path = dataset._scene_gt_info_path%img_path[0]
-
-    # print('Loading scene_gt_info.json')
-    #f = open(scene_gt_info_path)
-    #scene_gt_info = json.load(f)
-    #f.close()
     scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
-
+    print('scenegt', time.time()-gt_time)
 
     print(filename_path)
     img_RGB = Image.open(filename_path)
     # get image size such that later the boxes can be resized to the correct size
     width, height = img_RGB.size
     img_sizes = [width, height]
+    print('img_time', time.time()-gt_time)
     # convert to BGR format
     try:
         image = np.array(img_RGB)[:, :, [2, 1, 0]]
     except:
         image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+    print('np_time', time.time() - gt_time)
+
     masks_paths = sorted(glob.glob(mask_dir%(img_path[0], img_path[1]+'*')))
 
     gt_labels = []
     gt_bboxes_list = []
-    masks = []
+    masks = []    #TODO modify as in inference.py to avoid propagating masks
 
     for j in range(len(masks_paths)):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
@@ -202,6 +199,7 @@ def compute_gts_ycbv(dataset, i):
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
         masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+    print('mask_time', time.time() - gt_time)
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
@@ -223,6 +221,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         average_recall_RPN = 0
 
     for i in range(num_img):
+        feat_extr_time = time.time()
         if type(dataset).__name__ is 'iCubWorldDataset':
             image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
         elif type(dataset).__name__ is 'YCBVideoDataset':
@@ -250,11 +249,13 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         # convert to an ImageList
         image_list = to_image_list(image, 1)
         image_list = image_list.to("cuda")
+        print('gt_computation', time.time()-feat_extr_time)
         # compute predictions
         with torch.no_grad():
             AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label = gt_labels_torch, img_size = img_sizes, compute_average_recall_RPN = compute_average_recall_RPN, gt_labels_list = gt_labels, is_train = is_train, result_dir = result_dir, extract_features_segmentation=extract_features_segmentation)
             if compute_average_recall_RPN:
                 average_recall_RPN += AR
+        print('total', time.time()-feat_extr_time)
     
     if compute_average_recall_RPN:
         return average_recall_RPN / num_img

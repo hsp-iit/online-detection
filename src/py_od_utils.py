@@ -62,11 +62,13 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
     return mean, std, mean_norm
 
 
-def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048, cpu_tensor=False):
+def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048, cpu_tensor=False, pos_fraction=None, neg_fraction=None):
     device = 'cpu' if cpu_tensor else 'cuda'
     print('Computing features statistics')
-    pos_fraction = 1/10
-    neg_fraction = 9/10
+    if pos_fraction is None:
+        pos_fraction = 1/10
+    if neg_fraction is None:
+        neg_fraction = 9/10
     num_classes = len(positives)
     take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
@@ -181,15 +183,22 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
             negatives[i] = [negatives[i]]
     return positives, negatives
 
-def load_features_regressor(features_dir):
+def load_features_regressor(features_dir, samples_fraction=1.0):
     reg_num_batches = len(glob.glob(os.path.join(features_dir, 'reg_x_*')))
     X_list = []
     C_list = []
     Y_list = []
     for i in range(reg_num_batches):
-        X_list.append(torch.load(os.path.join(features_dir, 'reg_x_batch_{}'.format(i))))
-        C_list.append(torch.load(os.path.join(features_dir, 'reg_c_batch_{}'.format(i))))
-        Y_list.append(torch.load(os.path.join(features_dir, 'reg_y_batch_{}'.format(i))))
+        if samples_fraction < 1.0:
+            C_i = torch.load(os.path.join(features_dir, 'reg_c_batch_{}'.format(i)))
+            ind_i = torch.randperm(len(C_i))[:int(len(C_i)*samples_fraction)]
+            X_list.append(torch.load(os.path.join(features_dir, 'reg_x_batch_{}'.format(i)))[ind_i])
+            C_list.append(C_i[ind_i])
+            Y_list.append(torch.load(os.path.join(features_dir, 'reg_y_batch_{}'.format(i)))[ind_i])
+        else:
+            X_list.append(torch.load(os.path.join(features_dir, 'reg_x_batch_{}'.format(i))))
+            C_list.append(torch.load(os.path.join(features_dir, 'reg_c_batch_{}'.format(i))))
+            Y_list.append(torch.load(os.path.join(features_dir, 'reg_y_batch_{}'.format(i))))
 
     COXY = {'C': torch.cat(C_list),
             'O': None,
@@ -198,39 +207,63 @@ def load_features_regressor(features_dir):
             }
     return COXY
 
+def load_positives_from_COXY(COXY):
+    positives = []
+    num_classes = len(torch.unique(COXY['C']))
+    for i in range(num_classes):
+        ids_i = torch.where(COXY['C'] == i+1)[0]
+        positives.append(COXY['X'][ids_i])
+    return positives
+
+def minibatch_positives(positives, num_batches):
+    for i in range(len(positives)):
+        positives_per_batch = int(len(positives[i])/num_batches)
+        positives[i] = list(torch.split(positives[i], positives_per_batch))
+    return positives
+
 def decode_boxes_detector(boxes, bbox_pred, num_classes):
+    ex_box = boxes.bbox
+    num_boxes = ex_box.size()[0]
+    # Initialize refined boxes with example boxes in the 0-th dimension
+    refined_boxes = ex_box
 
-        ex_box = boxes.bbox
-        num_boxes = ex_box.size()[0]
-        # Initialize refined boxes with example boxes in the 0-th dimension
-        refined_boxes = ex_box
+    dst_ctr_x = bbox_pred[:, 0::4]
+    dst_ctr_y = bbox_pred[:, 1::4]
+    dst_scl_x = bbox_pred[:, 2::4]
+    dst_scl_y = bbox_pred[:, 3::4]
 
-        dst_ctr_x = bbox_pred[:, 0::4]
-        dst_ctr_y = bbox_pred[:, 1::4]
-        dst_scl_x = bbox_pred[:, 2::4]
-        dst_scl_y = bbox_pred[:, 3::4]
+    src_w = ex_box[:, 2] - ex_box[:, 0] + np.spacing(1)
+    src_h = ex_box[:, 3] - ex_box[:, 1] + np.spacing(1)
+    src_ctr_x = ex_box[:, 0] + 0.5 * src_w
+    src_ctr_y = ex_box[:, 1] + 0.5 * src_h
+    pred_ctr_x = (dst_ctr_x * src_w[:, None]) + src_ctr_x[:, None]
+    pred_ctr_y = (dst_ctr_y * src_h[:, None]) + src_ctr_y[:, None]
+    pred_w = torch.exp(dst_scl_x) * src_w[:, None]
+    pred_h = torch.exp(dst_scl_y) * src_h[:, None]
+    pred_boxes = torch.zeros_like(bbox_pred)
+    pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
+    pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
+    pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w
+    pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h
 
-        src_w = ex_box[:, 2] - ex_box[:, 0] + np.spacing(1)
-        src_h = ex_box[:, 3] - ex_box[:, 1] + np.spacing(1)
-        src_ctr_x = ex_box[:, 0] + 0.5 * src_w
-        src_ctr_y = ex_box[:, 1] + 0.5 * src_h
-        pred_ctr_x = (dst_ctr_x * src_w[:, None]) + src_ctr_x[:, None]
-        pred_ctr_y = (dst_ctr_y * src_h[:, None]) + src_ctr_y[:, None]
-        pred_w = torch.exp(dst_scl_x) * src_w[:, None]
-        pred_h = torch.exp(dst_scl_y) * src_h[:, None]
-        pred_boxes = torch.zeros_like(bbox_pred)
-        pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
-        pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
-        pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w
-        pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h
+    # Set boxes in Matlab format
+    pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.ones(pred_boxes[:, 0::4].size(), device='cuda'))
+    pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.ones(pred_boxes[:, 1::4].size(), device='cuda'))
+    pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0], device='cuda'))
+    pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1], device='cuda'))
 
-        # Set boxes in Matlab format
-        pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.ones(pred_boxes[:, 0::4].size(), device='cuda'))
-        pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.ones(pred_boxes[:, 1::4].size(), device='cuda'))
-        pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0], device='cuda'))
-        pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1], device='cuda'))
+    return pred_boxes
 
-        return pred_boxes
+def shuffle_negatives(negatives):
+    print('Shuffling negatives')
+    for i in range(len(negatives)):
+        bs = len(negatives[i][0])
+        neg_i = torch.cat(negatives[i])
+        ind_i = torch.randperm(len(neg_i))
+        neg_i = neg_i[ind_i]
+        negatives[i] = list(torch.split(neg_i, bs))
+    return negatives
+
 
 def mask_iou(mask_a, mask_b):
     """Calculate the Intersection of Unions (IoUs) between masks.

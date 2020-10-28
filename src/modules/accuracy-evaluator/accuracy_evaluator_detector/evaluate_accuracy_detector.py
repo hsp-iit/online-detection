@@ -50,7 +50,7 @@ class AccuracyEvaluatorDetector:
         self.stats_segmentation = None
 
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
@@ -61,7 +61,7 @@ class AccuracyEvaluatorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir)
+        return self.train(is_train, result_dir=output_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
 
     def load_parameters(self):
         if self.distributed:
@@ -85,7 +85,7 @@ class AccuracyEvaluatorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False):
+    def train(self, is_train, result_dir=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
 
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
@@ -116,12 +116,12 @@ class AccuracyEvaluatorDetector:
             self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
         )
 
-        if self.cfg.MODEL.WEIGHT.startswith('/'):
-            model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
+        if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
+            model_path = self.cfg.MODEL.WEIGHT
         else:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
-            model_pretrained = torch.load(model_path)
-        checkpointer._load_model(model_pretrained)
+
+        extra_checkpoint_data = checkpointer.load(model_path)
 
         if self.falkon_rpn_models is not None:
             model.rpn.head.classifiers = self.falkon_rpn_models            
@@ -174,6 +174,8 @@ class AccuracyEvaluatorDetector:
                                              icwt_21_objs=self.icwt_21_objs,
                                              is_train = is_train,
                                              result_dir=result_dir,
+                                             evaluate_segmentation=evaluate_segmentation,
+                                             eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes
                                             )
 
             if result_dir and is_train:

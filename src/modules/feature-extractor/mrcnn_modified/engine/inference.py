@@ -166,7 +166,7 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
-def compute_gts_ycbv(dataset, i):
+def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
@@ -208,18 +208,18 @@ def compute_gts_ycbv(dataset, i):
     gt_labels = []
     gt_bboxes_list = []
     masks = []
-
     for j in range(len(masks_paths)):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
         if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
             continue
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
-        masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+        if evaluate_segmentation:
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
-def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None):
+def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
     model.eval()
 
     num_img = len(dataset.ids)
@@ -239,7 +239,7 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
         if type(dataset).__name__ is 'iCubWorldDataset':
             image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
         elif type(dataset).__name__ is 'YCBVideoDataset':
-            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i)
+            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i, evaluate_segmentation=evaluate_segmentation)
 
         # Save list of boxes as tensor
         gt_bbox_tensor = torch.tensor(gt_bboxes_list, device="cuda")
@@ -252,7 +252,8 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
         try:
             gt_bbox_boxlist = BoxList(gt_bbox_tensor, image_size=img_sizes, mode='xyxy')
             try:
-                gt_bbox_boxlist.add_field("masks", mask_lists)
+                if evaluate_segmentation:
+                    gt_bbox_boxlist.add_field("masks", mask_lists)
             except:
                 pass
         except:
@@ -265,7 +266,7 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
         image_list = image_list.to("cuda")
         # compute predictions
         with torch.no_grad():
-            AR, predicted_boxes = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, compute_average_recall_RPN=compute_average_recall_RPN, gt_labels_list=gt_labels, is_train=is_train, result_dir=result_dir)
+            AR, predicted_boxes = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, compute_average_recall_RPN=compute_average_recall_RPN, gt_labels_list=gt_labels, is_train=is_train, result_dir=result_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
             if compute_average_recall_RPN:
                 average_recall_RPN += AR
             predictions.append(predicted_boxes)
@@ -298,6 +299,7 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
             expected_results=(),
             expected_results_sigma_tol=4,
             draw_preds=False,
+            evaluate_segmentation=evaluate_segmentation
         )
 
     return evaluate(dataset=dataset,
@@ -319,6 +321,8 @@ def inference(
         compute_average_recall_RPN=False,
         is_train = True,
         result_dir=None,
+        evaluate_segmentation=True,
+        eval_segm_with_gt_bboxes=False
 ):
     # convert to a torch.device for efficiency
     device = torch.device(device)
@@ -329,7 +333,7 @@ def inference(
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    res = compute_predictions(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train=is_train, result_dir=result_dir)
+    res = compute_predictions(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train=is_train, result_dir=result_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
 
     synchronize()
     total_time = total_timer.toc()

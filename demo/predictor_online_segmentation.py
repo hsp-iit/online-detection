@@ -94,6 +94,7 @@ class OnlineSegmentationDemo(object):
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
+        """
         output_dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_pbr'))
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_real_test'))
 
@@ -103,7 +104,7 @@ class OnlineSegmentationDemo(object):
 
         self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
         self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(output_dir, 'stats_segmentation'))
-
+        """
         self.model.eval()
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.model.to(self.device)

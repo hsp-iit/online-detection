@@ -13,9 +13,10 @@ from mrcnn_modified.config import cfg
 from predictor_online_segmentation import OnlineSegmentationDemo
 import cv2
 import random
+import glob
 
 #config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_elsa.yaml"))
-config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_ycb.yaml"))
+config_file = os.path.abspath(os.path.join(basedir, os.path.pardir, "experiments", "configs", "config_segmentation_ycb_demo.yaml"))
 run_single_image = True
 # update the config options with the config file
 cfg.merge_from_file(config_file)
@@ -25,15 +26,23 @@ cfg.merge_from_file(config_file)
 
 coco_demo = OnlineSegmentationDemo(
     cfg,
-    confidence_threshold=0.3,
+    confidence_threshold=0.7,
     show_mask_heatmaps=False
 )
+"""
+images = sorted(glob.glob('/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/*.png'))
+for i in range(len(images)):
+    image = cv2.imread(images[i], 1)
+    predictions = coco_demo.run_on_opencv_image(image)
+    if not os.path.exists('test_masks_oos_seq_52n'):
+        os.makedirs('test_masks_oos_seq_52n')
+    cv2.imwrite('test_masks_oos_seq_52n/{}.jpg'.format(i), predictions)
+quit()
+"""
 # load image and then run prediction
 if run_single_image:
-    image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000044.jpg'
-    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000050/rgb/000007.png'
-    #image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/train_real/000028/rgb/000021.png'
-    #image_path = '/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/train_pbr/000001/rgb/000003.jpg'
+    #image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000044.jpg'
+    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/000007.png'
 
     image = cv2.imread(image_path,1)
     predictions = coco_demo.run_on_opencv_image(image)
@@ -41,6 +50,7 @@ if run_single_image:
     cv2.waitKey(0)
     cv2.destroyAllWindows()
     quit()
+
 
 else: #run on all test dataset
     #with open("/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/ImageSets/test_AutomSegm_tabletop_21objs.txt") as f:

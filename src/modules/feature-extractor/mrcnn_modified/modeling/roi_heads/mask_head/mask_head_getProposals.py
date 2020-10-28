@@ -56,15 +56,18 @@ class ROIMaskHead(torch.nn.Module):
         self.post_processor = make_roi_mask_post_processor(cfg)
         self.loss_evaluator = make_roi_mask_loss_evaluator(cfg)
         self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
-        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        #self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE         #TODO make parametric
+        self.training_device = 'cpu'
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
-        self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
+        self.batch_size = self.cfg.SEGMENTATION.BATCH_SIZE
         self.positives = []
         self.negatives = []
         for i in range(self.num_classes):
             self.positives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
             self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
+
+        self.sampling_factor = self.cfg.SEGMENTATION.SAMPLING_FACTOR
 
     def forward(self, features, proposals, gt_labels_list, gt_bbox, targets=None, result_dir=None):
         """
@@ -94,22 +97,32 @@ class ROIMaskHead(torch.nn.Module):
         for i in range(len(masks_features)):
             mask_features = masks_features[i].permute(1, 2, 0).view(-1, masks_features.size()[1])
             masks_gt = masks_gts[i].view(mask_features.size()[0])
-            positives_indices = torch.where(masks_gt >= 0.5)
+            positives_indices = torch.where(masks_gt >= 0.5)[0]
+            if self.sampling_factor < 1.0:
+                sampled_indices = torch.randperm(len(positives_indices))[:int(self.sampling_factor*len(positives_indices))]
+                positives_indices = positives_indices[sampled_indices]
             self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], mask_features[positives_indices]))
-            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
+            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
                 if self.save_features:
                     path_to_save = os.path.join(result_dir, 'features_segmentation', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
                     torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
                     self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device)
-                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device))
-            negatives_indices = torch.where(masks_gt < 0.5)
+                if self.training_device == 'cpu':
+                    self.positives[gt_labels_list[i] - 1][len(self.positives[gt_labels_list[i] - 1]) - 1] = self.positives[gt_labels_list[i] - 1][len(self.positives[gt_labels_list[i] - 1]) - 1].to('cpu')
+                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
+            negatives_indices = torch.where(masks_gt < 0.5)[0]
+            if self.sampling_factor < 1.0:
+                sampled_indices = torch.randperm(len(negatives_indices))[:int(self.sampling_factor*len(negatives_indices))]
+                negatives_indices = negatives_indices[sampled_indices]
             self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1] = torch.cat((self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], mask_features[negatives_indices]))
-            if self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size*10:
+            if self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
                 if self.save_features:
                     path_to_save = os.path.join(result_dir, 'features_segmentation', 'negatives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.negatives[gt_labels_list[i]-1]) - 1))
                     torch.save(self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1], path_to_save)
                     self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device)
-                self.negatives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device=self.training_device))
+                if self.training_device == 'cpu':
+                    self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1])-1] = self.negatives[gt_labels_list[i]-1][len(self.negatives[gt_labels_list[i]-1])-1].to('cpu')
+                self.negatives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
 
         return None, None, None
 

@@ -46,9 +46,10 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
+        self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = use_only_gt_positives_detection
         if save_features:
             if output_dir:
                 features_path = os.path.join(output_dir, 'features_detector')
@@ -61,7 +62,7 @@ class FeatureExtractorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation)
+        return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection)
 
     def load_parameters(self):
         if self.distributed:
@@ -85,7 +86,7 @@ class FeatureExtractorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False, extract_features_segmentation=False):
+    def train(self, is_train, result_dir=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -180,23 +181,23 @@ class FeatureExtractorDetector:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
 
-                if self.cfg.SAVE_FEATURES_DETECTOR:
+                if self.cfg.SAVE_FEATURES_DETECTOR: #TODO add option to avoid saving positives if can be used coxy
                     # Save features still not saved
                     for clss in range(len(model.roi_heads.box.negatives)):
                         for batch in range(len(model.roi_heads.box.negatives[clss])):
                             if model.roi_heads.box.negatives[clss][batch].size()[0] > 0:
                                 path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(clss, batch))
                                 torch.save(model.roi_heads.box.negatives[clss][batch], path_to_save)
-
-                        # If a class does not have positive examples, save an empty tensor
-                        if model.roi_heads.box.positives[clss][0].size()[0] == 0 and len(model.roi_heads.box.positives[clss]) == 1:
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, 0))
-                            torch.save(torch.empty((0, model.roi_heads.box.feat_size), device=model.roi_heads.box.negatives[clss][0].device), path_to_save)
-                        else:
-                            for batch in range(len(model.roi_heads.box.positives[clss])):
-                                if model.roi_heads.box.positives[clss][batch].size()[0] > 0:
-                                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
-                                    torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
+                        if use_only_gt_positives_detection:
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.box.positives[clss][0].size()[0] == 0 and len(model.roi_heads.box.positives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.box.feat_size), device=model.roi_heads.box.negatives[clss][0].device), path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.box.positives[clss])):
+                                    if model.roi_heads.box.positives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
 
                         if extract_features_segmentation:
                             # If a class does not have positive examples, save an empty tensor

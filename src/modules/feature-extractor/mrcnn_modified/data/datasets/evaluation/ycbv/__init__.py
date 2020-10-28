@@ -3,7 +3,7 @@ import logging
 from .ycbv_eval import do_ycbv_evaluation
 
 
-def ycbv_evaluation(dataset, predictions, output_folder, box_only, iou_types, expected_results, expected_results_sigma_tol, draw_preds):
+def ycbv_evaluation(dataset, predictions, output_folder, box_only, iou_types, expected_results, expected_results_sigma_tol, draw_preds, evaluate_segmentation=True):
 
     logger = logging.getLogger("maskrcnn_benchmark.inference")
     if box_only:
@@ -16,4 +16,5 @@ def ycbv_evaluation(dataset, predictions, output_folder, box_only, iou_types, ex
         output_folder=output_folder,
         draw_preds=draw_preds,
         logger=logger,
+        evaluate_segmentation=evaluate_segmentation
     )

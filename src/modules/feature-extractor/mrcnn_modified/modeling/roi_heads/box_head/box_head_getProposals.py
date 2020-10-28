@@ -36,7 +36,9 @@ class ROIBoxHead(torch.nn.Module):
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
-        self.positives = []
+        self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
+        if self.compute_gt_positives:
+            self.positives = []
         self.negatives = []
         self.current_batch = []
         self.current_batch_size = []
@@ -44,7 +46,8 @@ class ROIBoxHead(torch.nn.Module):
             self.negatives.append([])
             self.current_batch.append(0)
             self.current_batch_size.append(0)
-            self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
+            if self.compute_gt_positives:
+                self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
             for j in range(self.iterations):
                 self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
@@ -131,17 +134,18 @@ class ROIBoxHead(torch.nn.Module):
 
         # Loop on all the gt boxes
         for i in range(len(gt_labels_list)):
-            # Concatenate each gt to the positive tensor for its corresponding class
-            if self.training_device is 'cpu':
-                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
-            else:
-                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
-            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
-                if self.save_features:
-                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
-                    torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
-                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
-                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            if self.compute_gt_positives:
+                # Concatenate each gt to the positive tensor for its corresponding class
+                if self.training_device is 'cpu':
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
+                else:
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
+                if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
+                        torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
+                        self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                    self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
             # Extract regressor positives, i.e. with overlap > self.reg_min_overlap and with proposed boxes associated to that gt
             pos_ids = overlap[:,gt_labels_list[i]-1] > self.reg_min_overlap

@@ -490,9 +490,18 @@ _C.MINIBOOTSTRAP.DETECTOR.ITERATIONS = 2
 _C.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = 21
 # IoU thresholds to choose detector's negatives
 _C.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH = 0.3
+_C.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = True
 
 # ---------------------------------------------------------------------------- #
 # Regressors parameters
 # ---------------------------------------------------------------------------- #
 _C.REGRESSORS = CN()
 _C.REGRESSORS.MIN_OVERLAP = 0.6
+
+# ---------------------------------------------------------------------------- #
+# Segmentation parameters
+# ---------------------------------------------------------------------------- #
+_C.SEGMENTATION = CN()
+_C.SEGMENTATION.BATCH_SIZE = 20000
+_C.SEGMENTATION.SAMPLING_FACTOR = 0.3
+

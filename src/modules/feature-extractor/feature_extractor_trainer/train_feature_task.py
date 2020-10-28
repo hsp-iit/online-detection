@@ -36,8 +36,8 @@ class TrainerFeatureTask:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, output_dir=None, fine_tune_last_layers=False):
-        self.train(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers)
+    def __call__(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False):
+        self.train(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers, fine_tune_rpn=fine_tune_rpn)
 
     def load_parameters(self):
         if self.distributed:
@@ -61,7 +61,7 @@ class TrainerFeatureTask:
             logger.info(config_str)
         logger.info("Running with config:\n{}".format(self.cfg))
 
-    def train(self, output_dir=None, fine_tune_last_layers=False):
+    def train(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False):
         if output_dir is not None:
             self.cfg.OUTPUT_DIR = output_dir
         model = build_detection_model(self.cfg)
@@ -85,6 +85,14 @@ class TrainerFeatureTask:
 
         extra_checkpoint_data = checkpointer.load(model_path)
 
+        if self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1 != self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES:
+            checkpointer.model.roi_heads.box.predictor.cls_score = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, bias=True)
+            checkpointer.model.roi_heads.box.predictor.bbox_pred = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1)*4, bias=True)
+            if hasattr(checkpointer.model.roi_heads, 'mask'):
+                checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits = torch.nn.Conv2d(in_channels=checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits.in_channels, out_channels=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, kernel_size=(1, 1), stride=(1, 1))
+            checkpointer.model.to(device)
+
+
         if fine_tune_last_layers:
             checkpointer.model.roi_heads.box.predictor.cls_score = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, bias=True)
             checkpointer.model.roi_heads.box.predictor.bbox_pred = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1)*4, bias=True)
@@ -93,9 +101,15 @@ class TrainerFeatureTask:
             # Freeze backbone layers
             for elem in checkpointer.model.backbone.parameters():
                 elem.requires_grad = False
-            # Freeze RPN layers
-            for elem in checkpointer.model.rpn.parameters():
-                elem.requires_grad = False
+            if not fine_tune_rpn:
+                # Freeze RPN layers
+                for elem in checkpointer.model.rpn.parameters():
+                    elem.requires_grad = False
+            else:
+                for elem in checkpointer.model.rpn.head.conv.parameters():
+                    elem.requires_grad = False
+                checkpointer.model.rpn.head.cls_logits = torch.nn.Conv2d(in_channels=checkpointer.model.rpn.head.cls_logits.in_channels, out_channels=checkpointer.model.rpn.head.cls_logits.out_channels, kernel_size=(1, 1), stride=(1, 1))
+                checkpointer.model.rpn.head.bbox_pred = torch.nn.Conv2d(in_channels=checkpointer.model.rpn.head.bbox_pred.in_channels, out_channels=checkpointer.model.rpn.head.bbox_pred.out_channels, kernel_size=(1, 1), stride=(1, 1))
             # Freeze roi_heads layers with the exception of the predictor ones
             for elem in checkpointer.model.roi_heads.box.feature_extractor.parameters():
                 elem.requires_grad = False

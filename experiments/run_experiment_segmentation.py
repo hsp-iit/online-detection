@@ -40,6 +40,8 @@ parser.add_argument('--save_RPN_features', action='store_true', help='Save, in t
 parser.add_argument('--save_detector_features', action='store_true', help='Save, in the features directory (in the output directory), detector\'s features.')
 parser.add_argument('--load_RPN_features', action='store_true', help='Load, from the features directory (in the output directory), RPN features.')
 parser.add_argument('--load_detector_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
+parser.add_argument('--eval_segm_with_gt_bboxes', action='store_true', help='Evaluate segmentation accuracy, supposing that gt_bboxes are available.')
+parser.add_argument('--use_only_gt_positives_detection', action='store_true', help='Consider only the ground truth bounding boxes as positive samples for the online detection.')
 
 
 args = parser.parse_args()
@@ -76,7 +78,7 @@ else:
         cfg_online_path = 'configs/config_online_detection_icwt30.yaml'
 """
 
-cfg_target_task = 'configs/config_segmentation_ycb_demo.yaml'
+cfg_target_task = 'configs/config_segmentation_ycb.yaml'
 if not args.only_ood:
     cfg_rpn = 'configs/config_rpn_tabletop.yaml'
     cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
@@ -162,16 +164,18 @@ if args.load_detector_models:
     models = torch.load(os.path.join(output_dir, 'regressor_detector'))
     stats = torch.load(os.path.join(output_dir, 'stats_detector'))
     # Detector Region Classifier initialization
-    classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-    regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
-    region_refiner = RegionRefiner(cfg_online_path)
+    #classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+    #regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
+    #region_refiner = RegionRefiner(cfg_online_path)
 
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
-        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
+        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection)
         #torch.save(negatives_segmentation, 'neg_segm')
         #torch.save(positives_segmentation, 'pos_segm')
+        print('Features extracted')
+        quit()
 
     else:
         if args.save_detector_features:
@@ -220,8 +224,11 @@ if not args.load_segmentation_models:
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats_segm, cfg_path=cfg_online_path)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
-    torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
-    torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
+    #torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
+    #torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
+else:
+    model_segm = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
+    stats_segm = torch.load(os.path.join(output_dir, 'stats_segmentation'))
 
 # Initialize feature extractor
 accuracy_evaluator = AccuracyEvaluator(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)
@@ -230,7 +237,7 @@ accuracy_evaluator.falkon_detector_models = model
 accuracy_evaluator.regressors_detector_models = models
 accuracy_evaluator.stats_detector = stats
 
-accuracy_evaluator.falkon_segmentation_models = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
-accuracy_evaluator.stats_segmentation = torch.load(os.path.join(output_dir, 'stats_segmentation'))
+accuracy_evaluator.falkon_segmentation_models = model_segm
+accuracy_evaluator.stats_segmentation = stats_segm
 
-test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir)
+test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes)

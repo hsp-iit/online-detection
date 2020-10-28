@@ -44,9 +44,9 @@ if args.output_dir:
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
 
-cfg_feature_task = "configs/config_fine_tuning_ycbv_test_coco_model.yaml"
+cfg_feature_task = "configs/config_fine_tuning_ycbv.yaml"
 
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_path_feature_task=cfg_feature_task)
 
-feature_extractor.trainFeatureExtractor(output_dir=output_dir, fine_tune_last_layers=True)
+feature_extractor.trainFeatureExtractor(output_dir=output_dir, fine_tune_last_layers=True, fine_tune_rpn=False)

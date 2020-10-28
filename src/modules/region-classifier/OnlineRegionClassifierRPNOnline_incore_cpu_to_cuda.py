@@ -47,6 +47,9 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.mean_norm = self.stats['mean_norm']
 
         self.normalized = False
+        self.models_in_cpu = False
+        self.choose_positives = False
+        self.minibootstrap_positives = False
 
 
     def loadRegionClassifier(self) -> None:
@@ -136,7 +139,177 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     #print(caches)
                     caches[i] = None
                     torch.cuda.empty_cache()
+                    if self.models_in_cpu:
+                        model[i].ny_points_ = model[i].ny_points_.to('cpu')
+                        model[i].alpha_ = model[i].alpha_.to('cpu')
+
+            else:
+                model.append(None)
+                dataset = {}
+                caches.append(dataset)
+
+        training_time = time.time() - t
+        print('Online Classifier trained in {} seconds'.format(training_time))
+        if output_dir and self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("RPN's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        return model
+
+    def trainWithMinibootstrapChoosePositives(self, negatives, positives, output_dir=None):
+        iterations = len(negatives[0])
+        caches = []
+        model = []
+        t = time.time()
+        for i in range(self.num_classes-1):
+            if (len(positives[i]) != 0) & (len(negatives[i]) != 0):
+                print('---------------------- Training Class number {} ----------------------'.format(i))
+                first_time = True
+                for j in range(len(negatives[i])):
+                    t_iter = time.time()
+                    if first_time:
+                        dataset = {}
+                        dataset['pos'] = positives[i]
+                        dataset['neg'] = negatives[i][j]
+                        caches.append(dataset)
+                        model.append(None)
+                        first_time = False
+                    else:
+                        t_hard = time.time()
+                        if negatives[i][j].device.type == 'cpu':
+                            neg_pred = self.classifier.predict(model[i], negatives[i][j].to('cuda'))
+                        else:
+                            neg_pred = self.classifier.predict(model[i], negatives[i][j])
+                        hard_idx = torch.where(neg_pred > self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH'])[0]
+                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
+                        print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
+                        print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
+                        t_pos = time.time()
+                        if positives[i].device.type == 'cpu':
+                            pos_pred = self.classifier.predict(model[i], positives[i].to('cuda'))
+                        else:
+                            pos_pred = self.classifier.predict(model[i], positives[i])
+                        hard_idx_pos = torch.where(pos_pred < 0.7)[0] #TODO read from config
+                        caches[i]['pos'] = positives[i][hard_idx_pos]
+                        print('Hard positives selected in {} seconds'.format(time.time() - t_pos))
+                        print('Chosen {} hard positives'.format(len(hard_idx_pos)))
+
+                    print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
+                    t_update = time.time()
+                    model[i] = self.updateModel(caches[i])
+                    print('Model updated in {} seconds'.format(time.time() - t_update))
+
+                    t_easy = time.time()
+                    if len(caches[i]['neg']) != 0:
+                        if caches[i]['neg'].device.type == 'cpu':
+                            neg_pred = self.classifier.predict(model[i], caches[i]['neg'].to('cuda'))
+                        else:
+                            neg_pred = self.classifier.predict(model[i], caches[i]['neg'])
+                        keep_idx = torch.where(neg_pred >= self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH'])[0]
+                        easy_idx = len(caches[i]['neg']) - len(keep_idx)
+                        caches[i]['neg'] = caches[i]['neg'][keep_idx]
+                        print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
+                        print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
+                        print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                if j == len(negatives[i])-1:
                     #print(caches)
+                    caches[i] = None
+                    torch.cuda.empty_cache()
+                    if self.models_in_cpu:
+                        model[i].ny_points_ = model[i].ny_points_.to('cpu')
+                        model[i].alpha_ = model[i].alpha_.to('cpu')
+
+            else:
+                model.append(None)
+                dataset = {}
+                caches.append(dataset)
+
+        training_time = time.time() - t
+        print('Online Classifier trained in {} seconds'.format(training_time))
+        if output_dir and self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("RPN's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        return model
+
+    def trainWithMinibootstrapNegativesPositives(self, negatives, positives, output_dir=None):
+        iterations = len(negatives[0])
+        caches = []
+        model = []
+        t = time.time()
+        for i in range(self.num_classes-1):
+            if (len(positives[i]) != 0) & (len(negatives[i]) != 0):
+                print('---------------------- Training Class number {} ----------------------'.format(i))
+                first_time = True
+                for j in range(len(negatives[i])):
+                    t_iter = time.time()
+                    if first_time:
+                        dataset = {}
+                        dataset['pos'] = positives[i][j]
+                        dataset['neg'] = negatives[i][j]
+                        caches.append(dataset)
+                        model.append(None)
+                        first_time = False
+                    else:
+                        t_hard = time.time()
+                        if negatives[i][j].device.type == 'cpu':
+                            neg_pred = self.classifier.predict(model[i], negatives[i][j].to('cuda'))
+                        else:
+                            neg_pred = self.classifier.predict(model[i], negatives[i][j])
+                        hard_idx = torch.where(neg_pred > self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH'])[0]
+                        caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
+                        print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
+                        print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
+                        t_pos = time.time()
+                        if positives[i][j].device.type == 'cpu':
+                            pos_pred = self.classifier.predict(model[i], positives[i][j].to('cuda'))
+                        else:
+                            pos_pred = self.classifier.predict(model[i], positives[i][j])
+                        hard_idx_pos = torch.where(pos_pred < 0.7)[0] #TODO read from config
+                        caches[i]['pos'] = torch.cat((caches[i]['pos'], positives[i][j][hard_idx_pos]), 0)
+                        print('Hard positives selected in {} seconds'.format(time.time() - t_pos))
+                        print('Chosen {} hard positives from the {}th batch'.format(len(hard_idx_pos), j))
+
+                    print('Traning with {} positives and {} negatives'.format(len(caches[i]['pos']), len(caches[i]['neg'])))
+                    t_update = time.time()
+                    model[i] = self.updateModel(caches[i])
+                    print('Model updated in {} seconds'.format(time.time() - t_update))
+
+                    t_easy = time.time()
+                    if len(caches[i]['neg']) != 0:
+                        if caches[i]['neg'].device.type == 'cpu':
+                            neg_pred = self.classifier.predict(model[i], caches[i]['neg'].to('cuda'))
+                        else:
+                            neg_pred = self.classifier.predict(model[i], caches[i]['neg'])
+                        keep_idx = torch.where(neg_pred >= self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH'])[0]
+                        easy_idx = len(caches[i]['neg']) - len(keep_idx)
+                        caches[i]['neg'] = caches[i]['neg'][keep_idx]
+                        print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
+                        print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
+                        #print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                    t_easy = time.time()
+                    if len(caches[i]['pos']) != 0:
+                        if caches[i]['pos'].device.type == 'cpu':
+                            pos_pred = self.classifier.predict(model[i], caches[i]['pos'].to('cuda'))
+                        else:
+                            pos_pred = self.classifier.predict(model[i], caches[i]['pos'])
+                        keep_idx = torch.where(pos_pred <= 0.9)[0] #TODO read from file
+                        easy_idx = len(caches[i]['pos']) - len(keep_idx)
+                        caches[i]['pos'] = caches[i]['pos'][keep_idx]
+                        print('Easy positives selected in {} seconds'.format(time.time() - t_easy))
+                        print('Removed {} easy positives. {} Remaining'.format(easy_idx, len(caches[i]['pos'])))
+                        print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                if j == len(negatives[i])-1:
+                    #print(caches)
+                    caches[i] = None
+                    torch.cuda.empty_cache()
+                    if self.models_in_cpu:
+                        model[i].ny_points_ = model[i].ny_points_.to('cpu')
+                        model[i].alpha_ = model[i].alpha_.to('cpu')
 
             else:
                 model.append(None)
@@ -162,14 +335,24 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
         if not self.normalized:
             for i in range(self.num_classes-1):
-                if len(positives[i]):
+                if len(positives[i]) and not self.minibootstrap_positives:
                     positives[i] = self.zScores(positives[i])
+                elif len(positives[i]) and self.minibootstrap_positives:
+                    for j in range(len(positives[i])):
+                        if len(positives[i][j]):
+                            positives[i][j] = self.zScores(positives[i][j])
                 for j in range(len(negatives[i])):
                     if len(negatives[i][j]):
                         negatives[i][j] = self.zScores(negatives[i][j])
             self.normalized = True
 
-        model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
+        if self.choose_positives:
+            model = self.trainWithMinibootstrapChoosePositives(negatives, positives, output_dir=output_dir)
+        elif self.minibootstrap_positives:
+            model = self.trainWithMinibootstrapNegativesPositives(negatives, positives, output_dir=output_dir)
+        else:
+            model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
+
         return model
 
     def testRegionClassifier(self, model, test_boxes):

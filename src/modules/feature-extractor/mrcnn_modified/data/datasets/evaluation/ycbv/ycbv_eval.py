@@ -150,7 +150,7 @@ def draw_preds_ycbv(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, use_07_metric=True):
+def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, use_07_metric=True, evaluate_segmentation=True):
 
     #"""
     pred_boxlists = []
@@ -207,7 +207,7 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         with open(os.path.join(output_folder, "result.txt"), "a") as fid:
             fid.write(result_str)
 
-    if gt_boxlists[0].has_field('masks'):   #TODO modify this
+    if evaluate_segmentation:   #TODO modify this
         result = eval_segmentation_ycbv(
             pred_boxlists=pred_boxlists,
             gt_boxlists=gt_boxlists,
@@ -229,6 +229,8 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         if output_folder:
             with open(os.path.join(output_folder, "result.txt"), "a") as fid:
                 fid.write(result_str)
+
+    del pred_boxlists, gt_boxlists
 
     return result
 

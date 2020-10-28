@@ -21,7 +21,7 @@ from accuracy_evaluator import AccuracyEvaluator
 
 from region_refiner import RegionRefiner
 
-from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor
+from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
 
 import AccuracyEvaluator as ae
 
@@ -176,7 +176,17 @@ else:
         if args.save_detector_features:
             feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
         positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
-    stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
+        use_only_gt_positives = False  # TODO parametrize
+        if not use_only_gt_positives:
+            del positives
+            torch.cuda.empty_cache()
+            COXY = load_features_regressor(
+                features_dir=os.path.join(output_dir, 'features_detector'))  # , samples_fraction=0.2)
+            positives = load_positives_from_COXY(COXY)
+            del COXY
+            torch.cuda.empty_cache()
+    stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1],
+                                                cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
 
     # Detector Region Classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
@@ -184,6 +194,10 @@ else:
 
     # Train detector Region Classifier
     model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+
+    # Delete already used data
+    del negatives, positives, regionClassifier
+    torch.cuda.empty_cache()
 
     # Detector Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path)
@@ -196,7 +210,7 @@ else:
         models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
 
     # Delete already used data
-    del negatives, positives, COXY
+    del COXY, region_refiner
     torch.cuda.empty_cache()
 
 # Save detector models, if requested
@@ -208,9 +222,9 @@ if args.save_detector_models:
 loaded_features = False
 try:
     print('Loading features for segmentation in gpu')
-    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=0.1)
+    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=0.3)
     print('Computing segmentation statistics')
-    stats_segm = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
+    stats_segm = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
     loaded_features = True
 except:
     pass
@@ -223,9 +237,8 @@ if not loaded_features:
 
 normalized = False
 #lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
-#sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
 lambdas = [0.000001]
-sigmas = [20]
+sigmas = [10]
 for lam in lambdas:
     for sigma in sigmas:
         print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' %(str(lam), str(sigma)))
@@ -248,3 +261,6 @@ for lam in lambdas:
         accuracy_evaluator.stats_segmentation = stats_segm
 
         test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir)
+
+torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
+torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))

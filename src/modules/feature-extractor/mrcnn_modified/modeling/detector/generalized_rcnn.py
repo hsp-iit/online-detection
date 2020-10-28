@@ -31,7 +31,7 @@ class GeneralizedRCNN(nn.Module):
         self.rpn = build_rpn(cfg, self.backbone.out_channels)
         self.roi_heads = build_roi_heads(cfg, self.backbone.out_channels)
 
-    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None):
+    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -59,7 +59,7 @@ class GeneralizedRCNN(nn.Module):
             proposals[0].extra_fields['objectness'] = torch.cat((1.0 * torch.ones(gt_bbox.bbox.size()[0], device="cuda"), proposals[0].extra_fields['objectness']), 0)
 
         if self.roi_heads:
-            x, result, detector_losses = self.roi_heads(features, proposals, gt_bbox = gt_bbox, gt_label= gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir)
+            x, result, detector_losses = self.roi_heads(features, proposals, gt_bbox = gt_bbox, gt_label= gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
 
         return average_recall_RPN, result
 
