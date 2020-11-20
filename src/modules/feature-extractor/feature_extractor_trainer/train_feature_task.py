@@ -168,9 +168,9 @@ class TrainerFeatureTask:
             is_target_task=self.is_target_task
         )
 
-        final_model = torch.load(os.path.join(output_dir, "model_final.pth"))
-        torch.save(final_model, "pretrained_feature_extractor.pth")
-        print("model_final.pth saved in pretrained_feature_extractor.pth.")
+        #final_model = torch.load(os.path.join(output_dir, "model_final.pth"))
+        #torch.save(final_model, "pretrained_feature_extractor.pth")
+        #print("model_final.pth saved in pretrained_feature_extractor.pth.")
 
         logger = logging.getLogger("maskrcnn_benchmark")
         logger.handlers=[]

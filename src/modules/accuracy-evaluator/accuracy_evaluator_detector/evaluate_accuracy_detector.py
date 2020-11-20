@@ -113,7 +113,7 @@ class AccuracyEvaluatorDetector:
 
         save_to_disk = get_rank() == 0
         checkpointer = DetectronCheckpointer(
-            self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
+            self.cfg, model, None, None, output_dir, save_to_disk
         )
 
         if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:

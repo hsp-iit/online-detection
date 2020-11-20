@@ -3,7 +3,6 @@ import sys
 import torch
 import math
 import argparse
-import copy
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
@@ -25,6 +24,8 @@ from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_mode
 
 import AccuracyEvaluator as ae
 
+import time
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--icwt30', action='store_true', help='Run the iCWT experiment reported in the paper (i.e. use as TARGET-TASK the 30 objects identification task from the iCubWorld Transformations dataset). By default, run the experiment referred to as TABLE-TOP in the paper.')
@@ -35,12 +36,14 @@ parser.add_argument('--save_detector_models', action='store_true', help='Save, i
 parser.add_argument('--load_RPN_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the RPN.')
 parser.add_argument('--load_detector_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--load_segmentation_models', action='store_true', help='Load, from the output directory, FALKON models and features statistics of the segmentator.')
-parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
 parser.add_argument('--save_RPN_features', action='store_true', help='Save, in the features directory (in the output directory), RPN features.')
 parser.add_argument('--save_detector_features', action='store_true', help='Save, in the features directory (in the output directory), detector\'s features.')
 parser.add_argument('--load_RPN_features', action='store_true', help='Load, from the features directory (in the output directory), RPN features.')
 parser.add_argument('--load_detector_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
+parser.add_argument('--load_segmentation_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
+parser.add_argument('--eval_segm_with_gt_bboxes', action='store_true', help='Evaluate segmentation accuracy, supposing that gt_bboxes are available.')
+parser.add_argument('--use_only_gt_positives_detection', action='store_true', help='Consider only the ground truth bounding boxes as positive samples for the online detection.')
 
 
 args = parser.parse_args()
@@ -50,7 +53,7 @@ if args.CPU:
     import OnlineRegionClassifierRPNOnline as ocr
     import FALKONWrapper_with_centers_selection as falkon
 else:
-    import OnlineRegionClassifierRPNOnline_incore_cpu_to_cuda as ocr
+    import OnlineRegionClassifierRPNOnline_incore as ocr
     import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration
@@ -77,15 +80,13 @@ else:
         cfg_online_path = 'configs/config_online_detection_icwt30.yaml'
 """
 
-cfg_target_task = 'configs/config_segmentation_ycb.yaml'
+cfg_target_task = 'configs/config_segmentation_ycb_abl_oos.yaml'
 if not args.only_ood:
     cfg_rpn = 'configs/config_rpn_tabletop.yaml'
     cfg_online_path = 'configs/config_online_rpn_online_detection_tabletop.yaml'
 else:
     cfg_rpn = None
-    #cfg_online_path = 'configs/config_online_detection_ycbv.yaml'
-    cfg_online_path = 'configs/config_online_detection_ycbv_ft_ycbv.yaml'
-
+    cfg_online_path = 'configs/config_online_detection_ycbv.yaml'
 
 
 # Set and create output directory
@@ -164,57 +165,70 @@ if args.load_detector_models:
     model = torch.load(os.path.join(output_dir, 'classifier_detector'))
     models = torch.load(os.path.join(output_dir, 'regressor_detector'))
     stats = torch.load(os.path.join(output_dir, 'stats_detector'))
-    # Detector Region Classifier initialization
-    classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-    regionClassifier = ocr.OnlineRegionClassifier(classifier, None, None, stats, cfg_path=cfg_online_path)
-    region_refiner = RegionRefiner(cfg_online_path)
 
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
-        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
+        negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection)
+        del feature_extractor
+        torch.cuda.empty_cache()
+
+        # Detector Region Refiner initialization
+        region_refiner = RegionRefiner(cfg_online_path)
+        models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
+
+        del region_refiner
+        torch.cuda.empty_cache()
+
+        if not args.use_only_gt_positives_detection:
+            positives = load_positives_from_COXY(COXY)
+
+        # Delete already used data
+        del COXY
+        torch.cuda.empty_cache()
+
+        stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1],
+                                            cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
+
+        # Detector Region Classifier initialization
+        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
+
+        # Train detector Region Classifier
+        model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+
+        # Delete already used data
+        del negatives, positives, regionClassifier
+        torch.cuda.empty_cache()
 
     else:
         if args.save_detector_features:
             feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
+            del feature_extractor
+            torch.cuda.empty_cache()
         positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
-        use_only_gt_positives = False  # TODO parametrize
-        if not use_only_gt_positives:
-            del positives
-            torch.cuda.empty_cache()
-            COXY = load_features_regressor(
-                features_dir=os.path.join(output_dir, 'features_detector'))  # , samples_fraction=0.2)
-            positives = load_positives_from_COXY(COXY)
-            del COXY
-            torch.cuda.empty_cache()
-    stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1],
-                                                cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
 
-    # Detector Region Classifier initialization
-    classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-    regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
+        stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
 
-    # Train detector Region Classifier
-    model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+        # Detector Region Classifier initialization
+        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
-    # Delete already used data
-    del negatives, positives, regionClassifier
-    torch.cuda.empty_cache()
+        # Train detector Region Classifier
+        model = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
 
-    # Detector Region Refiner initialization
-    region_refiner = RegionRefiner(cfg_online_path)
-    if args.save_detector_features or args.load_detector_features:
+        # Delete already used data
+        del negatives, positives, regionClassifier
+        torch.cuda.empty_cache()
+
+        # Detector Region Refiner initialization
+        region_refiner = RegionRefiner(cfg_online_path)
         COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_detector'))
-    if args.normalize_features_regressor_detector:
-        models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats, args.CPU), output_dir=output_dir)
-    else:
         # Train Detector Region Refiner
         models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
-
-    # Delete already used data
-    del COXY, region_refiner
-    torch.cuda.empty_cache()
-
+        # Delete already used data
+        del COXY
+        torch.cuda.empty_cache()
 
 # Save detector models, if requested
 if args.save_detector_models:
@@ -222,49 +236,37 @@ if args.save_detector_models:
     torch.save(models, os.path.join(output_dir, 'regressor_detector'))
     torch.save(stats, os.path.join(output_dir, 'stats_detector'))
 
-loaded_features = False
-try:
-    print('Loading features for segmentation in gpu')
-    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=0.3)
-    print('Computing segmentation statistics')
-    stats_segm = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
-    loaded_features = True
-except:
-    pass
-
-if not loaded_features:
-    print('Loading features for segmentation in gpu failed, trying in cpu')
-    positives, negatives = load_features_classifier(
-        features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, cpu_tensor=True)
-    stats_segm = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=True)
-
-normalized = False
-lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
-sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
-#lambdas = [0.000001]
-#sigmas = [10]
-for lam in lambdas:
-    for sigma in sigmas:
-        print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' %(str(lam), str(sigma)))
-        # Train segmentation classifiers
+for sr in range(2, 11):
+    if not args.load_segmentation_models:
+        if args.load_segmentation_features:
+            # Train segmentation classifiers
+            positives_segmentation, negatives_segmentation = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=sr*0.1)
+        torch.cuda.synchronize()
+        start_time = time.time()
+        for i in range(len(positives_segmentation)):
+            positives_segmentation[i] = positives_segmentation[i].to('cuda')
+            negatives_segmentation[i] = [negatives_segmentation[i].to('cuda')]
+        stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
         # Detector Region Classifier initialization
-        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats_segm, cfg_path=cfg_online_path)
-        regionClassifier.normalized = normalized
-        model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir, opts={'lam': lam, 'sigma': sigma}))
-        normalized = True
-        #del regionClassifier
-        # Initialize feature extractor
-        accuracy_evaluator = AccuracyEvaluator(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)
-        # Set detector models in the pipeline
-        accuracy_evaluator.falkon_detector_models = model
-        accuracy_evaluator.regressors_detector_models = models
-        accuracy_evaluator.stats_detector = stats
-    
-        accuracy_evaluator.falkon_segmentation_models = model_segm
-        accuracy_evaluator.stats_segmentation = stats_segm
+        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
+        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
+        model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+        torch.cuda.synchronize()
+        print("Segmentation training time with sampling ratio {}: {}".format(sr*0.1, time.time()-start_time))
+        del positives_segmentation, negatives_segmentation, regionClassifier
+        torch.cuda.empty_cache()
+    else:
+        model_segm = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
+        stats_segm = torch.load(os.path.join(output_dir, 'stats_segmentation'))
 
-        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir)
+    # Initialize feature extractor
+    accuracy_evaluator = AccuracyEvaluator(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)
+    # Set detector models in the pipeline
+    accuracy_evaluator.falkon_detector_models = model
+    accuracy_evaluator.regressors_detector_models = models
+    accuracy_evaluator.stats_detector = stats
 
-torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
-torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
+    accuracy_evaluator.falkon_segmentation_models = model_segm
+    accuracy_evaluator.stats_segmentation = stats_segm
+
+    test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes)

@@ -94,24 +94,24 @@ class OnlineSegmentationDemo(object):
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
-        """
-        output_dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_pbr'))
-        output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_real_test'))
 
-        self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir1, 'classifier_detector'))
-        self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir1, 'regressor_detector'))
-        self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(output_dir1, 'stats_detector'))
+        #output_dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_pbr'))
+        output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'segmentation_ycbv_real_1_out_of_10_15x2000'))
+
+        self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_detector'))
+        self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir, 'regressor_detector'))
+        self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(output_dir, 'stats_detector'))
 
         self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
         self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(output_dir, 'stats_segmentation'))
-        """
+
         self.model.eval()
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.model.to(self.device)
 
         save_dir = cfg.OUTPUT_DIR
         checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
-        cfg.MODEL.WEIGHT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'Data', 'pretrained_feature_extractors', cfg.MODEL.WEIGHT))
+        #cfg.MODEL.WEIGHT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'Data', 'pretrained_feature_extractors', cfg.MODEL.WEIGHT))
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
         
         if weight_loading:
@@ -361,7 +361,10 @@ class OnlineSegmentationDemo(object):
             x, y = box[:2]
             s = template.format(label, score)
             cv2.putText(
-                image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 1
+                image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 2
             )
+            #cv2.putText(
+            #    image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 1
+            #)
 
         return image

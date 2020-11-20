@@ -194,6 +194,11 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_val"
         },
+        "ycb_video_demo": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_demo"
+        },
         "ycb_video_test_1_out_of_10": {
             "data_dir": "YCB-Video/test",
             "image_set": "",

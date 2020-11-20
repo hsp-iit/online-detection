@@ -14,12 +14,16 @@ from falkon.options import *
 
 
 class FALKONWrapper(ca.ClassifierAbstract):
-    def __init__(self, cfg_path=None, is_rpn=False):
+    def __init__(self, cfg_path=None, is_rpn=False, is_segmentation=False):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             if is_rpn:
                 self.cfg = self.cfg['RPN']
-        opts = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
+        if not is_segmentation:
+            opts = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
+        else:
+            opts = self.cfg['ONLINE_SEGMENTATION']['CLASSIFIER']
+
 
         if 'sigma' in opts:
             self.sigma = opts['sigma']

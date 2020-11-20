@@ -26,23 +26,44 @@ cfg.merge_from_file(config_file)
 
 coco_demo = OnlineSegmentationDemo(
     cfg,
-    confidence_threshold=0.7,
+    confidence_threshold=0.2,
     show_mask_heatmaps=False
 )
-"""
-images = sorted(glob.glob('/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/*.png'))
+
+#images = sorted(glob.glob('/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/*.png'))
+images = ["/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000055/rgb/000588.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000051/rgb/001536.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000054/rgb/000445.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000058/rgb/000068.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000055/rgb/001358.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000049/rgb/000521.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000056/rgb/000143.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000048/rgb/000112.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000055/rgb/000415.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000053/rgb/000001.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000059/rgb/000266.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000056/rgb/000703.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000048/rgb/001074.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000049/rgb/002275.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000054/rgb/000524.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000056/rgb/000959.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000050/rgb/001402.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000058/rgb/000201.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000057/rgb/001066.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000054/rgb/000146.png",
+"/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000050/rgb/000850.png"]
+
 for i in range(len(images)):
     image = cv2.imread(images[i], 1)
     predictions = coco_demo.run_on_opencv_image(image)
-    if not os.path.exists('test_masks_oos_seq_52n'):
-        os.makedirs('test_masks_oos_seq_52n')
-    cv2.imwrite('test_masks_oos_seq_52n/{}.jpg'.format(i), predictions)
+    if not os.path.exists('test_masks_demo'):
+        os.makedirs('test_masks_demo')
+    cv2.imwrite('test_masks_demo/{}.jpg'.format(i), predictions)
 quit()
-"""
 # load image and then run prediction
 if run_single_image:
     #image_path = '/home/iiticublap205/IIT/datasets/iCWT/TABLE-TOP-single-object-masks/test/Images/mug3/00000044.jpg'
-    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/000007.png'
+    image_path = '/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000056/rgb/000712.png'
 
     image = cv2.imread(image_path,1)
     predictions = coco_demo.run_on_opencv_image(image)

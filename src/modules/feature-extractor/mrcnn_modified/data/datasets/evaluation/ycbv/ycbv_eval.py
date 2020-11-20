@@ -8,7 +8,7 @@ import numpy as np
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_iou
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
-from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
+from mrcnn_modified.modeling.roi_heads.mask_head.inference import Masker
 from py_od_utils import mask_iou
 
 from PIL import Image
@@ -188,7 +188,7 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
     result = eval_detection_ycbv(
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
-        iou_thresh=0.5,
+        iou_thresh=0.5,#TODO 0.5
         use_07_metric=use_07_metric,
     )
 
@@ -211,7 +211,52 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         result = eval_segmentation_ycbv(
             pred_boxlists=pred_boxlists,
             gt_boxlists=gt_boxlists,
-            iou_thresh=0.5,
+            iou_thresh=0.5, #TODO 0.5
+            use_07_metric=use_07_metric,
+        )
+
+        result_str = "mAP: {:.4f}\n".format(result["map"])
+        for i, ap in enumerate(result["ap"]):
+            if i == 0:  # skip background
+                continue
+            result_str += "{:<26}: {:.4f}\n".format(
+                dataset.map_class_id_to_class_name(i), ap
+            )
+        result_str += "\n"
+
+        logger.info(result_str)
+
+        if output_folder:
+            with open(os.path.join(output_folder, "result.txt"), "a") as fid:
+                fid.write(result_str)
+
+    result = eval_detection_ycbv(
+        pred_boxlists=pred_boxlists,
+        gt_boxlists=gt_boxlists,
+        iou_thresh=0.7,#TODO 0.5
+        use_07_metric=use_07_metric,
+    )
+
+    result_str = "mAP: {:.4f}\n".format(result["map"])
+    for i, ap in enumerate(result["ap"]):
+        if i == 0:  # skip background
+            continue
+        result_str += "{:<26}: {:.4f}\n".format(
+            dataset.map_class_id_to_class_name(i), ap
+        )
+    result_str += "\n"
+
+    logger.info(result_str)
+
+    if output_folder:
+        with open(os.path.join(output_folder, "result.txt"), "a") as fid:
+            fid.write(result_str)
+
+    if evaluate_segmentation:   #TODO modify this
+        result = eval_segmentation_ycbv(
+            pred_boxlists=pred_boxlists,
+            gt_boxlists=gt_boxlists,
+            iou_thresh=0.7, #TODO 0.5
             use_07_metric=use_07_metric,
         )
 

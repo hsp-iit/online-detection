@@ -129,7 +129,7 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
     positives = []
     negatives = []
     clss_id = 0
-    while positives_loaded < positives_to_load and negatives_loaded < negatives_to_load:
+    while positives_loaded < positives_to_load or negatives_loaded < negatives_to_load:
         # Load positives with class id clss_id
         positives_to_load_i = len(glob.glob(os.path.join(features_dir, 'positives_cl_{}_*'.format(clss_id))))
         positives_i = []
@@ -177,10 +177,10 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
                 negatives_loaded += 1
             negatives.append(negatives_i)
         clss_id += 1
-    if is_segm:
-        for i in range(clss_id):
-            #print(i)
-            negatives[i] = [negatives[i]]
+    #if is_segm:
+    #    for i in range(clss_id):
+    #        #print(i)
+    #        negatives[i] = [negatives[i]]
     return positives, negatives
 
 def load_features_regressor(features_dir, samples_fraction=1.0):

@@ -208,10 +208,10 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         # get image size such that later the boxes can be resized to the correct size
         width, height = img_RGB.size
         # convert to BGR format
-        try:
-            image = np.array(img_RGB)[:, :, [2, 1, 0]]
-        except:
-            image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+        #try:
+        #    image = np.array(img_RGB)[:, :, [2, 1, 0]]
+        #except:
+        #    image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
         masks_paths = sorted(glob.glob(mask_dir % (img_path[0], img_path[1] + '*')))
 
         gt_labels = []

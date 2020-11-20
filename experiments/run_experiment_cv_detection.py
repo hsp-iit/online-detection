@@ -174,7 +174,7 @@ else:
     """
     else:
         if args.save_detector_features:
-            feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
+            feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=False)
         positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
     stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
     """
@@ -191,6 +191,7 @@ else:
             #positives, negatives = load_features_classifier(features_dir=os.path.join("/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/experiments/first_segmentation_ycb_pbr_coco_mask", 'features_detector'))
             #stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1],
             #                                    cpu_tensor=args.CPU)
+            #print(positives,negatives)
             shuffle_neg = False #TODO parametrize
             if shuffle_neg:
                 negatives = shuffle_negatives(negatives)
@@ -202,7 +203,6 @@ else:
                 positives = load_positives_from_COXY(COXY)
                 del COXY
                 torch.cuda.empty_cache()
-
             stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1],
                                                 cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
 
