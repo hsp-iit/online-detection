@@ -64,8 +64,10 @@ class ROIMaskHead(torch.nn.Module):
         self.positives = []
         self.negatives = []
         for i in range(self.num_classes):
-            self.positives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
-            self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
+            #self.positives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
+            #self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
+            self.positives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
+            self.negatives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
 
         self.sampling_factor = self.cfg.SEGMENTATION.SAMPLING_FACTOR
 
