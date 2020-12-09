@@ -45,9 +45,10 @@ class Resize(object):
         size = self.get_size(image.size)
         image = F.resize(image, size)
         return image
+
 class OnlineSegmentationDemo(object):
     # COCO categories for pretty print
-    CATEGORIES = [
+    CATEGORIES_iCWT_TT = [
         "__background__",
         'sodabottle3', 'sodabottle4',
         'mug1', 'mug3', 'mug4',
@@ -59,7 +60,7 @@ class OnlineSegmentationDemo(object):
         'hairclip2', 'hairclip8', 'hairclip6',
         'sprayer6', 'sprayer8', 'sprayer9'
     ]
-    CATEGORIES = [
+    CATEGORIES_YCBV = [
         "__background__",
         "002_master_chef_can",
         "003_cracker_box",
@@ -87,22 +88,32 @@ class OnlineSegmentationDemo(object):
     def __init__(
         self,
         cfg,
-        confidence_threshold=0.7,
-        show_mask_heatmaps=True,
-        masks_per_dim=2,
-        weight_loading = None
+        confidence_threshold,
+        models_dir,
+        dataset
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
 
-        output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'segmentation_ycbv_real_1_out_of_10_15x2000'))
+        try:
+            self.model.rpn.head.classifiers = torch.load(os.path.join(models_dir, 'classifier_rpn'))
+            self.model.rpn.head.regressors = torch.load(os.path.join(models_dir, 'regressor_rpn'))
+            self.model.rpn.head.stats = torch.load(os.path.join(models_dir, 'stats_rpn'))
+        except:
+            pass
 
-        self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_detector'))
-        self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(output_dir, 'regressor_detector'))
-        self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(output_dir, 'stats_detector'))
+        try:
+            self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_detector'))
+            self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(models_dir, 'regressor_detector'))
+            self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(models_dir, 'stats_detector'))
+        except:
+            pass
 
-        self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
-        self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(output_dir, 'stats_segmentation'))
+        try:
+            self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_segmentation'))
+            self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(models_dir, 'stats_segmentation'))
+        except:
+            pass
 
         self.model.eval()
         self.device = torch.device(cfg.MODEL.DEVICE)
@@ -112,29 +123,27 @@ class OnlineSegmentationDemo(object):
         checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
         
-        if weight_loading:
-            print('Loading weight from {}.'.format(weight_loading))
-            _ = checkpointer._load_model(torch.load(weight_loading))
-        
         self.transforms = self.build_transform(cfg)
 
-        mask_threshold = 0 if show_mask_heatmaps else 0.5
-        #mask_threshold = -1 if show_mask_heatmaps else 0.5
-        self.masker = Masker(threshold=mask_threshold, padding=1)
+        self.masker = Masker(threshold=0.5, padding=1)
 
         # used to make colors for each class
         self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
 
         self.cpu_device = torch.device("cpu")
         self.confidence_threshold = confidence_threshold
-        self.show_mask_heatmaps = show_mask_heatmaps
-        self.masks_per_dim = masks_per_dim
+
+        if dataset == 'iCWT_TT':
+            self.CATEGORIES = self.CATEGORIES_iCWT_TT
+        elif dataset == 'ycbv':
+            self.CATEGORIES = self.CATEGORIES_YCBV
+        else:
+            self.CATEGORIES = None
 
     def build_transform(self, cfg):
         """
         Creates a basic transformation that was used to train the models
         """
-
         # we are loading images with OpenCV, so we don't need to convert them
         # to BGR, they are already! So all we need to do is to normalize
         # by 255 if we want to convert to BGR255 format, or flip the channels
@@ -175,8 +184,6 @@ class OnlineSegmentationDemo(object):
             result = image.copy()
         else:
             return image.copy()
-        if self.show_mask_heatmaps:
-            return self.create_mask_montage(result, top_predictions)
         result = self.overlay_boxes(result, top_predictions)
         if self.cfg.MODEL.MASK_ON:
             result = self.overlay_mask(result, top_predictions)
@@ -197,7 +204,6 @@ class OnlineSegmentationDemo(object):
         # apply pre-processing to image
         image = self.transforms(original_image)
         # convert to an ImageList, padded so that it is divisible by
-        # cfg.DATALOADER.SIZE_DIVISIBILITY
         image_list = to_image_list(image, self.cfg.DATALOADER.SIZE_DIVISIBILITY)
         image_list = image_list.to(self.device)
         # compute predictions
@@ -303,42 +309,6 @@ class OnlineSegmentationDemo(object):
 
         return composite
 
-    def create_mask_montage(self, image, predictions):
-        """
-        Create a montage showing the probability heatmaps for each one one of the
-        detected objects
-
-        Arguments:
-            image (np.ndarray): an image as returned by OpenCV
-            predictions (BoxList): the result of the computation by the model.
-                It should contain the field `mask`.
-        """
-        masks = predictions.get_field("mask")
-        masks_per_dim = self.masks_per_dim
-        masks = L.interpolate(
-            masks.float(), scale_factor=1 / masks_per_dim
-        ).byte()
-        height, width = masks.shape[-2:]
-        max_masks = masks_per_dim ** 2
-        masks = masks[:max_masks]
-        # handle case where we have less detections than max_masks
-        if len(masks) < max_masks:
-            masks_padded = torch.zeros(max_masks, 1, height, width, dtype=torch.uint8)
-            masks_padded[: len(masks)] = masks
-            masks = masks_padded
-        masks = masks.reshape(masks_per_dim, masks_per_dim, height, width)
-        result = torch.zeros(
-            (masks_per_dim * height, masks_per_dim * width), dtype=torch.uint8
-        )
-        for y in range(masks_per_dim):
-            start_y = y * height
-            end_y = (y + 1) * height
-            for x in range(masks_per_dim):
-                start_x = x * width
-                end_x = (x + 1) * width
-                result[start_y:end_y, start_x:end_x] = masks[y, x]
-        return cv2.applyColorMap(result.numpy(), cv2.COLORMAP_JET)
-
     def overlay_class_names(self, image, predictions):
         """
         Adds detected class names and scores in the positions defined by the
@@ -351,7 +321,10 @@ class OnlineSegmentationDemo(object):
         """
         scores = predictions.get_field("scores").tolist()
         labels = predictions.get_field("labels").tolist()
-        labels = [self.CATEGORIES[i] for i in labels]
+        if self.CATEGORIES is not None:
+            labels = [self.CATEGORIES[i] for i in labels]
+        else:
+            labels = [i for i in labels]
         boxes = predictions.bbox
 
         template = "{}: {:.2f}"
@@ -361,8 +334,4 @@ class OnlineSegmentationDemo(object):
             cv2.putText(
                 image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 2
             )
-            #cv2.putText(
-            #    image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 1
-            #)
-
         return image

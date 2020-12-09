@@ -16,7 +16,7 @@ class ROIBoxHead(torch.nn.Module):
 
     def __init__(self, cfg, in_channels):
         super(ROIBoxHead, self).__init__()
-        print(cfg)
+
         self.score_thresh = cfg['MODEL']['ROI_HEADS']['SCORE_THRESH']
         self.nms = cfg['MODEL']['ROI_HEADS']['NMS']
         self.detections_per_img = cfg['TEST']['DETECTIONS_PER_IMG']
