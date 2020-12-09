@@ -47,7 +47,6 @@ class Resize(object):
         return image
 
 class OnlineSegmentationDemo(object):
-    # COCO categories for pretty print
     CATEGORIES_iCWT_TT = [
         "__background__",
         'sodabottle3', 'sodabottle4',
