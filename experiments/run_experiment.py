@@ -15,12 +15,9 @@ from mrcnn_modified.data import make_data_loader
 from feature_extractor import FeatureExtractor
 from mrcnn_modified.config import cfg
 
-import OnlineRegionClassifier as ocr
-import FALKONWrapper_with_centers_selection as falkon
-
 from region_refiner import RegionRefiner
 
-from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda
+from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor
 
 import AccuracyEvaluator as ae
 
@@ -32,10 +29,24 @@ parser.add_argument('--output_dir', action='store', type=str, help='Set experime
 parser.add_argument('--save_RPN_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the RPN.')
 parser.add_argument('--save_detector_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--load_RPN_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the RPN.')
-parser.add_argument('--load_detector_models', action='store_true', help='Save, from the output directory, FALKON models, regressors and features statistics of the detector.')
+parser.add_argument('--load_detector_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
+parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
+parser.add_argument('--save_RPN_features', action='store_true', help='Save, in the features directory (in the output directory), RPN features.')
+parser.add_argument('--save_detector_features', action='store_true', help='Save, in the features directory (in the output directory), detector\'s features.')
+parser.add_argument('--load_RPN_features', action='store_true', help='Load, from the features directory (in the output directory), RPN features.')
+parser.add_argument('--load_detector_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
+
 
 args = parser.parse_args()
+
+# Import the different online classifiers, depending on the device in which they must be trained
+if args.CPU:
+    import OnlineRegionClassifier as ocr
+    import FALKONWrapper_with_centers_selection as falkon
+else:
+    import OnlineRegionClassifier_incore as ocr
+    import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration
 
@@ -77,14 +88,18 @@ if not os.path.exists(output_dir):
 
 
 # Initialize feature extractor
-feature_extractor = FeatureExtractor(cfg_target_task, cfg_rpn)
+feature_extractor = FeatureExtractor(cfg_target_task, cfg_rpn, train_in_cpu=args.CPU)
 
 # Train RPN
 if not args.only_ood and not args.load_RPN_models:
     # Extract RPN features for the training set
-    feature_extractor.is_train = True
-    negatives, positives, COXY = feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir)
-    stats_rpn = computeFeatStatistics_torch(positives, negatives,  features_dim=positives[0].size()[1])
+    if not args.save_RPN_features and not args.load_RPN_features:
+        negatives, positives, COXY = feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
+    else:
+        if args.save_RPN_features:
+            feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
+        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+    stats_rpn = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
 
     # RPN Region Classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_rpn=True)
@@ -95,9 +110,11 @@ if not args.only_ood and not args.load_RPN_models:
 
     # RPN Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
+    if args.save_RPN_features or args.load_RPN_features:
+        COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_RPN'))
 
     # Train RPN region Refiner
-    models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats_rpn), output_dir=output_dir)
+    models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats_rpn, args.CPU), output_dir=output_dir)
 
     # Set trained RPN models in the pipeline
     feature_extractor.falkon_rpn_models = models_falkon_rpn
@@ -109,6 +126,10 @@ if not args.only_ood and not args.load_RPN_models:
         torch.save(models_falkon_rpn, os.path.join(output_dir, 'classifier_rpn'))
         torch.save(models_reg_rpn, os.path.join(output_dir, 'regressor_rpn'))
         torch.save(stats_rpn, os.path.join(output_dir, 'stats_rpn'))
+
+    # Delete already used data
+    del negatives, positives, COXY
+    torch.cuda.empty_cache()
 
 # Load trained RPN models and set them in the pipeline, if requested
 elif not args.only_ood and args.load_RPN_models:
@@ -132,8 +153,13 @@ if args.load_detector_models:
 
 else:
     # Extract detector features for the train set
-    negatives, positives, COXY = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir)
-    stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1])
+    if not args.save_detector_features and not args.load_detector_features:
+        negatives, positives, COXY = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features)
+    else:
+        if args.save_detector_features:
+            feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features)
+        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
+    stats = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU)
 
     # Detector Region Classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
@@ -144,11 +170,17 @@ else:
 
     # Detector Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path)
+    if args.save_detector_features or args.load_detector_features:
+        COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_detector'))
     if args.normalize_features_regressor_detector:
-        models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats), output_dir=output_dir)
+        models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats, args.CPU), output_dir=output_dir)
     else:
         # Train Detector Region Refiner
         models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
+
+    # Delete already used data
+    del negatives, positives, COXY
+    torch.cuda.empty_cache()
 
 # Save detector models, if requested
 if args.save_detector_models:
