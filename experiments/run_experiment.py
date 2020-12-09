@@ -15,7 +15,7 @@ from mrcnn_modified.data import make_data_loader
 from feature_extractor import FeatureExtractor
 from mrcnn_modified.config import cfg
 
-import OnlineRegionClassifierRPNOnline as ocr
+import OnlineRegionClassifier as ocr
 import FALKONWrapper_with_centers_selection as falkon
 
 from region_refiner import RegionRefiner

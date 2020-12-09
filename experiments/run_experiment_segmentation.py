@@ -12,18 +12,11 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'mo
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'feature-extractor')))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'modules', 'accuracy-evaluator')))
 
-from mrcnn_modified.data import make_data_loader
 from feature_extractor import FeatureExtractor
-from mrcnn_modified.config import cfg
 from accuracy_evaluator import AccuracyEvaluator
-
-
 from region_refiner import RegionRefiner
 
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
-
-import AccuracyEvaluator as ae
-
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--icwt30', action='store_true', help='Run the iCWT experiment reported in the paper (i.e. use as TARGET-TASK the 30 objects identification task from the iCubWorld Transformations dataset). By default, run the experiment referred to as TABLE-TOP in the paper.')
@@ -44,10 +37,10 @@ args = parser.parse_args()
 
 # Import the different online classifiers, depending on the device in which they must be trained
 if args.CPU:
-    import OnlineRegionClassifierRPNOnline as ocr
+    import OnlineRegionClassifier as ocr
     import FALKONWrapper_with_centers_selection as falkon
 else:
-    import OnlineRegionClassifierRPNOnline_incore as ocr
+    import OnlineRegionClassifier_incore as ocr
     import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration
