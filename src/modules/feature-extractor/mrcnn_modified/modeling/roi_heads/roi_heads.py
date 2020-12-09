@@ -19,15 +19,15 @@ class CombinedROIHeads(torch.nn.ModuleDict):
         if cfg.MODEL.MASK_ON and cfg.MODEL.ROI_MASK_HEAD.SHARE_BOX_FEATURE_EXTRACTOR:
             self.mask.feature_extractor = self.box.feature_extractor
 
-    def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size = [0,0], gt_labels_list = None, is_train = True, result_dir = None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
+    def forward(self, features, proposals, gt_bbox = None, gt_label=None, img_size=[0,0], gt_labels_list=None, is_train=True, result_dir=None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
         losses = {}
-        x, detections, loss_box = self.box(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size=img_size, gt_labels_list = gt_labels_list, is_train = is_train, result_dir = result_dir)
+        width, height = proposals[0].size
+        x, detections, loss_box = self.box(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list, is_train=is_train, result_dir=result_dir)
         if type(detections) is list:
             detections = detections[0]
         if len(detections.bbox) == 0:
             return x, detections, losses
         if eval_segm_with_gt_bboxes:
-            width, height = proposals[0].size
             detections = gt_bbox.resize((width, height))
             detections.extra_fields['labels'] = torch.tensor(gt_labels_list, device="cuda")
             detections.extra_fields['scores'] = 1.0 * torch.ones(gt_bbox.bbox.size()[0], device="cuda")
@@ -43,6 +43,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
                 mask_features = features
             # During training, self.box() will return the unaltered proposals as "detections"
             # this makes the API consistent during training and testing
+            detections.bbox = (detections.bbox - 1)
+            detections = detections.resize((width, height))
             x, detections, loss_mask = self.mask(mask_features, detections)
 
         return x, detections, losses

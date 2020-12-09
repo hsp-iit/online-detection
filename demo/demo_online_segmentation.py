@@ -31,6 +31,7 @@ coco_demo = OnlineSegmentationDemo(
 )
 
 #images = sorted(glob.glob('/home/IIT.LOCAL/fceola/workspace/ws_papers_repos/YCB-Video/test/000048/rgb/*.png'))
+"""
 images = ["/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000055/rgb/000588.png",
 "/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000051/rgb/001536.png",
 "/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000054/rgb/000445.png",
@@ -52,6 +53,8 @@ images = ["/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-dete
 "/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000057/rgb/001066.png",
 "/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000054/rgb/000146.png",
 "/home/IIT.LOCAL/fceola/workspace/ws_mask/corl-code/python-online-detection/Data/datasets/YCB-Video/test/000050/rgb/000850.png"]
+"""
+images = ["/home/iiticublap205/IIT/repos/python-online-detection/Data/datasets/YCB-Video/test/000055/rgb/000588.png"]
 
 for i in range(len(images)):
     image = cv2.imread(images[i], 1)

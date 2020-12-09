@@ -45,7 +45,6 @@ class FastRCNNPredictor(nn.Module):
         else:
             cls_logit = self.cls_score(x)
             bbox_pred = self.bbox_pred(x)
-            #print(cls_logit.size(), bbox_pred.size())
             return cls_logit, bbox_pred
 
     def refine_boxes(self, features):

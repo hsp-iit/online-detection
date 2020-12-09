@@ -32,7 +32,6 @@ def keep_only_positive_boxes(boxes):
         positive_inds.append(inds_mask)
     return positive_boxes, positive_inds
 
-
 class ROIMaskHead(torch.nn.Module):
     def __init__(self, cfg, in_channels):
         super(ROIMaskHead, self).__init__()
@@ -59,8 +58,6 @@ class ROIMaskHead(torch.nn.Module):
                 head. During testing, returns an empty dict.
         """
 
-        proposals.bbox = (proposals.bbox -1)
-        proposals = proposals.resize((800,600)) #TODO parametrize
         x = self.feature_extractor(features, [proposals])
         mask_logits = self.predictor(x)
 

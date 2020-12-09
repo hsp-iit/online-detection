@@ -4,9 +4,7 @@ import os
 import torch
 import glob
 
-from PIL import Image
-
-def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000,):
+def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000):
     basedir = os.path.dirname(__file__)
     if not is_rpn:
         stats_path = os.path.join(basedir, '..', 'Data', 'feat_cache', feature_folder, 'stats')
@@ -41,7 +39,6 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
                 if len(negatives[i][j]) != 0:
                     neg_idx = np.random.choice(len(negatives[i][j]), size=take_from_neg)
                     neg_picked = negatives[i][j][neg_idx]
-                    #print(neg_picked.shape, sampled_X.shape)
                     sampled_X = np.vstack((sampled_X, neg_picked.cpu()))
                     ns = np.vstack((ns, np.transpose(np.linalg.norm(neg_picked.cpu(), axis=1)[np.newaxis])))
 
@@ -52,11 +49,7 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
         mean = torch.tensor(mean)
         std = torch.tensor(std)
         mean_norm = torch.tensor(mean_norm)
-
-        # print('Statistics computed. Mean: {}, Std: {}, Mean Norm {}'.format(mean.item(), std.item(), mean_norm.item()))
         l = {'mean': mean, 'std': std, 'mean_norm': mean_norm}
-        #print(l)
-        #quit()
         torch.save(l, stats_path)
 
     return mean, std, mean_norm
@@ -74,10 +67,6 @@ def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
     sampled_X = torch.empty((0, features_dim), device=device)
     ns = torch.empty((0,1), device=device)
-    #for i in range(num_classes):
-    #    if len(positives[i]) != 0:
-    #        sampled_X = positives[i][0].unsqueeze(0)
-    #        ns = torch.cat((ns, torch.norm(positives[i][0].view(-1, features_dim) , dim=1).view(-1,1)), dim=0)
     for i in range(num_classes):
         if len(positives[i]) != 0:
             pos_idx = torch.randint(len(positives[i]), (take_from_pos,))
@@ -177,10 +166,7 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
                 negatives_loaded += 1
             negatives.append(negatives_i)
         clss_id += 1
-    #if is_segm:
-    #    for i in range(clss_id):
-    #        #print(i)
-    #        negatives[i] = [negatives[i]]
+
     return positives, negatives
 
 def load_features_regressor(features_dir, samples_fraction=1.0):
@@ -221,11 +207,8 @@ def minibatch_positives(positives, num_batches):
         positives[i] = list(torch.split(positives[i], positives_per_batch))
     return positives
 
-def decode_boxes_detector(boxes, bbox_pred, num_classes):
+def decode_boxes_detector(boxes, bbox_pred):
     ex_box = boxes.bbox
-    num_boxes = ex_box.size()[0]
-    # Initialize refined boxes with example boxes in the 0-th dimension
-    refined_boxes = ex_box
 
     dst_ctr_x = bbox_pred[:, 0::4]
     dst_ctr_y = bbox_pred[:, 1::4]

@@ -37,7 +37,6 @@ class MaskPostProcessor(nn.Module):
         """
         mask_prob = x.sigmoid()
 
-
         # select masks coresponding to the predicted classes
         num_masks = x.shape[0]
         labels = [bbox.get_field("labels") for bbox in boxes]

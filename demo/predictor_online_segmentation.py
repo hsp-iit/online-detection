@@ -95,7 +95,6 @@ class OnlineSegmentationDemo(object):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
 
-        #output_dir1 = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'first_segmentation_ycb_pbr'))
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'experiments', 'segmentation_ycbv_real_1_out_of_10_15x2000'))
 
         self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(output_dir, 'classifier_detector'))
@@ -111,7 +110,6 @@ class OnlineSegmentationDemo(object):
 
         save_dir = cfg.OUTPUT_DIR
         checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
-        #cfg.MODEL.WEIGHT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, 'Data', 'pretrained_feature_extractors', cfg.MODEL.WEIGHT))
         _ = checkpointer.load(cfg.MODEL.WEIGHT)
         
         if weight_loading:
@@ -203,7 +201,7 @@ class OnlineSegmentationDemo(object):
         image_list = to_image_list(image, self.cfg.DATALOADER.SIZE_DIVISIBILITY)
         image_list = image_list.to(self.device)
         # compute predictions
-        img_size = [image.size()[2], image.size()[1]]
+        img_size = [original_image.shape[1], original_image.shape[0]]
         with torch.no_grad():
             predictions = self.model(image_list, img_size=img_size)[1]
         predictions = [o.to(self.cpu_device) for o in predictions]

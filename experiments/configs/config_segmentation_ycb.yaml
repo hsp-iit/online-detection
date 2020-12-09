@@ -16,7 +16,7 @@ MODEL:
     SCORE_THRESH: -2.0
   MASK_ON: True
 DATASETS:
-  TRAIN: ("ycb_video_demo",) #("ycb_video_train_real_1_out_of_10",) #("ycb_video_train_pbr",) #("ycb_video_train_pbr_1_out_of_3",) #("ycb_video_train_real_1_out_of_10",)
+  TRAIN: ("ycb_video_train_real_1_out_of_10",) #("ycb_video_train_pbr",) #("ycb_video_train_pbr_1_out_of_3",) #("ycb_video_train_real_1_out_of_10",) ("ycb_video_demo",) #
   TEST: ("ycb_video_test_keyframe",) #("ycb_video_val",) #("ycb_video_test_1_out_of_10",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0

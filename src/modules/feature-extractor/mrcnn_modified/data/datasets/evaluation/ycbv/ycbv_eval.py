@@ -150,9 +150,8 @@ def draw_preds_ycbv(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, use_07_metric=True, evaluate_segmentation=True):
+def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, iou_thresh=0.5, use_07_metric=True, evaluate_segmentation=True):
 
-    #"""
     pred_boxlists = []
     gt_boxlists = []
     for image_id, prediction in enumerate(predictions):
@@ -161,7 +160,6 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
 
         if len(prediction) == 0:
             logger.info("No predictions for image: {}".format(image_id))
-            #continue
 
         image_width = img_info["width"]
         image_height = img_info["height"]
@@ -176,19 +174,12 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
 
         if draw_preds:
             draw_preds_ycbv(dataset, image_id, prediction, gt_boxlist, output_folder)
-    #"""
-    
-    #torch.save(pred_boxlists, 'pred_boxlists')
-    #torch.save(gt_boxlists, 'gt_boxlists')
-    
-    #pred_boxlists = torch.load('pred_boxlists')
-    #gt_boxlists = torch.load('gt_boxlists')
 
 
     result = eval_detection_ycbv(
         pred_boxlists=pred_boxlists,
         gt_boxlists=gt_boxlists,
-        iou_thresh=0.5,#TODO 0.5
+        iou_thresh=iou_thresh,
         use_07_metric=use_07_metric,
     )
 
@@ -207,56 +198,11 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         with open(os.path.join(output_folder, "result.txt"), "a") as fid:
             fid.write(result_str)
 
-    if evaluate_segmentation:   #TODO modify this
+    if evaluate_segmentation:
         result = eval_segmentation_ycbv(
             pred_boxlists=pred_boxlists,
             gt_boxlists=gt_boxlists,
-            iou_thresh=0.5, #TODO 0.5
-            use_07_metric=use_07_metric,
-        )
-
-        result_str = "mAP: {:.4f}\n".format(result["map"])
-        for i, ap in enumerate(result["ap"]):
-            if i == 0:  # skip background
-                continue
-            result_str += "{:<26}: {:.4f}\n".format(
-                dataset.map_class_id_to_class_name(i), ap
-            )
-        result_str += "\n"
-
-        logger.info(result_str)
-
-        if output_folder:
-            with open(os.path.join(output_folder, "result.txt"), "a") as fid:
-                fid.write(result_str)
-
-    result = eval_detection_ycbv(
-        pred_boxlists=pred_boxlists,
-        gt_boxlists=gt_boxlists,
-        iou_thresh=0.7,#TODO 0.5
-        use_07_metric=use_07_metric,
-    )
-
-    result_str = "mAP: {:.4f}\n".format(result["map"])
-    for i, ap in enumerate(result["ap"]):
-        if i == 0:  # skip background
-            continue
-        result_str += "{:<26}: {:.4f}\n".format(
-            dataset.map_class_id_to_class_name(i), ap
-        )
-    result_str += "\n"
-
-    logger.info(result_str)
-
-    if output_folder:
-        with open(os.path.join(output_folder, "result.txt"), "a") as fid:
-            fid.write(result_str)
-
-    if evaluate_segmentation:   #TODO modify this
-        result = eval_segmentation_ycbv(
-            pred_boxlists=pred_boxlists,
-            gt_boxlists=gt_boxlists,
-            iou_thresh=0.7, #TODO 0.5
+            iou_thresh=iou_thresh,
             use_07_metric=use_07_metric,
         )
 
@@ -487,7 +433,7 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
     score = defaultdict(list)
     match = defaultdict(list)
 
-    masker = Masker(threshold=0.5, padding=1) #TODO parametrize
+    masker = Masker(threshold=0.5, padding=1)
     a = 0
     for gt_boxlist, pred_boxlist in zip(gt_boxlists, pred_boxlists):
         a += 1
@@ -502,13 +448,9 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
         if pred_boxlist.has_field("mask"):
             # if we have masks, paste the masks in the right position
             # in the image, as defined by the bounding boxes
-            masks = pred_boxlist.get_field("mask")#.squeeze(1)
+            masks = pred_boxlist.get_field("mask")
             # always single image is passed at a time
-            #print(masks.shape, len(pred_boxlist))
-            #if a==466:
-            #    print('here')
             pred_masks = masker([masks], [pred_boxlist])[0].numpy().squeeze(1)
-            #pred_boxlist.add_field("mask", masks)
         else:
             pred_masks = np.asarray([])
 
@@ -524,7 +466,6 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
 
             gt_keep_l = gt_label == l
             gt_masks_l = gt_masks[gt_keep_l]
-            #gt_difficult_l = gt_difficult[gt_mask_l]
 
             n_pos[l] += gt_keep_l.sum()
             score[l].extend(pred_score_l)
@@ -535,8 +476,6 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
                 match[l].extend((0,) * pred_masks_l.shape[0])
                 continue
 
-            #if l == 15:
-            #    print('here')
             iou = mask_iou(pred_masks_l, gt_masks_l)
             gt_index = iou.argmax(axis=1)
             # set -1 if there is no matching ground truth

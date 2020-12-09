@@ -1,5 +1,4 @@
 from mrcnn_modified.modeling.roi_heads.box_head.inference import PostProcessor
-import torch.nn.functional as F
 import torch
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
@@ -22,35 +21,6 @@ class OnlineDetectionPostProcessor(PostProcessor):
                 the extra fields labels and scores
         """
         cls_scores, bbox_pred = x
-        # class_prob = F.softmax(torch.from_numpy(class_logits))
-        # class_prob = torch.from_numpy(class_logits)
-        # proposals = torch.from_numpy(proposals)
-
-        # image_shapes = [box.size for box in boxes]
-        # boxes_per_image = [len(box) for box in boxes]
-        # concat_boxes = torch.cat([a.bbox for a in boxes], dim=0)
-
-        # if self.cls_agnostic_bbox_reg:
-        #     box_regression = box_regression[:, -4:]
-        # proposals = self.box_coder.decode(
-        #     box_regression.view(sum(boxes_per_image), -1), concat_boxes
-        # )
-        # if self.cls_agnostic_bbox_reg:
-        #     proposals = proposals.repeat(1, class_prob.shape[1])
-
-        # num_classes = class_prob.shape[1]
-
-        # proposals = proposals.split(boxes_per_image, dim=0)
-        # class_prob = class_prob.split(boxes_per_image, dim=0)
-
-        # results = []
-        # for prob, boxes_per_img, image_shape in zip(
-        #         class_prob, proposals, image_shapes
-        # ):
-        #     boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
-        #     boxlist = boxlist.clip_to_image(remove_empty=False)
-        #     boxlist = self.filter_results(boxlist, num_classes)
-        #     results.append(boxlist)
 
         proposals = proposals[0].resize(img_size)
 
@@ -63,13 +33,12 @@ class OnlineDetectionPostProcessor(PostProcessor):
 
         proposals.bbox = arr_proposals
 
-        refined_boxes = decode_boxes_detector(proposals, bbox_pred, num_classes)
+        refined_boxes = decode_boxes_detector(proposals, bbox_pred)
 
         boxlist = self.prepare_boxlist(refined_boxes, cls_scores, proposals.size)
         boxlist = boxlist.clip_to_image(remove_empty=False)
         boxlist = self.filter_results(boxlist, num_classes)
 
-        #print(boxlist)
         return boxlist
 
     def filter_results(self, boxlist, num_classes):

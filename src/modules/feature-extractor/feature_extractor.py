@@ -29,7 +29,6 @@ class FeatureExtractor(FeatureExtractorAbstract):
 
         return features
 
-
     def extractFeatures(self, is_train, output_dir=None, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         from feature_extractor_detector import FeatureExtractorDetector
         # call class to extract detector features:

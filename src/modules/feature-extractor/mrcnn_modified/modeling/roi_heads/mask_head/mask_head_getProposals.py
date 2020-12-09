@@ -56,16 +56,13 @@ class ROIMaskHead(torch.nn.Module):
         self.post_processor = make_roi_mask_post_processor(cfg)
         self.loss_evaluator = make_roi_mask_loss_evaluator(cfg)
         self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
-        #self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE         #TODO make parametric
-        self.training_device = 'cpu'
+        self.training_device = self.cfg.SEGMENTATION.FEATURES_DEVICE
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.batch_size = self.cfg.SEGMENTATION.BATCH_SIZE
         self.positives = []
         self.negatives = []
         for i in range(self.num_classes):
-            #self.positives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
-            #self.negatives.append([torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda')])
             self.positives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
             self.negatives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
 

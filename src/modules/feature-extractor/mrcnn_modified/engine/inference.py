@@ -129,7 +129,6 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
 
     mask = None
     if os.path.exists(mask_path):
-        # mask = T.ToTensor()(T.Resize(cfg.INPUT.MIN_SIZE_TEST)(Image.open(mask_path))).to('cuda')
         mask = T.ToTensor()(Image.open(mask_path)).to('cuda')
     # Read in annotation file
     anno_file = anno_dir % img_path
@@ -161,8 +160,11 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
             ymin = 1
         # add box to list and convert it to 0-based
         gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        # Please note that that masks gts works only with the modified version of iCWT in which there is only an object per image
+        # In the case that on-line segmentation will be necessary on a different extension of iCWT with possibly more than an object per image,
+        # this function will be extended according to annotations' format
         if mask is not None:
-            masks.append(mask)  # TODO it needs to be adapted for images with more than a gt
+            masks.append(mask)
     imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
@@ -178,20 +180,8 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
     filename_path = img_dir%(img_path[0], img_path[1])
     scene_gt_path = dataset._scene_gt_path%img_path[0]
 
-    # print('Loading scene_gt.json')
-    #f = open(scene_gt_path)
-    #scene_gt = json.load(f)
-    #f.close()
     scene_gt = dataset.scene_gts[int(img_path[0])]
-
-    #scene_gt_info_path = dataset._scene_gt_info_path%img_path[0]
-
-    # print('Loading scene_gt_info.json')
-    #f = open(scene_gt_info_path)
-    #scene_gt_info = json.load(f)
-    #f.close()
     scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
-
 
     print(filename_path)
     img_RGB = Image.open(filename_path)
@@ -221,7 +211,6 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
 
 def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
     model.eval()
-
     num_img = len(dataset.ids)
 
     # Set the number of images that will be used to set minibootstrap parameters
@@ -277,10 +266,6 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
         if result_dir:
             with open(os.path.join(result_dir, "result.txt"), "a") as fid:
                 fid.write('Average Recall (AR): {} \n \n'.format(AR))
-
-    #predictions = torch.load(os.path.join(result_dir, 'predictions'))
-    #torch.save(predictions, os.path.join(result_dir, 'predictions'))
-    #quit()
 
     if type(dataset).__name__ is 'iCubWorldDataset':
         extra_args = dict(

@@ -2,19 +2,11 @@
 import logging
 import os
 
-import torch
-
-
-from maskrcnn_benchmark.utils.comm import is_main_process, get_world_size
-from maskrcnn_benchmark.utils.comm import all_gather
+from maskrcnn_benchmark.utils.comm import get_world_size
 from maskrcnn_benchmark.utils.comm import synchronize
 from maskrcnn_benchmark.utils.timer import Timer, get_time_str
 
 import torch
-import matplotlib.pyplot as plt
-import matplotlib.pylab as pylab
-import matplotlib.image as mplimg
-
 from PIL import Image
 import numpy as np
 
@@ -22,10 +14,6 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 
 import glob
-import json
-
-import argparse
-
 # To parse the annotation .xml files
 import xml.etree.ElementTree as ET
 
@@ -46,7 +34,6 @@ OBJECTNAME_TO_ID = {
         "hairclip2":28, "hairclip6":29, "hairclip8":30,
 }
 
-
 OBJECTNAME_TO_ID_21 = {
     "__background__":0,
         "sodabottle3":1, "sodabottle4":2,
@@ -59,7 +46,6 @@ OBJECTNAME_TO_ID_21 = {
         "hairclip2":16, "hairclip8":17, "hairclip6":18,
         "sprayer6":19, "sprayer8":20, "sprayer9":21,
 }
-
 
 def build_transform(cfg):
     """
@@ -115,7 +101,6 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
 
     mask = None
     if os.path.exists(mask_path):
-        # mask = T.ToTensor()(T.Resize(cfg.INPUT.MIN_SIZE_TEST)(Image.open(mask_path))).to('cuda')
         mask = T.ToTensor()(Image.open(mask_path)).to('cuda')
     # Read in annotation file
     anno_file = anno_dir % img_path
@@ -147,12 +132,15 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
             ymin = 1
         # add box to list and convert it to 0-based
         gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        # Please note that that masks gts works only with the modified version of iCWT in which there is only an object per image
+        # In the case that on-line segmentation will be necessary on a different extension of iCWT with possibly more than an object per image,
+        # this function will be extended according to annotations' format
         if mask is not None:
-            masks.append(mask)  # TODO it needs to be adapted for images with more than a gt
+            masks.append(mask)
     imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
-def compute_gts_ycbv(dataset, i):
+def compute_gts_ycbv(dataset, i, extract_features_segmentation):
 
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath
@@ -182,7 +170,7 @@ def compute_gts_ycbv(dataset, i):
 
     gt_labels = []
     gt_bboxes_list = []
-    masks = []    #TODO modify as in inference.py to avoid propagating masks
+    masks = []
 
     for j in range(len(masks_paths)):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
@@ -190,7 +178,8 @@ def compute_gts_ycbv(dataset, i):
             continue
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
-        masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+        if extract_features_segmentation:
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
@@ -199,7 +188,6 @@ def compute_gts_ycbv(dataset, i):
 def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True, result_dir = None, extract_features_segmentation=False):
 
     model.eval()
-
     num_img = len(dataset.ids)
 
     # Set the number of images that will be used to set minibootstrap parameters
@@ -215,7 +203,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         if type(dataset).__name__ is 'iCubWorldDataset':
             image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
         elif type(dataset).__name__ is 'YCBVideoDataset':
-            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i)
+            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i, extract_features_segmentation=extract_features_segmentation)
 
         # Save list of boxes as tensor
         gt_bbox_tensor = torch.tensor(gt_bboxes_list, device="cuda")
@@ -241,7 +229,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         image_list = image_list.to("cuda")
         # compute predictions
         with torch.no_grad():
-            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label = gt_labels_torch, img_size = img_sizes, compute_average_recall_RPN = compute_average_recall_RPN, gt_labels_list = gt_labels, is_train = is_train, result_dir = result_dir, extract_features_segmentation=extract_features_segmentation)
+            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, compute_average_recall_RPN=compute_average_recall_RPN, gt_labels_list=gt_labels, is_train=is_train, result_dir=result_dir, extract_features_segmentation=extract_features_segmentation)
             if compute_average_recall_RPN:
                 average_recall_RPN += AR
 
@@ -275,7 +263,7 @@ def inference(
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train = is_train, result_dir = result_dir, extract_features_segmentation=extract_features_segmentation)
+    AR = extract_feature_proposals(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train=is_train, result_dir=result_dir, extract_features_segmentation=extract_features_segmentation)
     print('Average Recall (AR):', AR)
 
     if result_dir and not is_train:

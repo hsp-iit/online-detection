@@ -73,11 +73,11 @@ class ROIBoxHead(torch.nn.Module):
 
     def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True, result_dir = None):
         if is_train:
-            return self.forward_train(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list, result_dir = result_dir)
+            return self.forward_train(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list, result_dir=result_dir)
         else:
-            return self.forward_test(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list)
+            return self.forward_test(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list)
 
-    def forward_train(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, result_dir = None):
+    def forward_train(self, features, proposals, gt_bbox=None, gt_label=None, img_size=None, gt_labels_list=None, result_dir=None):
 
         if self.negatives_to_pick is None:
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)
@@ -212,7 +212,7 @@ class ROIBoxHead(torch.nn.Module):
             # Add random examples with iou < 0.3 otherwise
             else:
                 neg_i = x[overlap[:,i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
-                if neg_i.size()[0] > 0:                                                                         # TODO maybe add this in the rpn
+                if neg_i.size()[0] > 0:
                     neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
             # Add negatives splitting them into batches
             neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)

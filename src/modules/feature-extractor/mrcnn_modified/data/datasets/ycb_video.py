@@ -8,16 +8,9 @@ import json
 
 from torchvision import transforms as T
 
-if sys.version_info[0] == 2:
-    import xml.etree.cElementTree as ET
-else:
-    import xml.etree.ElementTree as ET
-
-
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 
-import numpy as np
 import glob
 
 def _has_only_empty_bbox(anno):
@@ -26,7 +19,6 @@ def _has_only_empty_bbox(anno):
         return v.numpy().any()
     except:
         return True
-
 
 def has_valid_annotation(anno):
     height, width = anno["im_info"]
@@ -43,7 +35,6 @@ def has_valid_annotation(anno):
     target.add_field("difficult", anno["difficult"])
     target = target.clip_to_image(remove_empty=True)
     if len(target) == 0:
-        #print("Image id {} ({}) doesn't have annotations!".format(self.ids[index], target))
         return False
 
     return True
@@ -120,37 +111,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
             f.close()
             self.scene_gt_infos[int(folder_list[i])] = scene_gt_info
 
-        """
-        self._imgsetpath = os.path.join(self.root, "ImageSets", self.image_set, self.split + ".txt")
-
-        with open(self._imgsetpath) as f:
-            self.ids = f.readlines()
-        self.ids = [x.strip("\n") for x in self.ids]
-
-        if is_target_task is False:
-            cls = YCBVideoDataset.CLASSES
-        else:
-            if icwt_21_objs is False:
-                cls = YCBVideoDataset.CLASSES_TARGET_TASK
-            else:
-                cls = YCBVideoDataset.CLASSES_TARGET_TASK_21_OBJS
-
-        self.class_to_ind = dict(zip(cls, range(len(cls))))
-
-        remove_images_without_annotations = True
-        if remove_images_without_annotations:
-            ids = []
-            for img_id in self.ids:
-                anno = ET.parse(self._annopath % img_id).getroot()
-                anno = self._preprocess_annotation(anno)
-                if has_valid_annotation(anno):
-                    ids.append(img_id)
-                else:
-                    print("Image id {} doesn't have annotations!".format(img_id))
-            self.ids = ids
-
-        self.id_to_img_map = {k: v for k, v in enumerate(self.ids)}
-        """
         with open(self._imgsetpath) as f:
             self.ids = f.readlines()
         self.ids = [x.strip("\n") for x in self.ids]
@@ -177,18 +137,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         return len(self.ids)
 
     def get_groundtruth(self, index):
-        """
-        img_id = self.ids[index]
-        anno = ET.parse(self._annopath % img_id).getroot()
-        anno = self._preprocess_annotation(anno)
-
-        height, width = anno["im_info"]
-
-        target = BoxList(anno["boxes"], (width, height), mode="xyxy")
-        target.add_field("labels", anno["labels"])
-        target.add_field("difficult", anno["difficult"])
-        """
-
 
         img_dir = self._imgpath
         imgset_path = self._imgsetpath
@@ -207,11 +155,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         img_RGB = Image.open(filename_path)
         # get image size such that later the boxes can be resized to the correct size
         width, height = img_RGB.size
-        # convert to BGR format
-        #try:
-        #    image = np.array(img_RGB)[:, :, [2, 1, 0]]
-        #except:
-        #    image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
         masks_paths = sorted(glob.glob(mask_dir % (img_path[0], img_path[1] + '*')))
 
         gt_labels = []
@@ -235,59 +178,9 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         target.add_field("difficult", torch.tensor(difficult_boxes))
 
         return target
-    """
-    def _preprocess_annotation(self, target):
-        boxes = []
-        gt_classes = []
-        difficult_boxes = []
-        masks = []
-        TO_REMOVE = 1
-        
-        for obj in target.iter("object"):
-            try:
-                difficult = int(obj.find("difficult").text) == 1
-            except:
-                continue
-            if not self.keep_difficult and difficult:
-                continue
-            name = obj.find("name").text.lower().strip()
-            bb = obj.find("bndbox")
-            # Make pixel indexes 0-based
-            # Refer to "https://github.com/rbgirshick/py-faster-rcnn/blob/master/lib/datasets/pascal_voc.py#L208-L211"
-            box = [
-                bb.find("xmin").text, 
-                bb.find("ymin").text, 
-                bb.find("xmax").text, 
-                bb.find("ymax").text,
-            ]
-            bndbox = tuple(
-                map(lambda x: x - TO_REMOVE, list(map(int, box)))          
-            )
 
-            boxes.append(bndbox)
-            gt_classes.append(self.class_to_ind[name])
-            difficult_boxes.append(difficult)
-
-        size = target.find("size")
-        im_info = tuple(map(int, (size.find("height").text, size.find("width").text)))
-
-        res = {
-            "boxes": torch.tensor(boxes, dtype=torch.float32),
-            "labels": torch.tensor(gt_classes),
-            "difficult": torch.tensor(difficult_boxes),
-            "im_info": im_info,
-        }
-        return res
-    """
     def get_img_info(self, index):
         return {"height": 480, "width": 640}
-
-        # TODO modify this
-        img_id = self.ids[index]
-        anno = ET.parse(self._annopath % img_id).getroot()
-        size = anno.find("size")
-        im_info = tuple(map(int, (size.find("height").text, size.find("width").text)))
-        return {"height": im_info[0], "width": im_info[1]}
 
     def map_class_id_to_class_name(self, class_id):
         return YCBVideoDataset.CLASSES[class_id]
