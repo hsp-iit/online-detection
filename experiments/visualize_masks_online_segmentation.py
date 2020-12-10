@@ -39,7 +39,7 @@ else:
 
 if args.write_outputs:
     if args.output_dir.startswith("/"):
-        output_dir = args.config_file
+        output_dir = args.output_dir
     else:
         output_dir = os.path.abspath(os.path.join(basedir, args.output_dir))
     if not os.path.exists(output_dir):
