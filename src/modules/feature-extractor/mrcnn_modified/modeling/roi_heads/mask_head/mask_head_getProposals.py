@@ -96,11 +96,15 @@ class ROIMaskHead(torch.nn.Module):
         for i in range(len(masks_features)):
             mask_features = masks_features[i].permute(1, 2, 0).view(-1, masks_features.size()[1])
             masks_gt = masks_gts[i].view(mask_features.size()[0])
+            # Select pixels positives indices, i.e. where the gt mask value is >= 0.5
             positives_indices = torch.where(masks_gt >= 0.5)[0]
+            # Sample the required fraction of indices
             if self.sampling_factor < 1.0:
                 sampled_indices = torch.randperm(len(positives_indices))[:int(self.sampling_factor*len(positives_indices))]
                 positives_indices = positives_indices[sampled_indices]
+            # Add positives of the given mask to the positives list of the corresponding object class
             self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], mask_features[positives_indices]))
+            # Manage full batches of features
             if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
                 if self.save_features:
                     path_to_save = os.path.join(result_dir, 'features_segmentation', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
@@ -109,6 +113,7 @@ class ROIMaskHead(torch.nn.Module):
                 if self.training_device == 'cpu':
                     self.positives[gt_labels_list[i] - 1][len(self.positives[gt_labels_list[i] - 1]) - 1] = self.positives[gt_labels_list[i] - 1][len(self.positives[gt_labels_list[i] - 1]) - 1].to('cpu')
                 self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.predictor.conv5_mask.out_channels), device='cuda'))
+            # Repeat the procedure done for positive features with the negatives
             negatives_indices = torch.where(masks_gt < 0.5)[0]
             if self.sampling_factor < 1.0:
                 sampled_indices = torch.randperm(len(negatives_indices))[:int(self.sampling_factor*len(negatives_indices))]

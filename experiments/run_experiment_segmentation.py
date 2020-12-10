@@ -1,7 +1,6 @@
 import os
 import sys
 import torch
-import math
 import argparse
 
 basedir = os.path.dirname(__file__)
@@ -19,8 +18,7 @@ from region_refiner import RegionRefiner
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--icwt30', action='store_true', help='Run the iCWT experiment reported in the paper (i.e. use as TARGET-TASK the 30 objects identification task from the iCubWorld Transformations dataset). By default, run the experiment referred to as TABLE-TOP in the paper.')
-parser.add_argument('--output_dir', action='store', type=str, help='Set experiment\'s output directory. Default directories are tabletop_experiment and icwt30_experiment, according to the dataset used.')
+parser.add_argument('--output_dir', action='store', type=str, help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
 parser.add_argument('--save_detector_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--save_segmentation_models', action='store_true', help='Save, in the output directory, FALKON models and features statistics of the segmentator.')
 parser.add_argument('--load_detector_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the detector.')
@@ -31,6 +29,10 @@ parser.add_argument('--load_detector_features', action='store_true', help='Load,
 parser.add_argument('--load_segmentation_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
 parser.add_argument('--eval_segm_with_gt_bboxes', action='store_true', help='Evaluate segmentation accuracy, supposing that gt_bboxes are available.')
 parser.add_argument('--use_only_gt_positives_detection', action='store_true', help='Consider only the ground truth bounding boxes as positive samples for the online detection.')
+parser.add_argument('--sampling_ratio_segmentation', action='store', type=float, default=0.3, help='Set the fraction of positives and negatives samples to be used to train the online segmentation head')
+parser.add_argument('--pos_fraction_feat_stats', action='store', type=float, default=0.8, help='Set the fraction of positives samples to be used to compute features statistics for data normalization')
+parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_segmentation_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_detection_segmentation_ycbv.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_detection_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 
 
 args = parser.parse_args()
@@ -44,8 +46,20 @@ else:
     import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration
-cfg_target_task = 'configs/config_segmentation_ycbv.yaml'
-cfg_online_path = 'configs/config_online_detection_ycbv.yaml'
+if args.config_file.startswith("/"):
+    cfg_target_task = args.config_file_feature_extraction
+else:
+    cfg_target_task = os.path.abspath(os.path.join(basedir, "configs", args.config_file_feature_extraction))
+
+if args.config_file.startswith("/"):
+    cfg_online_path = args.config_file_online_detection_online_segmentation
+else:
+    cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_detection_online_segmentation))
+
+if args.pos_fraction_feat_stats <= 1 and args.pos_fraction_feat_stats >= 0:
+    pos_fraction_feat_stats = args.pos_fraction_feat_stats
+else:
+    pos_fraction_feat_stats = None
 
 # Set and create output directory
 if args.output_dir:
@@ -53,12 +67,10 @@ if args.output_dir:
         output_dir = args.output_dir
     else:
         output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), args.output_dir))
-    print(args.output_dir)
 else:
-    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'segmentation_experiment'))
+    output_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), 'segmentation_experiment_ycbv'))
 if not os.path.exists(output_dir):
     os.mkdir(output_dir)
-
 
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_target_task, train_in_cpu=args.CPU)
@@ -91,7 +103,7 @@ else:
         torch.cuda.empty_cache()
 
         stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1],
-                                            cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
+                                            cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
@@ -109,9 +121,9 @@ else:
             feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True)
             del feature_extractor
             torch.cuda.empty_cache()
-        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_detector'))
+        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'))
 
-        stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
+        stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
@@ -142,12 +154,18 @@ if args.save_detector_models:
 if not args.load_segmentation_models:
     if args.load_segmentation_features:
         # Train segmentation classifiers
-        positives_segmentation, negatives_segmentation = load_features_classifier(features_dir = os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=0.3)
+        positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
+    if args.CPU:
+        training_device = 'cpu'
+    else:
+        training_device = 'cuda'
+    # Features can be extracted in a device that does not correspond to the one used for training.
+    # Convert them to the proper device.
     for i in range(len(positives_segmentation)):
-        positives_segmentation[i] = positives_segmentation[i].to('cuda')
-        negatives_segmentation[i] = [negatives_segmentation[i].to('cuda')]
-    stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=0.8, neg_fraction=0.2)
-    # Detector Region Classifier initialization
+        positives_segmentation[i] = positives_segmentation[i].to(training_device)
+        negatives_segmentation[i] = [negatives_segmentation[i].to(training_device)]
+    stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
+    # Per-pixel Classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))

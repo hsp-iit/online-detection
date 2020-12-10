@@ -55,13 +55,14 @@ def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samp
     return mean, std, mean_norm
 
 
-def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048, cpu_tensor=False, pos_fraction=None, neg_fraction=None):
+def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features_dim=2048, cpu_tensor=False, pos_fraction=None):
     device = 'cpu' if cpu_tensor else 'cuda'
     print('Computing features statistics')
     if pos_fraction is None:
         pos_fraction = 1/10
-    if neg_fraction is None:
         neg_fraction = 9/10
+    else:
+        neg_fraction = 1 - pos_fraction
     num_classes = len(positives)
     take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
     take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
