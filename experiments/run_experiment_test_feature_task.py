@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, 'src', 'mo
 from feature_extractor import FeatureExtractor
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--output_dir', action='store', type=str, help='Set experiment\'s output directory.')
+parser.add_argument('--output_dir', action='store', type=str, default='test_mask_rcnn_models', help='Set experiment\'s output directory.')
 parser.add_argument('--config_file', action='store', type=str, default="configs/config_test_feature_task_models_ycbv.yaml", help='Manually set configuration file, by default it is configs/config_test_feature_task_models_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments directory')
 parser.add_argument('--model_path', action='store', type=str, help='Specify the path of the model that must be tested')
 
