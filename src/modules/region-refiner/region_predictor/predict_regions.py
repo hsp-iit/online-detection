@@ -61,14 +61,22 @@ class RegionPredictor():
                 pred_w = torch.exp(dst_scl_x) * src_w
                 pred_h = torch.exp(dst_scl_y) * src_h
                 pred_boxes = torch.cat(((pred_ctr_x - 0.5 * pred_w).view(num_boxes,1), (pred_ctr_y - 0.5 * pred_h).view(num_boxes,1)), dim=1)
-                pred_boxes = torch.cat((pred_boxes, (pred_ctr_x + 0.5 * pred_w).view(num_boxes,1)),dim=1)
-                pred_boxes = torch.cat((pred_boxes, (pred_ctr_y + 0.5 * pred_h).view(num_boxes,1)),dim=1)
+                pred_boxes = torch.cat((pred_boxes, (pred_ctr_x + 0.5 * pred_w-1).view(num_boxes,1)),dim=1)
+                pred_boxes = torch.cat((pred_boxes, (pred_ctr_y + 0.5 * pred_h-1).view(num_boxes,1)),dim=1)
 
+                # TODO Clamp boxes check modifications
+                """
                 # Set boxes in Matlab format
                 pred_boxes[:, 0] = torch.max(pred_boxes[:, 0], torch.ones(pred_boxes[:,0].size(), device='cuda'))
                 pred_boxes[:, 1] = torch.max(pred_boxes[:, 1], torch.ones(pred_boxes[:,1].size(), device='cuda'))
                 pred_boxes[:, 2] = torch.min(pred_boxes[:, 2], torch.full(pred_boxes[:,2].size(), img_width, device='cuda'))
                 pred_boxes[:, 3] = torch.min(pred_boxes[:, 3], torch.full(pred_boxes[:,3].size(), img_height, device='cuda'))
+                """
+                pred_boxes[:, 0] = torch.max(pred_boxes[:, 0], torch.zeros(pred_boxes[:,0].size(), device='cuda'))
+                pred_boxes[:, 1] = torch.max(pred_boxes[:, 1], torch.zeros(pred_boxes[:,1].size(), device='cuda'))
+                pred_boxes[:, 2] = torch.min(pred_boxes[:, 2], torch.full(pred_boxes[:,2].size(), img_width-1, device='cuda'))
+                pred_boxes[:, 3] = torch.min(pred_boxes[:, 3], torch.full(pred_boxes[:,3].size(), img_height-1, device='cuda'))
+
                 # Concatenate box predictions for each class
                 refined_boxes = torch.cat((refined_boxes, pred_boxes), dim=1)
 

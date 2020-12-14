@@ -93,6 +93,8 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
+        # TODO check if correct that all the following part must be changed
+        """
         # Add 1 to every coordinate as Matlab is 1-based
         arr_proposals = arr_proposals + 1
         arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
@@ -105,6 +107,16 @@ class ROIBoxHead(torch.nn.Module):
         arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
         arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
         arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
+        """
+        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
+        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
+        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)
+        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 0, img_size[1]-1)
+
+        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 0, img_size[0]-1)
+        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 0, img_size[0]-1)
+        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 0, img_size[1]-1)
+        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 0, img_size[1]-1)
 
         # Count gt bboxes
         if gt_label is not None:
@@ -156,13 +168,13 @@ class ROIBoxHead(torch.nn.Module):
             ex_boxes = arr_proposals[pos_ids].view(-1, 4)
             gt_boxes = torch.ones(ex_boxes.size(), device='cuda') * arr_proposals[i].view(-1, 4)
 
-            src_w = ex_boxes[:,2] - ex_boxes[:,0]
-            src_h = ex_boxes[:,3] - ex_boxes[:,1]
+            src_w = ex_boxes[:,2] - ex_boxes[:,0] + 1
+            src_h = ex_boxes[:,3] - ex_boxes[:,1] + 1
             src_ctr_x = ex_boxes[:,0] + 0.5 * src_w
             src_ctr_y = ex_boxes[:,1] + 0.5 * src_h
 
-            gt_w = gt_boxes[:,2] - gt_boxes[:,0]
-            gt_h = gt_boxes[:,3] - gt_boxes[:,1]
+            gt_w = gt_boxes[:,2] - gt_boxes[:,0] + 1
+            gt_h = gt_boxes[:,3] - gt_boxes[:,1] + 1
             gt_ctr_x = gt_boxes[:,0] + 0.5 * gt_w
             gt_ctr_y = gt_boxes[:,1] + 0.5 * gt_h
 
@@ -256,6 +268,8 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
+        # TODO as in forward_train
+        """
         # Add 1 to every coordinate as Matlab is 1-based
         arr_proposals = arr_proposals + 1
         arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
@@ -268,6 +282,16 @@ class ROIBoxHead(torch.nn.Module):
         arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
         arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
         arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
+        """
+        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
+        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
+        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)
+        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 0, img_size[1]-1)
+
+        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 0, img_size[0]-1)
+        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 0, img_size[0]-1)
+        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 0, img_size[1]-1)
+        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 0, img_size[1]-1)
 
         # Count gt bboxes
         if gt_label is not None:

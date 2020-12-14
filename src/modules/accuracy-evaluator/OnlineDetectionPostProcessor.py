@@ -24,14 +24,21 @@ class OnlineDetectionPostProcessor(PostProcessor):
 
         proposals = proposals[0].resize(img_size)
 
+        # TODO check this removing all +1
+        """
         # Add 1 to every coordinate as Matlab is 1-based
         arr_proposals = proposals.bbox + 1
         arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
         arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
         arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
         arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
-
+        
         proposals.bbox = arr_proposals
+        """
+        proposals.bbox[:, 2] = torch.clamp(proposals.bbox[:, 2], 0, img_size[0] - 1)
+        proposals.bbox[:, 0] = torch.clamp(proposals.bbox[:, 0], 0, img_size[0] - 1)
+        proposals.bbox[:, 3] = torch.clamp(proposals.bbox[:, 3], 0, img_size[1] - 1)
+        proposals.bbox[:, 1] = torch.clamp(proposals.bbox[:, 1], 0, img_size[1] - 1)
 
         refined_boxes = decode_boxes_detector(proposals, bbox_pred)
 
@@ -58,7 +65,7 @@ class OnlineDetectionPostProcessor(PostProcessor):
         for j in range(1, num_classes):
             inds = inds_all[:, j].nonzero().squeeze(1)
             scores_j = scores[inds, j]
-            boxes_j = boxes[inds, j * 4 : (j + 1) * 4]
+            boxes_j = boxes[inds, j * 4: (j + 1) * 4]
             boxlist_for_class = BoxList(boxes_j.to('cuda'), boxlist.size, mode="xyxy")
             boxlist_for_class.add_field("scores", scores_j.to('cuda'))
             boxlist_for_class = boxlist_nms(

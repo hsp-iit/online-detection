@@ -216,8 +216,8 @@ def decode_boxes_detector(boxes, bbox_pred):
     dst_scl_x = bbox_pred[:, 2::4]
     dst_scl_y = bbox_pred[:, 3::4]
 
-    src_w = ex_box[:, 2] - ex_box[:, 0] + np.spacing(1)
-    src_h = ex_box[:, 3] - ex_box[:, 1] + np.spacing(1)
+    src_w = ex_box[:, 2] - ex_box[:, 0] + 1
+    src_h = ex_box[:, 3] - ex_box[:, 1] + 1
     src_ctr_x = ex_box[:, 0] + 0.5 * src_w
     src_ctr_y = ex_box[:, 1] + 0.5 * src_h
     pred_ctr_x = (dst_ctr_x * src_w[:, None]) + src_ctr_x[:, None]
@@ -227,14 +227,21 @@ def decode_boxes_detector(boxes, bbox_pred):
     pred_boxes = torch.zeros_like(bbox_pred)
     pred_boxes[:, 0::4] = pred_ctr_x - 0.5 * pred_w
     pred_boxes[:, 1::4] = pred_ctr_y - 0.5 * pred_h
-    pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w
-    pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h
+    pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
+    pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
 
     # Set boxes in Matlab format
+    # TODO Clamp boxes check modifications
+    """
     pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.ones(pred_boxes[:, 0::4].size(), device='cuda'))
     pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.ones(pred_boxes[:, 1::4].size(), device='cuda'))
     pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0], device='cuda'))
     pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1], device='cuda'))
+    """
+    pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.zeros(pred_boxes[:, 0::4].size(), device='cuda'))
+    pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.zeros(pred_boxes[:, 1::4].size(), device='cuda'))
+    pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0]-1, device='cuda'))
+    pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1]-1, device='cuda'))
 
     return pred_boxes
 

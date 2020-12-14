@@ -43,7 +43,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
                 mask_features = features
             # During training, self.box() will return the unaltered proposals as "detections"
             # this makes the API consistent during training and testing
-            detections.bbox = (detections.bbox - 1)
+            # TODO check if commented is correct
+            #detections.bbox = (detections.bbox - 1)
             detections = detections.resize((width, height))
             x, detections, loss_mask = self.mask(mask_features, detections)
 
