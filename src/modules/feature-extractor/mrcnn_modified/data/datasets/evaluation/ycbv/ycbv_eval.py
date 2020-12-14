@@ -150,7 +150,7 @@ def draw_preds_ycbv(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, iou_thresh=0.5, use_07_metric=True, evaluate_segmentation=True):
+def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, iou_thresholds=(0.5,), use_07_metric=True, evaluate_segmentation=True):
 
     pred_boxlists = []
     gt_boxlists = []
@@ -175,38 +175,15 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         if draw_preds:
             draw_preds_ycbv(dataset, image_id, prediction, gt_boxlist, output_folder)
 
-
-    result = eval_detection_ycbv(
-        pred_boxlists=pred_boxlists,
-        gt_boxlists=gt_boxlists,
-        iou_thresh=iou_thresh,
-        use_07_metric=use_07_metric,
-    )
-
-    result_str = "mAP: {:.4f}\n".format(result["map"])
-    for i, ap in enumerate(result["ap"]):
-        if i == 0:  # skip background
-            continue
-        result_str += "{:<26}: {:.4f}\n".format(
-            dataset.map_class_id_to_class_name(i), ap
-        )
-    result_str += "\n"
-
-    logger.info(result_str)
-
-    if output_folder:
-        with open(os.path.join(output_folder, "result.txt"), "a") as fid:
-            fid.write(result_str)
-
-    if evaluate_segmentation:
-        result = eval_segmentation_ycbv(
+    for iou_thresh in iou_thresholds:
+        result = eval_detection_ycbv(
             pred_boxlists=pred_boxlists,
             gt_boxlists=gt_boxlists,
             iou_thresh=iou_thresh,
             use_07_metric=use_07_metric,
         )
 
-        result_str = "mAP: {:.4f}\n".format(result["map"])
+        result_str = "Detection mAP{}: {:.4f}\n\n".format(int(iou_thresh*100), result["map"])
         for i, ap in enumerate(result["ap"]):
             if i == 0:  # skip background
                 continue
@@ -220,6 +197,29 @@ def do_ycbv_evaluation(dataset, predictions, output_folder, draw_preds, logger, 
         if output_folder:
             with open(os.path.join(output_folder, "result.txt"), "a") as fid:
                 fid.write(result_str)
+
+        if evaluate_segmentation:
+            result = eval_segmentation_ycbv(
+                pred_boxlists=pred_boxlists,
+                gt_boxlists=gt_boxlists,
+                iou_thresh=iou_thresh,
+                use_07_metric=use_07_metric,
+            )
+
+            result_str = "Segmentation mAP{}: {:.4f}\n\n".format(int(iou_thresh*100), result["map"])
+            for i, ap in enumerate(result["ap"]):
+                if i == 0:  # skip background
+                    continue
+                result_str += "{:<26}: {:.4f}\n".format(
+                    dataset.map_class_id_to_class_name(i), ap
+                )
+            result_str += "\n"
+
+            logger.info(result_str)
+
+            if output_folder:
+                with open(os.path.join(output_folder, "result.txt"), "a") as fid:
+                    fid.write(result_str)
 
     del pred_boxlists, gt_boxlists
 

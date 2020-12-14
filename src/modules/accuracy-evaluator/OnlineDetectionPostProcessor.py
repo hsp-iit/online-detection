@@ -35,10 +35,11 @@ class OnlineDetectionPostProcessor(PostProcessor):
         
         proposals.bbox = arr_proposals
         """
-        proposals.bbox[:, 2] = torch.clamp(proposals.bbox[:, 2], 0, img_size[0] - 1)
-        proposals.bbox[:, 0] = torch.clamp(proposals.bbox[:, 0], 0, img_size[0] - 1)
-        proposals.bbox[:, 3] = torch.clamp(proposals.bbox[:, 3], 0, img_size[1] - 1)
-        proposals.bbox[:, 1] = torch.clamp(proposals.bbox[:, 1], 0, img_size[1] - 1)
+        # Clamp not necessary, proposals already clamped after rpn
+        #proposals.bbox[:, 2] = torch.clamp(proposals.bbox[:, 2], 0, img_size[0] - 1)
+        #proposals.bbox[:, 0] = torch.clamp(proposals.bbox[:, 0], 0, img_size[0] - 1)
+        #proposals.bbox[:, 3] = torch.clamp(proposals.bbox[:, 3], 0, img_size[1] - 1)
+        #proposals.bbox[:, 1] = torch.clamp(proposals.bbox[:, 1], 0, img_size[1] - 1)
 
         refined_boxes = decode_boxes_detector(proposals, bbox_pred)
 

@@ -506,3 +506,9 @@ _C.SEGMENTATION.BATCH_SIZE = 20000
 _C.SEGMENTATION.SAMPLING_FACTOR = 0.3
 _C.SEGMENTATION.FEATURES_DEVICE = 'cuda'
 
+# ---------------------------------------------------------------------------- #
+# Evaluation parameters
+# ---------------------------------------------------------------------------- #
+_C.EVALUATION = CN()
+_C.EVALUATION.IOU_THRESHOLDS = (0.5,)
+_C.EVALUATION.USE_VOC07_METRIC = True

@@ -127,7 +127,14 @@ class FeatureExtractorRPN:
         else:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
 
-        extra_checkpoint_data = checkpointer.load(model_path)
+        model_pretrained = torch.load(model_path)
+        model_pretrained_copy = copy.deepcopy(model_pretrained)
+        for key in model_pretrained_copy['model'].keys():
+            if key.startswith('roi'):
+                del model_pretrained['model'][key]
+        checkpointer._load_model(model_pretrained)
+
+        #extra_checkpoint_data = checkpointer.load(model_path)
 
 
 

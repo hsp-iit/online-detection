@@ -166,7 +166,7 @@ class YCBVideoDataset(torch.utils.data.Dataset):
             bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
             if bbox == [-1, -1, -1, -1]:
                 continue
-            gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2], bbox[1] + bbox[3]])
+            gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2] -1, bbox[1] + bbox[3] -1])
             gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
             masks.append(T.ToTensor()(Image.open(masks_paths[j])))
             difficult_boxes.append(False)

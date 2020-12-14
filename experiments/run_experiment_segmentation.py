@@ -46,12 +46,12 @@ else:
     import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration
-if args.config_file.startswith("/"):
+if args.config_file_feature_extraction.startswith("/"):
     cfg_target_task = args.config_file_feature_extraction
 else:
     cfg_target_task = os.path.abspath(os.path.join(basedir, "configs", args.config_file_feature_extraction))
 
-if args.config_file.startswith("/"):
+if args.config_file_online_detection_online_segmentation.startswith("/"):
     cfg_online_path = args.config_file_online_detection_online_segmentation
 else:
     cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_detection_online_segmentation))

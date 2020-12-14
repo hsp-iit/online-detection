@@ -250,12 +250,13 @@ class FeatureExtractorDetector:
                     for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
                         if use_only_gt_positives_detection:
                             model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
-                        if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
-                            model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1] = model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1].to('cpu')
-                        model.roi_heads.mask.negatives[i] = torch.cat(model.roi_heads.mask.negatives[i])
-                        if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
-                            model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1] = model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1].to('cpu')
-                        model.roi_heads.mask.positives[i] = torch.cat(model.roi_heads.mask.positives[i])
+                        if extract_features_segmentation:
+                            if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
+                                model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1] = model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1].to('cpu')
+                            model.roi_heads.mask.negatives[i] = torch.cat(model.roi_heads.mask.negatives[i])
+                            if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
+                                model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1] = model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1].to('cpu')
+                            model.roi_heads.mask.positives[i] = torch.cat(model.roi_heads.mask.positives[i])
                     if extract_features_segmentation:
                         if use_only_gt_positives_detection:
                             return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
@@ -263,9 +264,9 @@ class FeatureExtractorDetector:
                             return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
                     else:
                         if use_only_gt_positives_detection:
-                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), None, None
+                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
                         else:
-                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY), None, None
+                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY)
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]

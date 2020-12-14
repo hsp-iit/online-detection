@@ -202,7 +202,7 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
         if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
             continue
-        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2], bbox[1]+bbox[3]])
+        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
         if evaluate_segmentation:
             masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
@@ -275,7 +275,9 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
             expected_results_sigma_tol=4,
             draw_preds=False,
             is_target_task=True,
-            icwt_21_objs=icwt_21_objs
+            icwt_21_objs=icwt_21_objs,
+            iou_thresholds=model.roi_heads.box.cfg.EVALUATION.IOU_THRESHOLDS,
+            use_07_metric=model.roi_heads.box.cfg.EVALUATION.USE_VOC07_METRIC
         )
     elif type(dataset).__name__ is 'YCBVideoDataset':
         extra_args = dict(
@@ -284,7 +286,9 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
             expected_results=(),
             expected_results_sigma_tol=4,
             draw_preds=False,
-            evaluate_segmentation=evaluate_segmentation
+            evaluate_segmentation=evaluate_segmentation,
+            iou_thresholds=model.roi_heads.box.cfg.EVALUATION.IOU_THRESHOLDS,
+            use_07_metric=model.roi_heads.box.cfg.EVALUATION.USE_VOC07_METRIC
         )
 
     return evaluate(dataset=dataset,
