@@ -114,7 +114,9 @@ def inference(
             expected_results_sigma_tol=4,
             draw_preds=False,
             is_target_task=True,
-            icwt_21_objs=icwt_21_objs
+            icwt_21_objs=icwt_21_objs,
+            iou_thresholds=model.roi_heads.cfg.EVALUATION.IOU_THRESHOLDS,
+            use_07_metric=model.roi_heads.cfg.EVALUATION.USE_VOC07_METRIC
         )
     elif type(dataset).__name__ is 'YCBVideoDataset':
         extra_args = dict(
@@ -123,6 +125,8 @@ def inference(
             expected_results=(),
             expected_results_sigma_tol=expected_results_sigma_tol,
             draw_preds=False,
+            iou_thresholds=model.roi_heads.cfg.EVALUATION.IOU_THRESHOLDS,
+            use_07_metric=model.roi_heads.cfg.EVALUATION.USE_VOC07_METRIC
         )
 
     return evaluate(dataset=dataset,

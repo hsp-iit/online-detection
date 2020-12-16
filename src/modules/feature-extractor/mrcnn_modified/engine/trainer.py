@@ -135,7 +135,7 @@ def do_train(
                 # The method changes the segmentation mask format in a data loader,
                 # so every time a new data loader is created:
                 make_data_loader(cfg, is_train=False, is_distributed=(get_world_size() > 1), is_target_task=is_target_task, icwt_21_objs=icwt_21_objs),# is_for_period=True),
-                dataset_name="[Validation]",
+                dataset_name="[Test]",
                 iou_types=iou_types,
                 box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
                 device=cfg.MODEL.DEVICE,
@@ -161,7 +161,7 @@ def do_train(
             logger.info(
                 meters_val.delimiter.join(
                     [
-                        "[Validation]: ",
+                        "[Test]: ",
                         "eta: {eta}",
                         "iter: {iter}",
                         "{meters}",

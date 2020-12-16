@@ -94,7 +94,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             return self.classifier.train(X, y)
 
     def trainWithMinibootstrap(self, negatives, positives, output_dir=None):
-        iterations = len(negatives[0])
         caches = []
         model = []
         t = time.time()
@@ -133,10 +132,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
                         print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
                         print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
-                if j == len(negatives[i]) - 1:
-                    # print(caches)
-                    caches[i] = None
-                    torch.cuda.empty_cache()
+                    # Delete cache of the i-th classifier if it is the last iteration to free memory
+                    if j == len(negatives[i]) - 1:
+                        caches[i] = None
+                        torch.cuda.empty_cache()
             else:
                 model.append(None)
                 dataset = {}

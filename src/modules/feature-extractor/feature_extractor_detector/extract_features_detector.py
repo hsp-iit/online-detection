@@ -181,7 +181,7 @@ class FeatureExtractorDetector:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
 
-                if self.cfg.SAVE_FEATURES_DETECTOR: #TODO add option to avoid saving positives if can be used coxy
+                if self.cfg.SAVE_FEATURES_DETECTOR:
                     # Save features still not saved
                     for clss in range(len(model.roi_heads.box.negatives)):
                         for batch in range(len(model.roi_heads.box.negatives[clss])):

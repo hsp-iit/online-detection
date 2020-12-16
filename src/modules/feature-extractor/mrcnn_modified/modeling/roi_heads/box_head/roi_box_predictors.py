@@ -26,18 +26,22 @@ class FastRCNNPredictor(nn.Module):
         nn.init.normal_(self.bbox_pred.weight, mean=0, std=0.001)
         nn.init.constant_(self.bbox_pred.bias, 0)
 
+        self.normalize_features_regressors = False
+
     def forward(self, x, proposals=None):
-        #Removed from here and added in "ResNet50Conv5ROIFeatureExtractor" in roi_box_feature_extractors.py
         x = self.avgpool(x)
         x = x.view(x.size(0), -1)
         # If FALKON classifiers, regressors and stats are defined use online pipeline
         if hasattr(self, 'classifiers'):
-            # TODO read from config if features must be normalized for box refinement
-            # Refine boxes
-            bbox_pred = self.refine_boxes(x)
+            if not self.normalize_features_regressors:
+                # Refine boxes
+                bbox_pred = self.refine_boxes(x)
             # Normalize features
             x = x - self.stats['mean']
             x = x * (20 / self.stats['mean_norm'])
+            if self.normalize_features_regressors:
+                # Refine boxes
+                bbox_pred = self.refine_boxes(x)
             # Compute objectness with FALKON
             cls_scores = self.predict_clss_FALKON(x)
             return cls_scores, bbox_pred

@@ -50,7 +50,7 @@ class AccuracyEvaluatorDetector:
         self.stats_segmentation = None
 
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
@@ -61,7 +61,7 @@ class AccuracyEvaluatorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
+        return self.train(is_train, result_dir=output_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes, normalize_features_regressors=normalize_features_regressors)
 
     def load_parameters(self):
         if self.distributed:
@@ -85,7 +85,7 @@ class AccuracyEvaluatorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
+    def train(self, is_train, result_dir=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False):
 
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
@@ -136,6 +136,8 @@ class AccuracyEvaluatorDetector:
             model.roi_heads.box.predictor.regressors = self.regressors_detector_models
         if self.stats_detector is not None:
             model.roi_heads.box.predictor.stats = self.stats_detector
+
+        model.roi_heads.box.predictor.normalize_features_regressors = normalize_features_regressors
 
         if self.falkon_segmentation_models is not None:
             model.roi_heads.mask.predictor.classifiers = self.falkon_segmentation_models

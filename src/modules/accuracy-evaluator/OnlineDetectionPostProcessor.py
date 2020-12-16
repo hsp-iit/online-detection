@@ -24,23 +24,6 @@ class OnlineDetectionPostProcessor(PostProcessor):
 
         proposals = proposals[0].resize(img_size)
 
-        # TODO check this removing all +1
-        """
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = proposals.bbox + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
-        
-        proposals.bbox = arr_proposals
-        """
-        # Clamp not necessary, proposals already clamped after rpn
-        #proposals.bbox[:, 2] = torch.clamp(proposals.bbox[:, 2], 0, img_size[0] - 1)
-        #proposals.bbox[:, 0] = torch.clamp(proposals.bbox[:, 0], 0, img_size[0] - 1)
-        #proposals.bbox[:, 3] = torch.clamp(proposals.bbox[:, 3], 0, img_size[1] - 1)
-        #proposals.bbox[:, 1] = torch.clamp(proposals.bbox[:, 1], 0, img_size[1] - 1)
-
         refined_boxes = decode_boxes_detector(proposals, bbox_pred)
 
         boxlist = self.prepare_boxlist(refined_boxes, cls_scores, proposals.size)

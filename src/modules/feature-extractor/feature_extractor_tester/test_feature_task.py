@@ -110,7 +110,7 @@ class TesterFeatureTask:
             # The method changes the segmentation mask format in a data loader,
             # so every time a new data loader is created:
             make_data_loader(self.cfg, is_train=False, is_distributed=(get_world_size() > 1), is_target_task=self.is_target_task),
-            dataset_name="[Validation]",
+            dataset_name="[Test]",
             iou_types=("bbox",),
             box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
             device=cfg.MODEL.DEVICE,

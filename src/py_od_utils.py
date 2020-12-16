@@ -150,7 +150,6 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
                 if not cpu_tensor:
                     to_append_neg_i = torch.cat(negatives_i)
                     if sample_ratio < 1:
-                        #print(int(len(to_append_neg_i) * sample_ratio),)
                         indices = torch.randint(len(to_append_neg_i), (int(len(to_append_neg_i) * sample_ratio),))
                         to_append_neg_i = to_append_neg_i[indices]
                     negatives.append(to_append_neg_i)
@@ -159,7 +158,7 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
             except:
                 negatives.append(torch.empty((0)))
         else:
-            # Load positives with class id clss_id
+            # Load negatives with class id clss_id
             negatives_to_load_i = len(glob.glob(os.path.join(features_dir, 'negatives_cl_{}_*'.format(clss_id))))
             negatives_i = []
             for batch in range(negatives_to_load_i):
@@ -230,14 +229,6 @@ def decode_boxes_detector(boxes, bbox_pred):
     pred_boxes[:, 2::4] = pred_ctr_x + 0.5 * pred_w - 1
     pred_boxes[:, 3::4] = pred_ctr_y + 0.5 * pred_h - 1
 
-    # Set boxes in Matlab format
-    # TODO Clamp boxes check modifications
-    """
-    pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.ones(pred_boxes[:, 0::4].size(), device='cuda'))
-    pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.ones(pred_boxes[:, 1::4].size(), device='cuda'))
-    pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0], device='cuda'))
-    pred_boxes[:, 3::4] = torch.min(pred_boxes[:, 3::4], torch.full(pred_boxes[:, 3::4].size(), boxes.size[1], device='cuda'))
-    """
     pred_boxes[:, 0::4] = torch.max(pred_boxes[:, 0::4], torch.zeros(pred_boxes[:, 0::4].size(), device='cuda'))
     pred_boxes[:, 1::4] = torch.max(pred_boxes[:, 1::4], torch.zeros(pred_boxes[:, 1::4].size(), device='cuda'))
     pred_boxes[:, 2::4] = torch.min(pred_boxes[:, 2::4], torch.full(pred_boxes[:, 2::4].size(), boxes.size[0]-1, device='cuda'))
@@ -281,7 +272,6 @@ def mask_iou(mask_a, mask_b):
 
     if mask_a.shape[1:] != mask_b.shape[1:]:
         raise IndexError
-    #xp = cuda.get_array_module(mask_a)
 
     n_mask_a = len(mask_a)
     n_mask_b = len(mask_b)

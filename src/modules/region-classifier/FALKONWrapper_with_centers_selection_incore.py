@@ -24,7 +24,6 @@ class FALKONWrapper(ca.ClassifierAbstract):
         else:
             opts = self.cfg['ONLINE_SEGMENTATION']['CLASSIFIER']
 
-
         if 'sigma' in opts:
             self.sigma = opts['sigma']
         else:

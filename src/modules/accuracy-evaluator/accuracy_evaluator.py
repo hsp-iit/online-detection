@@ -23,7 +23,7 @@ class AccuracyEvaluator(AccuracyEvaluatorAbstract):
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
 
-    def evaluateAccuracyDetection(self, is_train, output_dir=None, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
+    def evaluateAccuracyDetection(self, is_train, output_dir=None, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False):
         # call class to extract detector features:
         accuracy_evaluator = AccuracyEvaluatorDetector(self.cfg_path_target_task)
         accuracy_evaluator.falkon_rpn_models = self.falkon_rpn_models
@@ -36,6 +36,6 @@ class AccuracyEvaluator(AccuracyEvaluatorAbstract):
         accuracy_evaluator.stats_segmentation = self.stats_segmentation
         if self.regions_post_nms is not None:
             accuracy_evaluator.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
-        features = accuracy_evaluator(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
+        features = accuracy_evaluator(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes, normalize_features_regressors=normalize_features_regressors)
 
         return features

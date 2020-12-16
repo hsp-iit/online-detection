@@ -93,21 +93,6 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
-        # TODO check if correct that all the following part must be changed
-        """
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = arr_proposals + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
-
-        arr_gt_bbox = arr_gt_bbox + 1
-        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 1, img_size[0])
-        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
-        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
-        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
-        """
         arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
         arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
         arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)
@@ -268,21 +253,6 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
-        # TODO as in forward_train
-        """
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = arr_proposals + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
-
-        arr_gt_bbox = arr_gt_bbox + 1
-        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 1, img_size[0])
-        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
-        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
-        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
-        """
         arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
         arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
         arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)

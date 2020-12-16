@@ -52,7 +52,7 @@ class MaskRCNNC4Predictor(nn.Module):
                 predictions = classifier.predict(features)
             pixels_scores = torch.cat((pixels_scores, predictions), dim=1)
 
-        to_return = torch.empty((0, len(self.classifiers)+1, feat_width, feat_width), device='cuda')    #TODO try to optimize this and remove the for loop
+        to_return = torch.empty((0, len(self.classifiers)+1, feat_width, feat_width), device='cuda')    #TODO maybe the loop can be optimized
         for i in range(int((len(predictions))/(feat_width**2))):
             to_return = torch.cat((to_return, pixels_scores[i*(feat_width**2):(i+1)*(feat_width**2)].T.reshape(1, len(self.classifiers)+1, feat_width, feat_width)))
         return to_return
