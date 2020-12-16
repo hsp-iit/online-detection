@@ -47,6 +47,8 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_t
             args["use_difficult"] = not is_train
             args["is_target_task"] = is_target_task
             args["icwt_21_objs"] = icwt_21_objs
+        if data["factory"] == "YCBVideoDataset":
+            args["use_difficult"] = not is_train
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)
@@ -179,14 +181,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
             collate_fn=collator,
         )
         data_loaders.append(data_loader)
-    """
-    if is_train:
-        # during training, a single (possibly concatenated) data_loader is returned
-        assert len(data_loaders) == 1
-        return data_loaders[0]
 
-    return data_loaders
-    """
     if is_final_test:
         return data_loaders
 

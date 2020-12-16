@@ -210,7 +210,7 @@ _C.MODEL.ROI_HEADS.DETECTIONS_PER_IMG = 100
 
 _C.MODEL.ROI_BOX_HEAD = CN()
 _C.MODEL.ROI_BOX_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
-_C.MODEL.ROI_BOX_HEAD.PREDICTOR = "FastRCNNPredictor"
+_C.MODEL.ROI_BOX_HEAD.PREDICTOR = "OnlineDetectionBOXPredictor" #"FastRCNNPredictor"
 _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
 _C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)
@@ -490,9 +490,25 @@ _C.MINIBOOTSTRAP.DETECTOR.ITERATIONS = 2
 _C.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = 21
 # IoU thresholds to choose detector's negatives
 _C.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH = 0.3
+_C.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = True
 
 # ---------------------------------------------------------------------------- #
 # Regressors parameters
 # ---------------------------------------------------------------------------- #
 _C.REGRESSORS = CN()
 _C.REGRESSORS.MIN_OVERLAP = 0.6
+
+# ---------------------------------------------------------------------------- #
+# Segmentation parameters
+# ---------------------------------------------------------------------------- #
+_C.SEGMENTATION = CN()
+_C.SEGMENTATION.BATCH_SIZE = 20000
+_C.SEGMENTATION.SAMPLING_FACTOR = 0.3
+_C.SEGMENTATION.FEATURES_DEVICE = 'cuda'
+
+# ---------------------------------------------------------------------------- #
+# Evaluation parameters
+# ---------------------------------------------------------------------------- #
+_C.EVALUATION = CN()
+_C.EVALUATION.IOU_THRESHOLDS = (0.5,)
+_C.EVALUATION.USE_VOC07_METRIC = True

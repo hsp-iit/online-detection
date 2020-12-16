@@ -23,6 +23,7 @@ class ROIBoxHead(torch.nn.Module):
     def __init__(self, cfg, in_channels):
         super(ROIBoxHead, self).__init__()
         self.feature_extractor = make_roi_box_feature_extractor(cfg, in_channels)
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.predictor = make_roi_box_predictor(
             cfg, self.feature_extractor.out_channels)
         self.post_processor = make_roi_box_post_processor(cfg)
@@ -35,7 +36,9 @@ class ROIBoxHead(torch.nn.Module):
         self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
-        self.positives = []
+        self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
+        if self.compute_gt_positives:
+            self.positives = []
         self.negatives = []
         self.current_batch = []
         self.current_batch_size = []
@@ -43,7 +46,8 @@ class ROIBoxHead(torch.nn.Module):
             self.negatives.append([])
             self.current_batch.append(0)
             self.current_batch_size.append(0)
-            self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
+            if self.compute_gt_positives:
+                self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
             for j in range(self.iterations):
                 self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
@@ -69,17 +73,19 @@ class ROIBoxHead(torch.nn.Module):
 
     def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True, result_dir = None):
         if is_train:
-            return self.forward_train(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list, result_dir = result_dir)
+            return self.forward_train(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list, result_dir=result_dir)
         else:
-            return self.forward_test(features, proposals, gt_bbox = gt_bbox, gt_label = gt_label, img_size= img_size, gt_labels_list=gt_labels_list)
+            return self.forward_test(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list)
 
-    def forward_train(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, result_dir = None):
+    def forward_train(self, features, proposals, gt_bbox=None, gt_label=None, img_size=None, gt_labels_list=None, result_dir=None):
 
         if self.negatives_to_pick is None:
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)
 
         # Extract features that will be fed to the final classifier.
-        x = self.feature_extractor(features, proposals)
+        feat = self.feature_extractor(features, proposals)
+        x = self.avgpool(feat)
+        x = x.view(x.size(0), -1)
         proposals[0] = proposals[0].resize((img_size[0], img_size[1]))
         gt_bbox = gt_bbox.resize((img_size[0], img_size[1]))
 
@@ -87,18 +93,15 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = arr_proposals + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
+        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
+        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
+        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)
+        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 0, img_size[1]-1)
 
-        arr_gt_bbox = arr_gt_bbox + 1
-        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 1, img_size[0])
-        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
-        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
-        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
+        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 0, img_size[0]-1)
+        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 0, img_size[0]-1)
+        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 0, img_size[1]-1)
+        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 0, img_size[1]-1)
 
         # Count gt bboxes
         if gt_label is not None:
@@ -128,17 +131,18 @@ class ROIBoxHead(torch.nn.Module):
 
         # Loop on all the gt boxes
         for i in range(len(gt_labels_list)):
-            # Concatenate each gt to the positive tensor for its corresponding class
-            if self.training_device is 'cpu':
-                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
-            else:
-                self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
-            if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
-                if self.save_features:
-                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
-                    torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
-                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
-                self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            if self.compute_gt_positives:
+                # Concatenate each gt to the positive tensor for its corresponding class
+                if self.training_device is 'cpu':
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels).cpu()))
+                else:
+                    self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.cat((self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], x[i].view(-1, self.feature_extractor.out_channels)))
+                if self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(gt_labels_list[i]-1, len(self.positives[gt_labels_list[i]-1]) - 1))
+                        torch.save(self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1], path_to_save)
+                        self.positives[gt_labels_list[i]-1][len(self.positives[gt_labels_list[i]-1]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                    self.positives[gt_labels_list[i]-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
             # Extract regressor positives, i.e. with overlap > self.reg_min_overlap and with proposed boxes associated to that gt
             pos_ids = overlap[:,gt_labels_list[i]-1] > self.reg_min_overlap
@@ -149,13 +153,13 @@ class ROIBoxHead(torch.nn.Module):
             ex_boxes = arr_proposals[pos_ids].view(-1, 4)
             gt_boxes = torch.ones(ex_boxes.size(), device='cuda') * arr_proposals[i].view(-1, 4)
 
-            src_w = ex_boxes[:,2] - ex_boxes[:,0]
-            src_h = ex_boxes[:,3] - ex_boxes[:,1]
+            src_w = ex_boxes[:,2] - ex_boxes[:,0] + 1
+            src_h = ex_boxes[:,3] - ex_boxes[:,1] + 1
             src_ctr_x = ex_boxes[:,0] + 0.5 * src_w
             src_ctr_y = ex_boxes[:,1] + 0.5 * src_h
 
-            gt_w = gt_boxes[:,2] - gt_boxes[:,0]
-            gt_h = gt_boxes[:,3] - gt_boxes[:,1]
+            gt_w = gt_boxes[:,2] - gt_boxes[:,0] + 1
+            gt_h = gt_boxes[:,3] - gt_boxes[:,1] + 1
             gt_ctr_x = gt_boxes[:,0] + 0.5 * gt_w
             gt_ctr_y = gt_boxes[:,1] + 0.5 * gt_h
 
@@ -165,6 +169,7 @@ class ROIBoxHead(torch.nn.Module):
             dst_scl_h = torch.log(gt_h / src_h)
 
             target = torch.stack((dst_ctr_x, dst_ctr_y, dst_scl_w, dst_scl_h), dim=1)
+
             if self.training_device is 'cpu':
                 self.Y[len(self.Y)-1] = torch.cat((self.Y[len(self.Y)-1], target.cpu()), dim=0)
                 # Add class and features to C and X
@@ -204,7 +209,8 @@ class ROIBoxHead(torch.nn.Module):
             # Add random examples with iou < 0.3 otherwise
             else:
                 neg_i = x[overlap[:,i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
-                neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                if neg_i.size()[0] > 0:
+                    neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
             # Add negatives splitting them into batches
             neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
             ind_to_add = 0
@@ -231,13 +237,15 @@ class ROIBoxHead(torch.nn.Module):
         for index in indices_to_remove:
             self.still_to_complete.remove(index)
         
-        return None, None, None
+        return feat, None, None
 
 
     def forward_test(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None):
 
         # Extract features that will be fed to the final classifier.
         x = self.feature_extractor(features, proposals)
+        x = self.avgpool(x)
+        x = x.view(x.size(0), -1)
         proposals[0] = proposals[0].resize((img_size[0], img_size[1]))
         gt_bbox = gt_bbox.resize((img_size[0], img_size[1]))
         
@@ -245,18 +253,15 @@ class ROIBoxHead(torch.nn.Module):
         arr_proposals = proposals[0].bbox
         arr_gt_bbox = gt_bbox.bbox
 
-        # Add 1 to every coordinate as Matlab is 1-based
-        arr_proposals = arr_proposals + 1
-        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 1, img_size[0])
-        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 1, img_size[0])
-        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 1, img_size[1])
-        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 1, img_size[1])
+        arr_proposals[:, 2] = torch.clamp(arr_proposals[:, 2], 0, img_size[0]-1)
+        arr_proposals[:, 0] = torch.clamp(arr_proposals[:, 0], 0, img_size[0]-1)
+        arr_proposals[:, 3] = torch.clamp(arr_proposals[:, 3], 0, img_size[1]-1)
+        arr_proposals[:, 1] = torch.clamp(arr_proposals[:, 1], 0, img_size[1]-1)
 
-        arr_gt_bbox = arr_gt_bbox + 1
-        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 1, img_size[0])
-        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 1, img_size[0])
-        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 1, img_size[1])
-        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 1, img_size[1])
+        arr_gt_bbox[:, 2] = torch.clamp(arr_gt_bbox[:, 2], 0, img_size[0]-1)
+        arr_gt_bbox[:, 0] = torch.clamp(arr_gt_bbox[:, 0], 0, img_size[0]-1)
+        arr_gt_bbox[:, 3] = torch.clamp(arr_gt_bbox[:, 3], 0, img_size[1]-1)
+        arr_gt_bbox[:, 1] = torch.clamp(arr_gt_bbox[:, 1], 0, img_size[1]-1)
 
         # Count gt bboxes
         if gt_label is not None:

@@ -153,7 +153,62 @@ class DatasetCatalog(object):
             "data_dir": "iCWT/TABLE-TOP",
             "image_set": "",
             "split": "test_TASK2_21objs_pois_odd"
-        }
+        },
+        "icubworld_id_21objects_train_target_task_with_masks": {
+            "data_dir": "iCWT/TABLE-TOP-single-object-masks/train",
+            "image_set": "",
+            "split": "train_val_AutomSegm_tabletop_21objs"
+        },
+        "icubworld_id_21objects_test_target_task_with_masks": {
+            "data_dir": "iCWT/TABLE-TOP-single-object-masks/test",
+            "image_set": "",
+            "split": "test_AutomSegm_tabletop_21objs"
+        },
+        "ycb_video_train_pbr": {
+            "data_dir": "YCB-Video/train_pbr",
+            "image_set": "",
+            "split": "imageset_train"
+        },
+        "ycb_video_train_real": {
+            "data_dir": "YCB-Video/train_real",
+            "image_set": "",
+            "split": "imageset_train"
+        },
+        "ycb_video_train_real_1_out_of_10": {
+            "data_dir": "YCB-Video/train_real",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_10"
+        },
+        "ycb_video_test": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_test"
+        },
+        "ycb_video_test_keyframe": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "keyframe"
+        },
+        "ycb_video_val": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_val"
+        },
+        "ycb_video_demo": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_demo"
+        },
+        "ycb_video_test_1_out_of_10": {
+            "data_dir": "YCB-Video/test",
+            "image_set": "",
+            "split": "imageset_test_1_out_of_10"
+        },
+        "ycb_video_train_pbr_1_out_of_3": {
+            "data_dir": "YCB-Video/train_pbr",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_3"
+        },
     }
 
     @staticmethod
@@ -191,6 +246,19 @@ class DatasetCatalog(object):
             return dict(
                 factory="iCubWorldDataset",
                 args=args,
+            )
+        elif "ycb" in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                data_dir=os.path.join(data_dir, attrs["data_dir"]),
+                image_set=attrs["image_set"],
+                split=attrs["split"],
+            )
+            return dict(
+                factory="YCBVideoDataset",
+                args=args,
+                split=attrs["split"],
             )
         raise RuntimeError("Dataset not available: {}".format(name))
 

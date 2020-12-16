@@ -96,6 +96,8 @@ class iCubWorldDataset(torch.utils.data.Dataset):
 
         self._annopath = os.path.join(self.root, "Annotations", "%s.xml")
         self._imgpath = os.path.join(self.root, "Images", "%s.jpg")
+        self._maskpath = os.path.join(self.root, "Masks", "%s.png")
+
                 
         self._imgsetpath = os.path.join(self.root, "ImageSets", self.image_set, self.split + ".txt")
 
@@ -161,6 +163,7 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         boxes = []
         gt_classes = []
         difficult_boxes = []
+        masks = []
         TO_REMOVE = 1
         
         for obj in target.iter("object"):
