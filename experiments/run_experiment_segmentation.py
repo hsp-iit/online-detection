@@ -88,17 +88,19 @@ else:
 
         # Detector Region Refiner initialization
         region_refiner = RegionRefiner(cfg_online_path)
-        models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
+        if not args.normalize_features_regressor_detector:
+            models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
 
-        del region_refiner
-        torch.cuda.empty_cache()
+            del region_refiner
+            torch.cuda.empty_cache()
 
         if not args.use_only_gt_positives_detection:
             positives = load_positives_from_COXY(COXY)
 
         # Delete already used data
-        del COXY
-        torch.cuda.empty_cache()
+        if not args.normalize_features_regressor_detector:
+            del COXY
+            torch.cuda.empty_cache()
 
         stats = computeFeatStatistics_torch(positives, negatives, features_dim=negatives[0][0].size()[1],
                                             cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
@@ -114,6 +116,12 @@ else:
         del negatives, positives, regionClassifier
         torch.cuda.empty_cache()
 
+        if args.normalize_features_regressor_detector:
+            models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats, args.CPU), output_dir=output_dir)
+
+            del region_refiner, COXY
+            torch.cuda.empty_cache()
+
     else:
         if args.save_detector_features:
             feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection)
@@ -127,28 +135,35 @@ else:
 
         # Detector Region Refiner initialization
         region_refiner = RegionRefiner(cfg_online_path)
-        COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_detector'))
+        # Load COXY only if regressor features do not need to be normalized or if they are required to compute positives for classification
+        if not args.normalize_features_regressor_detector or not args.use_only_gt_positives_detection:
+            COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_detector'))
 
-        # Features can be extracted in a device that does not correspond to the one used for training.
-        # Convert them to the proper device.
-        COXY['C'] = COXY['C'].to(training_device)
-        COXY['X'] = COXY['X'].to(training_device)
-        COXY['Y'] = COXY['Y'].to(training_device)
+            # Features can be extracted in a device that does not correspond to the one used for training.
+            # Convert them to the proper device.
+            COXY['C'] = COXY['C'].to(training_device)
+            COXY['X'] = COXY['X'].to(training_device)
+            COXY['Y'] = COXY['Y'].to(training_device)
 
-        # Train Detector Region Refiner
-        models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
-        if args.use_only_gt_positives_detection:
+        # Train Detector Region Refiner if regressor features do not need to be normalized
+        if not args.normalize_features_regressor_detector:
+            models = region_refiner.trainRegionRefiner(COXY, output_dir=output_dir)
+
+        # Delete COXY if regressors have been trained and it is not required for positives computation for classification
+        if not args.normalize_features_regressor_detector and args.use_only_gt_positives_detection:
             # Delete already used data
-            del COXY
+            del region_refiner, COXY
             torch.cuda.empty_cache()
 
         positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'))
 
+        # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:
             positives = load_positives_from_COXY(COXY)
-            # Delete already used data
-            del COXY
-            torch.cuda.empty_cache()
+            # If regressor's features normalization is not required, delete COXY
+            if not args.normalize_features_regressor_detector:
+                del COXY
+                torch.cuda.empty_cache()
 
         # Features can be extracted in a device that does not correspond to the one used for training.
         # Convert them to the proper device.
@@ -169,6 +184,22 @@ else:
         # Delete already used data
         del negatives, positives, regionClassifier
         torch.cuda.empty_cache()
+
+        if args.normalize_features_regressor_detector and args.use_only_gt_positives_detection:
+            COXY = load_features_regressor(features_dir=os.path.join(output_dir, 'features_detector'))
+
+            # Features can be extracted in a device that does not correspond to the one used for training.
+            # Convert them to the proper device.
+            COXY['C'] = COXY['C'].to(training_device)
+            COXY['X'] = COXY['X'].to(training_device)
+            COXY['Y'] = COXY['Y'].to(training_device)
+
+        # Train Detector Region Refiner if regressor features do not need to be normalized
+        if args.normalize_features_regressor_detector:
+            models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats, args.CPU), output_dir=output_dir)
+            del region_refiner, COXY
+            torch.cuda.empty_cache()
+
 
 # Save detector models, if requested
 if args.save_detector_models:

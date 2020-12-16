@@ -151,14 +151,6 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         xmax = object.find('bndbox').find('xmax').text
         ymax = object.find('bndbox').find('ymax').text
 
-        # If annotations are 1-based this should not happen
-        if xmin == 0:
-            print("Annotations are not 1-based!")
-            xmin = 1
-        elif ymin == 0:
-            print("Annotations are not 1-based!")
-            ymin = 1
-        # add box to list and convert it to 0-based
         gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
         # Please note that that masks gts works only with the modified version of iCWT in which there is only an object per image
         # In the case that on-line segmentation will be necessary on a different extension of iCWT with possibly more than an object per image,
