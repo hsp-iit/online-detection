@@ -57,7 +57,8 @@ class ROIBoxHead(torch.nn.Module):
                                                                        detections_per_img=self.detections_per_img)
             # final classifier that converts the features into predictions
             cls_scores, bbox_pred = self.predictor(x)
-            result = self.post_processor((cls_scores, bbox_pred), proposals, self.num_classes, img_size)
+            #result = self.post_processor((cls_scores, bbox_pred), proposals, self.num_classes, img_size)
+            result = self.post_processor((cls_scores, bbox_pred), proposals, len(self.predictor.classifiers) + 1, img_size)
             return features, result, {}
 
         else:

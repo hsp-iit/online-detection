@@ -36,9 +36,10 @@ class FastRCNNPredictor(nn.Module):
             if not self.normalize_features_regressors:
                 # Refine boxes
                 bbox_pred = self.refine_boxes(x)
-            # Normalize features
-            x = x - self.stats['mean']
-            x = x * (20 / self.stats['mean_norm'])
+            if self.stats:
+                # Normalize features
+                x = x - self.stats['mean']
+                x = x * (20 / self.stats['mean_norm'])
             if self.normalize_features_regressors:
                 # Refine boxes
                 bbox_pred = self.refine_boxes(x)

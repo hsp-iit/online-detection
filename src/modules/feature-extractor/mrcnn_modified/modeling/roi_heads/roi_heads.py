@@ -25,6 +25,8 @@ class CombinedROIHeads(torch.nn.ModuleDict):
         x, detections, loss_box = self.box(features, proposals, gt_bbox=gt_bbox, gt_label=gt_label, img_size=img_size, gt_labels_list=gt_labels_list, is_train=is_train, result_dir=result_dir)
         if type(detections) is list:
             detections = detections[0]
+        if detections is None:
+            return x, detections, losses
         if len(detections.bbox) == 0:
             return x, detections, losses
         if eval_segm_with_gt_bboxes:

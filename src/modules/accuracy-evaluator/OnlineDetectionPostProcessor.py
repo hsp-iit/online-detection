@@ -61,6 +61,9 @@ class OnlineDetectionPostProcessor(PostProcessor):
             )
             result.append(boxlist_for_class)
 
+        if not result:
+            return None
+
         result = cat_boxlist(result)
         number_of_detections = len(result)
 

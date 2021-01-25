@@ -47,7 +47,7 @@ class Resize(object):
         return image
 
 class OnlineSegmentationDemo(object):
-    CATEGORIES_iCWT_TT = [
+    CATEGORIES_iCWT_TT_21 = [
         "__background__",
         'sodabottle3', 'sodabottle4',
         'mug1', 'mug3', 'mug4',
@@ -58,6 +58,20 @@ class OnlineSegmentationDemo(object):
         'book6', 'book9',
         'hairclip2', 'hairclip8', 'hairclip6',
         'sprayer6', 'sprayer8', 'sprayer9'
+    ]
+    CATEGORIES_iCWT_TT = [
+        "__background__",
+        "flower2", "flower5", "flower7",
+        "mug1", "mug3", "mug4",
+        "wallet6", "wallet7", "wallet10",
+        "sodabottle2", "sodabottle3", "sodabottle4",
+        "book4", "book6", "book9",
+        "ringbinder4", "ringbinder5", "ringbinder6",
+        "bodylotion2", "bodylotion5", "bodylotion8",
+        "sprayer6", "sprayer8", "sprayer9",
+        "pencilcase3", "pencilcase5", "pencilcase6",
+        "hairclip2", "hairclip6", "hairclip8"
+
     ]
     CATEGORIES_YCBV = [
         "__background__",
@@ -89,30 +103,14 @@ class OnlineSegmentationDemo(object):
         cfg,
         confidence_threshold,
         models_dir,
-        dataset
+        dataset=None
     ):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
 
-        try:
-            self.model.rpn.head.classifiers = torch.load(os.path.join(models_dir, 'classifier_rpn'))
-            self.model.rpn.head.regressors = torch.load(os.path.join(models_dir, 'regressor_rpn'))
-            self.model.rpn.head.stats = torch.load(os.path.join(models_dir, 'stats_rpn'))
-        except:
-            pass
-
-        try:
-            self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_detector'))
-            self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(models_dir, 'regressor_detector'))
-            self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(models_dir, 'stats_detector'))
-        except:
-            pass
-
-        try:
-            self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_segmentation'))
-            self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(models_dir, 'stats_segmentation'))
-        except:
-            pass
+        self.model.roi_heads.box.predictor.classifiers = []
+        self.model.roi_heads.box.predictor.regressors = np.empty((0))
+        self.model.roi_heads.box.predictor.stats = None
 
         self.model.eval()
         self.device = torch.device(cfg.MODEL.DEVICE)
@@ -134,6 +132,8 @@ class OnlineSegmentationDemo(object):
 
         if dataset == 'iCWT_TT':
             self.CATEGORIES = self.CATEGORIES_iCWT_TT
+        elif dataset == 'iCWT_TT_TABLETOP':
+            self.CATEGORIES = self.CATEGORIES_iCWT_TT_21
         elif dataset == 'ycbv':
             self.CATEGORIES = self.CATEGORIES_YCBV
         else:
@@ -209,6 +209,10 @@ class OnlineSegmentationDemo(object):
         img_size = [original_image.shape[1], original_image.shape[0]]
         with torch.no_grad():
             predictions = self.model(image_list, img_size=img_size)[1]
+        if predictions is None:
+            return None
+        if not type(predictions) is list:
+            predictions = [predictions]
         predictions = [o.to(self.cpu_device) for o in predictions]
 
         try:
@@ -334,3 +338,21 @@ class OnlineSegmentationDemo(object):
                 image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 2
             )
         return image
+
+    def update_model(self, models_rpn=None, models_detection=None, models_segmentation=None, categories=None):
+        if models_rpn:
+            self.model.rpn.head.classifiers = models_rpn['classifiers']
+            self.model.rpn.head.regressors = models_rpn['regressors']
+            self.model.rpn.head.stats = models_rpn['stats']
+
+        if models_detection:
+            self.model.roi_heads.box.predictor.classifiers = models_detection['classifiers']
+            self.model.roi_heads.box.predictor.regressors = models_detection['regressors']
+            self.model.roi_heads.box.predictor.stats = models_detection['stats']
+
+        if models_segmentation:
+            self.model.roi_heads.mask.predictor.classifiers = models_segmentation['classifiers']
+            self.model.roi_heads.mask.predictor.stats = models_segmentation['stats']
+
+        if categories:
+            self.CATEGORIES = categories

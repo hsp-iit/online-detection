@@ -120,7 +120,10 @@ class RPNModule(torch.nn.Module):
         super(RPNModule, self).__init__()
 
         self.cfg = cfg.clone()
-        self.save_features = self.cfg.SAVE_FEATURES_RPN
+        try:
+            self.save_features = self.cfg.SAVE_FEATURES_RPN
+        except:
+            self.save_features = False
 
         anchor_generator = make_anchor_generator(self.cfg)
 
@@ -142,6 +145,10 @@ class RPNModule(torch.nn.Module):
         self.box_selector_test = box_selector_test
         self.loss_evaluator = loss_evaluator
 
+        self.initialize_online_rpn_params()
+
+    def initialize_online_rpn_params(self):
+
         self.anchors = None
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES
@@ -161,7 +168,10 @@ class RPNModule(torch.nn.Module):
             else:
                 self.diag_list.append(torch.arange(0,i**2, i+1, dtype=torch.long, device='cuda'))
         self.negatives_to_pick = None
-        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        try:
+            self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        except:
+            self.training_device = 'cuda'
 
     def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None, result_dir = None):
 

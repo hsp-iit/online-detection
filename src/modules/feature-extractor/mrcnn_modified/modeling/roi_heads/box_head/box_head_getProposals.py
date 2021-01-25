@@ -30,10 +30,21 @@ class ROIBoxHead(torch.nn.Module):
         self.loss_evaluator = make_roi_box_loss_evaluator(cfg)
         self.cfg = cfg
 
-        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
-        self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
+        # TODO set these parameters in the default cfg file
+        try:
+            self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        except:
+            self.training_device = 'cuda'
 
-        self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
+        try:
+            self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
+        except:
+            self.save_features = False
+
+        self.initialize_online_detection_params()
+
+    def initialize_online_detection_params(self, num_classes=0):
+        self.num_classes = num_classes if num_classes else self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
@@ -68,6 +79,17 @@ class ROIBoxHead(torch.nn.Module):
         self.C = [torch.empty((0), dtype=torch.float32, device=self.training_device)]
 
         self.test_boxes = []
+
+    def add_new_class(self):
+        self.still_to_complete.append(self.num_classes)
+        self.num_classes += 1
+        self.negatives.append([])
+        self.current_batch.append(0)
+        self.current_batch_size.append(0)
+        if self.compute_gt_positives:
+            self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
+        for j in range(self.iterations):
+            self.negatives[len(self.negatives)-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
 
 

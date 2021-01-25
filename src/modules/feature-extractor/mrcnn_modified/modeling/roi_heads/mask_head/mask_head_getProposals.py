@@ -55,10 +55,18 @@ class ROIMaskHead(torch.nn.Module):
             cfg, self.feature_extractor.out_channels)
         self.post_processor = make_roi_mask_post_processor(cfg)
         self.loss_evaluator = make_roi_mask_loss_evaluator(cfg)
-        self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
+        # TODO set these parameters in the default cfg file
+        try:
+            self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
+        except:
+            self.save_features = False
+
         self.training_device = self.cfg.SEGMENTATION.FEATURES_DEVICE
 
-        self.num_classes = self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
+        self.initialize_online_segmentation_params()
+
+    def initialize_online_segmentation_params(self, num_classes=0):
+        self.num_classes = num_classes if num_classes else self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.batch_size = self.cfg.SEGMENTATION.BATCH_SIZE
         self.positives = []
         self.negatives = []
@@ -67,6 +75,11 @@ class ROIMaskHead(torch.nn.Module):
             self.negatives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
 
         self.sampling_factor = self.cfg.SEGMENTATION.SAMPLING_FACTOR
+
+    def add_new_class(self):
+        self.num_classes += 1
+        self.positives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
+        self.negatives.append([torch.empty((0, self.predictor.mask_fcn_logits.in_channels), device='cuda')])
 
     def forward(self, features, proposals, gt_labels_list, gt_bbox, targets=None, result_dir=None):
         """
