@@ -47,6 +47,29 @@ OBJECTNAME_TO_ID_21 = {
         "sprayer6":19, "sprayer8":20, "sprayer9":21,
 }
 
+OBJECTNAME_TO_ID_YCBV_IN_HAND = {
+        "__background__":0,
+        "002_master_chef_can":1,
+        "003_cracker_box":2,
+        "004_sugar_box":3,
+        "005_tomato_soup_can":4,
+        "006_mustard_bottle":5,
+        "007_tuna_fish_can":6,
+        "008_pudding_box":7,
+        "009_gelatin_box":8,
+        "010_potted_meat_can":9,
+        "011_banana":10,
+        "019_pitcher_base":11,
+        "024_bowl":12,
+        "025_mug":13,
+        "035_power_drill":14,
+        "036_wood_block":15,
+        "037_scissors":16,
+        "051_large_clamp":17,
+        "052_extra_large_clamp":18,
+        "061_foam_brick":19
+}
+
 def build_transform(cfg):
     """
     Creates a basic transformation that was used to train the models
@@ -115,7 +138,14 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
             name = object.find('name').text
         except:
             continue
-        gt_label = OBJECTNAME_TO_ID[name] if not icwt_21_objs else OBJECTNAME_TO_ID_21[name]
+
+        if not icwt_21_objs:
+            if 'ycbv' in anno_dir:
+                gt_label = OBJECTNAME_TO_ID_YCBV_IN_HAND[name]
+            else:
+                gt_label = OBJECTNAME_TO_ID[name]
+        else:
+            gt_label = OBJECTNAME_TO_ID_21[name]
         gt_labels.append(gt_label)
 
         xmin = object.find('bndbox').find('xmin').text

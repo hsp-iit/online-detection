@@ -12,6 +12,10 @@ from .inference import make_rpn_postprocessor
 
 from .average_recall import compute_average_recall
 
+from joblib import Parallel, delayed, parallel_backend
+import multiprocessing
+
+
 class RPNHeadConvRegressor(nn.Module):
     """
     A simple RPN Head for classification and bbox regression
@@ -162,6 +166,21 @@ class RPNHead(nn.Module):
                 predictions = classifier.predict(features)
             objectness_scores = torch.cat((objectness_scores, torch.t(predictions).reshape(1,1,self.height,self.width)), dim=1)
         return objectness_scores
+
+    def compute_objectness_FALKON_parallel(self, features):
+
+        def compute_score(classifier):
+            # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
+            if classifier is None:
+                return torch.t(torch.full((self.area, 1), -2, device='cuda')).reshape(1,1,self.height,self.width)
+            # Compute objectness with falkon classifier
+            else:
+                return torch.t(classifier.predict(features)).reshape(1,1,self.height,self.width)
+
+        objectness_scores = torch.cat(Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(compute_score)(self.classifiers[i]) for i in range(len(self.classifiers))), dim=1)
+
+        return objectness_scores
+
 
 
 class RPNModule(torch.nn.Module):

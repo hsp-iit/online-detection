@@ -209,6 +209,11 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_train_1_out_of_3"
         },
+        "ycbv_in_hand_icubworld_format": {
+            "data_dir": "ycbv_in_hand",
+            "image_set": "",
+            "split": "train_imageset_first_200"
+        },
     }
 
     @staticmethod

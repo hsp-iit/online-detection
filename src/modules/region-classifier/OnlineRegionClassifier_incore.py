@@ -18,7 +18,7 @@ import copy
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
-    def __init__(self, classifier, positives, negatives, stats, cfg_path=None, is_rpn=False, is_segmentation=False):
+    def __init__(self, classifier, positives, negatives, stats=None, cfg_path=None, is_rpn=False, is_segmentation=False):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             if is_rpn:
@@ -51,13 +51,16 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.num_classes = len(self.cfg['CHOSEN_CLASSES'])
         if is_rpn:
             self.num_classes += 1
-        self.stats = stats
-        self.mean = self.stats['mean']
-        self.std = self.stats['std']
-        self.mean_norm = self.stats['mean_norm']
+        if stats:
+            self.stats = stats
+            self.mean = self.stats['mean']
+            self.std = self.stats['std']
+            self.mean_norm = self.stats['mean_norm']
 
         self.normalized = False
         self.is_segmentation = is_segmentation
+
+        self.return_caches = False
 
 
     def loadRegionClassifier(self) -> None:
@@ -76,6 +79,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.lam = opts['lam']
         if 'sigma' in opts:
             self.sigma = opts['sigma']
+        if 'return_caches' in opts:
+            self.return_caches = opts['return_caches']
+        if 'normalized' in opts:
+            self.normalized = opts['normalized']
 
 
     def updateModel(self, cache):
@@ -124,7 +131,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     print('Model updated in {} seconds'.format(time.time() - t_update))
 
                     t_easy = time.time()
-                    if len(caches[i]['neg']) != 0:
+                    if len(caches[i]['neg']) != 0 and not j == len(negatives[i]) - 1:
                         neg_pred = self.classifier.predict(model[i], caches[i]['neg'])
                         keep_idx = torch.where(neg_pred >= self.easy_tresh)[0]
                         easy_idx = len(caches[i]['neg']) - len(keep_idx)
@@ -133,7 +140,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
                         print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
                     # Delete cache of the i-th classifier if it is the last iteration to free memory
-                    if j == len(negatives[i]) - 1:
+                    if j == len(negatives[i]) - 1 and not self.return_caches:
                         caches[i] = None
                         torch.cuda.empty_cache()
             else:
@@ -152,6 +159,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         elif output_dir and not self.is_rpn and not self.is_segmentation:
             with open(os.path.join(output_dir, "result.txt"), "a") as fid:
                 fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        if self.return_caches:
+            self.caches = caches
         return model
 
     def trainRegionClassifier(self, opts=None, output_dir=None):
@@ -171,7 +180,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.normalized = True
 
         model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
-        return model
+        if not self.return_caches:
+            return model
+        else:
+            return model, self.caches
 
     def testRegionClassifier(self, model, test_boxes):
         print('Online Region Classifier testing')

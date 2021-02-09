@@ -43,7 +43,7 @@ class ROIBoxHead(torch.nn.Module):
 
         self.initialize_online_detection_params()
 
-    def initialize_online_detection_params(self, num_classes=0):
+    def initialize_online_detection_params(self, num_classes=0, num_images=None):
         self.num_classes = num_classes if num_classes else self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
@@ -63,6 +63,9 @@ class ROIBoxHead(torch.nn.Module):
                 self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
 
         self.negatives_to_pick = None
+
+        if num_images is not None:
+            self.cfg.NUM_IMAGES = num_images
         
         self.neg_iou_thresh = self.cfg.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH
         self.still_to_complete = list(range(self.num_classes))
