@@ -111,28 +111,6 @@ class RegionRefinerTrainer():
         if indices is None:
             X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device, dtype=torch.float64)
             R = torch.cholesky(X_transposed_X)
-            """
-            X_transposed_X_cuda = torch.matmul(torch.t(X.type(torch.float64)), X.type(torch.float64)) + lmbd * torch.eye(X.size()[1], device=X.device).type(torch.float64)
-            X_transposed_X = torch.matmul(torch.t(X.type(torch.float64).to('cpu')), X.type(torch.float64).to('cpu')) + lmbd * torch.eye(X.size()[1], device='cpu').type(torch.float64)
-            X_transposed_X = X_transposed_X.to('cuda')
-            #X_transposed_X = torch.mm(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
-
-            print(torch.where(torch.eig(X_transposed_X)[0][:,0]<0)[0])
-            print(torch.eig(X_transposed_X)[0][torch.where(torch.eig(X_transposed_X)[0][:,0]<0)[0]])
-            print(X_transposed_X-X_transposed_X_cuda)
-            print(torch.max(torch.abs(X_transposed_X-X_transposed_X_cuda)))
-            print(torch.max(torch.abs(X-torch.clone(X).to('cpu').to('cuda'))))
-            R = torch.cholesky(X_transposed_X.type(torch.float32))
-            """
-            """
-            try:
-                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
-                R = torch.cholesky(X_transposed_X)
-            except:
-                X_transposed_X = torch.matmul(torch.t(X).to('cpu'), X.to('cpu')) + lmbd * torch.eye(X.size()[1], device='cpu')
-                R = torch.cholesky(X_transposed_X).to('cuda')
-            """
-
         to_return = {}
         X_original = X.clone()
         y_original = y.clone()

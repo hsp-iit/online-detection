@@ -193,12 +193,17 @@ def load_features_regressor(features_dir, samples_fraction=1.0):
             }
     return COXY
 
-def load_positives_from_COXY(COXY):
+def load_positives_from_COXY(COXY, del_COXY=False):
     positives = []
     num_classes = len(torch.unique(COXY['C']))
     for i in range(num_classes):
         ids_i = torch.where(COXY['C'] == i+1)[0]
         positives.append(COXY['X'][ids_i])
+        if del_COXY:
+            ids_i_to_rm = torch.where(COXY['C'] != i + 1)[0]
+            COXY['X'] = COXY['X'][ids_i_to_rm]
+            COXY['C'] = COXY['C'][ids_i_to_rm]
+
     return positives
 
 def minibatch_positives(positives, num_batches):

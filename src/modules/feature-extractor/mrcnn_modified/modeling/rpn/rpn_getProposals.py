@@ -318,11 +318,13 @@ class RPNModule(torch.nn.Module):
                 elem = elem.unsqueeze(0)
                 # Find indices where there are anchors associated to this gt_bbox
                 indices, _= torch.min(torch.eq(anchors_to_return.get_field('gt_bbox'), elem.repeat(anchors_to_return.bbox.size()[0],1)), dim=1, keepdim=True)
-                # Find max overlap with this gt_bbox
-                values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
-                positives_i = anchors_to_return[indices.squeeze()]
-                positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
-                positive_anchors = cat_boxlist([positive_anchors, positives_i])
+                # Additional check to avoid max on an empty tensor
+                if True in indices:
+                    # Find max overlap with this gt_bbox
+                    values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
+                    positives_i = anchors_to_return[indices.squeeze()]
+                    positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
+                    positive_anchors = cat_boxlist([positive_anchors, positives_i])
                 
         # Find anchors associated to the positives, to avoid unuseful computation
         pos_inds = torch.unique(positive_anchors.get_field('classifier'))
