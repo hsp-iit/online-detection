@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import glob
 
 basedir = os.path.dirname(__file__)
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
@@ -42,5 +43,9 @@ if args.model_path:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), args.model_path))
     feature_extractor.testFeatureExtractor(output_dir=output_dir, model_to_test=model_path)
 else:
-    print('Model not specified. Quitting.')
+    models_paths = sorted(glob.glob(output_dir + '/*'))
+    for model_path in models_paths:
+        if '.pth' in model_path:
+            print("Tested model:", model_path)
+            feature_extractor.testFeatureExtractor(output_dir=output_dir, model_to_test=model_path)
 

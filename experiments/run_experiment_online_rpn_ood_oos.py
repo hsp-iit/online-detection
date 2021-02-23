@@ -19,7 +19,7 @@ from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_mode
 import gc
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--output_dir', action='store', type=str, default='online_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
+parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
 parser.add_argument('--save_RPN_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the RPN.')
 parser.add_argument('--save_detector_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--save_segmentation_models', action='store_true', help='Save, in the output directory, FALKON models and features statistics of the segmentator.')
@@ -122,32 +122,9 @@ if not args.only_ood and not args.load_RPN_models:
         torch.save(models_reg_rpn, os.path.join(output_dir, 'regressor_rpn'))
         torch.save(stats_rpn, os.path.join(output_dir, 'stats_rpn'))
 
-    print('delete!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     # Delete already used data
     del negatives, positives, COXY, regionClassifier, region_refiner, classifier
     torch.cuda.empty_cache()
-
-    """
-
-    del regionClassifier
-    torch.cuda.empty_cache()
-
-    del classifier
-    torch.cuda.empty_cache()
-
-    del negatives
-    torch.cuda.empty_cache()
-
-    del positives
-    torch.cuda.empty_cache()
-
-    del region_refiner
-    torch.cuda.empty_cache()
-
-    del COXY
-    torch.cuda.empty_cache()
-
-    """
 
 # Load trained RPN models and set them in the pipeline, if requested
 elif not args.only_ood and args.load_RPN_models:
@@ -186,7 +163,7 @@ else:
         negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection)
         del feature_extractor
         torch.cuda.empty_cache()
-        COXY['X'] = torch.cat(COXY['X']) #TODO check if it works, changed according to the temporary change in the feature extractor
+        #COXY['X'] = torch.cat(COXY['X']) #TODO check if it works, changed according to the temporary change in the feature extractor
 
         # Detector Region Refiner initialization
         region_refiner = RegionRefiner(cfg_online_path)
@@ -197,7 +174,7 @@ else:
             torch.cuda.empty_cache()
 
         if not args.use_only_gt_positives_detection:
-            positives = load_positives_from_COXY(COXY, del_COXY=True)       #TODO del_COXY added
+            positives = load_positives_from_COXY(COXY)#, del_COXY=True)       #TODO del_COXY added
 
         # Delete already used data
         if not args.normalize_features_regressor_detector:
@@ -261,7 +238,7 @@ else:
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:
-            positives = load_positives_from_COXY(COXY, del_COXY=True)
+            positives = load_positives_from_COXY(COXY)#, del_COXY=True)
             # If regressor's features normalization is not required, delete COXY
             if not args.normalize_features_regressor_detector:
                 del COXY
@@ -341,6 +318,12 @@ if args.save_segmentation_models:
 
 # Initialize feature extractor
 accuracy_evaluator = AccuracyEvaluator(cfg_target_task, train_in_cpu=args.CPU)
+
+if not args.only_ood:
+    # Set trained RPN models in the pipeline
+    accuracy_evaluator.falkon_rpn_models = models_falkon_rpn
+    accuracy_evaluator.regressors_rpn_models = models_reg_rpn
+    accuracy_evaluator.stats_rpn = stats_rpn
 
 # Set detector models in the pipeline
 accuracy_evaluator.falkon_detector_models = model
