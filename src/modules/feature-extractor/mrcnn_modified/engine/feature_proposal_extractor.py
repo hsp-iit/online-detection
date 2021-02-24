@@ -274,7 +274,7 @@ def inference(
         compute_average_recall_RPN=False,
         is_train = True,
         result_dir=None,
-        extract_features_segmentation=False
+        extract_features_segmentation=False,
 ):
     # convert to a torch.device for efficiency
     device = torch.device(device)

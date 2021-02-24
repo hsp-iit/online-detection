@@ -71,6 +71,9 @@ class AccuracyEvaluatorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
+        if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
+            print('SingleConvRPNHead_getProposals is not correct as RPN head, changed to OnlineRPNHead.')
+            self.cfg.MODEL.RPN.RPN_HEAD = 'OnlineRPNHead'
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)

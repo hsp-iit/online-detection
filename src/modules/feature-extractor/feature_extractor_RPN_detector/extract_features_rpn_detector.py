@@ -31,7 +31,7 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
-class FeatureExtractorDetector:
+class FeatureExtractorRPNDetector:
     def __init__(self, cfg_path_target_task=None, local_rank=0):
 
         self.is_target_task = True
@@ -42,16 +42,20 @@ class FeatureExtractorDetector:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-        self.falkon_rpn_models = None
-        self.regressors_rpn_models = None
-        self.stats_rpn = None
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = use_only_gt_positives_detection
+
+        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        self.cfg.SAVE_FEATURES_RPN = save_features
+
         if save_features:
             if output_dir:
+                features_path = os.path.join(output_dir, 'features_RPN')
+                if not os.path.exists(features_path):
+                    os.mkdir(features_path)
                 features_path = os.path.join(output_dir, 'features_detector')
                 if not os.path.exists(features_path):
                     os.mkdir(features_path)
@@ -62,6 +66,7 @@ class FeatureExtractorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
+
         return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection)
 
     def load_parameters(self):
@@ -72,9 +77,9 @@ class FeatureExtractorDetector:
             )
             synchronize()
         self.cfg.merge_from_file(self.config_file)
-        if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
-            print('SingleConvRPNHead_getProposals is not correct as RPN head, changed to OnlineRPNHead.')
-            self.cfg.MODEL.RPN.RPN_HEAD = 'OnlineRPNHead'
+        if self.cfg.MODEL.RPN.RPN_HEAD == 'OnlineRPNHead':
+            print('OnlineRPNHead is not correct as RPN head, changed to SingleConvRPNHead_getProposals.')
+            self.cfg.MODEL.RPN.RPN_HEAD = 'SingleConvRPNHead_getProposals'
         self.icwt_21_objs = True if str(21) in self.cfg.DATASETS.TRAIN[0] else False
         if self.cfg.OUTPUT_DIR:
             mkdir(self.cfg.OUTPUT_DIR)
@@ -126,19 +131,6 @@ class FeatureExtractorDetector:
 
         extra_checkpoint_data = checkpointer.load(model_path)
 
-        if self.falkon_rpn_models is not None:
-            model.rpn.head.classifiers = self.falkon_rpn_models            
-        if self.regressors_rpn_models is not None:
-            model.rpn.head.regressors = self.regressors_rpn_models
-        if self.stats_rpn is not None:
-            model.rpn.head.stats = self.stats_rpn
-
-        if self.falkon_detector_models is not None:
-            model.roi_heads.box.predictor.classifiers = self.falkon_detector_models
-        if self.regressors_detector_models is not None:
-            model.roi_heads.box.predictor.regressors = self.regressors_detector_models
-        if self.stats_detector is not None:
-            model.roi_heads.box.predictor.stats = self.stats_detector
 
         if self.distributed:
             model = model.module
@@ -172,7 +164,7 @@ class FeatureExtractorDetector:
                                              icwt_21_objs=self.icwt_21_objs,
                                              is_train = is_train,
                                              result_dir=result_dir,
-                                             extract_features_segmentation=extract_features_segmentation
+                                             extract_features_segmentation=extract_features_segmentation,
                                             )
 
             if result_dir and is_train:
@@ -243,8 +235,53 @@ class FeatureExtractorDetector:
 
                             path_to_save = os.path.join(result_dir, 'features_detector', 'reg_y_batch_{}'.format(i))
                             torch.save(model.roi_heads.box.Y[i], path_to_save)
-                    return
-                else:
+                    if not self.cfg.SAVE_FEATURES_RPN:
+                        return
+
+                if self.cfg.SAVE_FEATURES_RPN:
+                    # Save features still not saved
+                    for clss in model.rpn.anchors_ids:
+                        # Save negatives batches
+                        for batch in range(len(model.rpn.negatives[clss])):
+                            if model.rpn.negatives[clss][batch].size()[0] > 0:
+                                path_to_save = os.path.join(result_dir, 'features_RPN',
+                                                            'negatives_cl_{}_batch_{}'.format(clss, batch))
+                                torch.save(model.rpn.negatives[clss][batch], path_to_save)
+                        # If a class does not have positive examples, save an empty tensor
+                        if model.rpn.positives[clss][0].size()[0] == 0 and len(model.rpn.positives[clss]) == 1:
+                            path_to_save = os.path.join(result_dir, 'features_RPN',
+                                                        'positives_cl_{}_batch_{}'.format(clss, 0))
+                            torch.save(
+                                torch.empty((0, model.rpn.feat_size), device=model.rpn.negatives[clss][0].device),
+                                path_to_save)
+                        else:
+                            for batch in range(len(model.rpn.positives[clss])):
+                                if model.rpn.positives[clss][batch].size()[0] > 0:
+                                    path_to_save = os.path.join(result_dir, 'features_RPN',
+                                                                'positives_cl_{}_batch_{}'.format(clss, batch))
+                                    torch.save(model.rpn.positives[clss][batch], path_to_save)
+
+                    for i in range(len(model.rpn.X)):
+                        if model.rpn.X[i].size()[0] > 0:
+                            path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_x_batch_{}'.format(i))
+                            torch.save(model.rpn.X[i], path_to_save)
+
+                            path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_c_batch_{}'.format(i))
+                            torch.save(model.rpn.C[i], path_to_save)
+
+                            path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_y_batch_{}'.format(i))
+                            torch.save(model.rpn.Y[i], path_to_save)
+
+                if not self.cfg.SAVE_FEATURES_RPN and not self.cfg.SAVE_FEATURES_DETECTOR:
+
+                    COXY_rpn = {'C': torch.cat(model.rpn.C),
+                                'O': model.rpn.O,
+                                'X': torch.cat(model.rpn.X),
+                                'Y': torch.cat(model.rpn.Y)
+                               }
+                    for i in range(self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES):
+                        model.rpn.positives[i] = torch.cat(model.rpn.positives[i])
+
                     COXY = {'C': torch.cat(model.roi_heads.box.C),
                             'O': model.roi_heads.box.O,
                             'X': torch.cat(model.roi_heads.box.X),
@@ -262,15 +299,16 @@ class FeatureExtractorDetector:
                             model.roi_heads.mask.positives[i] = torch.cat(model.roi_heads.mask.positives[i])
                     if extract_features_segmentation:
                         if use_only_gt_positives_detection:
-                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                            return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY_rpn), copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
                         else:
-                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                            return model.rpn.negatives, model.rpn.positives, COXY_rpn, model.roi_heads.box.negatives, None, COXY, model.roi_heads.mask.negatives, model.roi_heads.mask.positives
 
                     else:
                         if use_only_gt_positives_detection:
-                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                            return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY_rpn), copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
                         else:
-                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY)
+                            return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY_rpn), copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY)
+
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]

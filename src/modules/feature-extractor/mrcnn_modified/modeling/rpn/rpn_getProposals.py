@@ -173,14 +173,22 @@ class RPNModule(torch.nn.Module):
         except:
             self.training_device = 'cuda'
 
-    def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None, result_dir = None):
+    def forward(self, images, features, gt_bbox=None, img_size=None, compute_average_recall_RPN=False, is_train=None, result_dir=None, propagate_rpn_boxes=False):
 
         if self.negatives_to_pick is None:
             self.negatives_to_pick = math.ceil((self.batch_size*self.iterations)/self.cfg.NUM_IMAGES)
 
         features = self.head(features)
+        features = features[0]
+        if propagate_rpn_boxes:
+            logits = []
+            bbox_reg = []
+            logits.append(self.head.cls_logits(features))
+            bbox_reg.append(self.head.bbox_pred(features))
+
+        features = features[0]
+
         if self.anchors is None:
-            features = features[0][0]
             features_map_size = features.size()
             # Extract feature map info
             self.feat_size = features_map_size[0]
@@ -189,6 +197,8 @@ class RPNModule(torch.nn.Module):
 
             # Generate anchors
             self.anchors = self.anchor_generator(images, features)[0][0]
+            if propagate_rpn_boxes:
+                self.anchors_total = self.anchor_generator(images, features)
 
             self.feature_ids = torch.empty((0, 2), dtype=torch.long, device='cuda')
             self.classifiers = torch.empty(0, dtype=torch.uint8, device='cuda')
@@ -237,9 +247,6 @@ class RPNModule(torch.nn.Module):
             # Regressor classes
             self.C = [torch.empty((0), dtype=torch.float32, device=self.training_device)]
             
-        else:
-            features = features[0][0]
-
         anchors_to_return = self.anchors.copy_with_fields(self.anchors.fields())
         # Resize ground truth boxes to anchors dimensions
         gt_bbox = gt_bbox.resize(anchors_to_return.size)
@@ -397,8 +404,15 @@ class RPNModule(torch.nn.Module):
                 self.X.append(torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device))
                 self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
                 self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
+        if not propagate_rpn_boxes:
+            return {}, {}, 0
+        else:
+            # For end-to-end models, anchors must be transformed into boxes and
+            # sampled into a training batch.
+            with torch.no_grad():
+                boxes = self.box_selector_test(self.anchors_total, logits, bbox_reg)
+            return boxes, {}, 0
 
-        return {}, {}, 0
 
 def build_rpn(cfg, in_channels):
     """
