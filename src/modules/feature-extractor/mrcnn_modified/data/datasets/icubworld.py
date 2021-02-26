@@ -118,6 +118,19 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         "061_foam_brick"
     )
 
+    CLASSES_HO3D = (
+        "__background__",
+        "003_cracker_box",
+        "004_sugar_box",
+        "006_mustard_bottle",
+        "010_potted_meat_can",
+        "011_banana",
+        "021_bleach_cleanser",
+        "025_mug",
+        "035_power_drill",
+        "037_scissors",
+    )
+
 
     def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False):
 
@@ -141,6 +154,9 @@ class iCubWorldDataset(torch.utils.data.Dataset):
 
         if 'ycbv' in data_dir:
             cls = iCubWorldDataset.CLASSES_YCBV_IN_HAND
+        elif 'HO3D' in data_dir:
+            cls = iCubWorldDataset.CLASSES_HO3D
+            self._imgpath = self._imgpath.replace('.jpg', '.png')
         else:
             if is_target_task is False:
                 cls = iCubWorldDataset.CLASSES
@@ -149,8 +165,6 @@ class iCubWorldDataset(torch.utils.data.Dataset):
                     cls = iCubWorldDataset.CLASSES_TARGET_TASK
                 else:
                     cls = iCubWorldDataset.CLASSES_TARGET_TASK_21_OBJS
-
-
 
         self.class_to_ind = dict(zip(cls, range(len(cls))))
 

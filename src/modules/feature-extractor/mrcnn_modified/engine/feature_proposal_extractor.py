@@ -70,6 +70,19 @@ OBJECTNAME_TO_ID_YCBV_IN_HAND = {
         "061_foam_brick":19
 }
 
+OBJECTNAME_TO_ID_HO3D = {
+    "__background__":0,
+    "003_cracker_box":1,
+    "004_sugar_box":2,
+    "006_mustard_bottle":3,
+    "010_potted_meat_can":4,
+    "011_banana":5,
+    "021_bleach_cleanser":6,
+    "025_mug":7,
+    "035_power_drill":8,
+    "037_scissors":9,
+}
+
 def build_transform(cfg):
     """
     Creates a basic transformation that was used to train the models
@@ -142,6 +155,8 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         if not icwt_21_objs:
             if 'ycbv' in anno_dir:
                 gt_label = OBJECTNAME_TO_ID_YCBV_IN_HAND[name]
+            elif 'HO3D' in anno_dir:
+                gt_label = OBJECTNAME_TO_ID_HO3D[name]
             else:
                 gt_label = OBJECTNAME_TO_ID[name]
         else:

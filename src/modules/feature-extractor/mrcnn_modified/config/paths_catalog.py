@@ -214,6 +214,16 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "train_imageset_first_200"
         },
+        "ho3d_v2_train_icubworld_format": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train"
+        },
+        "ho3d_v2_test_icubworld_format": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_test"
+        },
     }
 
     @staticmethod
