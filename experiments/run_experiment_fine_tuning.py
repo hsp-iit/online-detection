@@ -13,6 +13,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--output_dir', action='store', type=str, default='fine_tuning_ycbv', help='Set experiment\'s output directory.')
 parser.add_argument('--config_file', action='store', type=str, default="configs/config_fine_tuning_ycbv.yaml", help='Manually set configuration file, by default it is configs/config_full_train_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments directory')
 parser.add_argument('--fine_tune_RPN', action='store_true', help='Fine-tune also last RPN layers')
+parser.add_argument('--use_backbone_features', action='store_true', help='Load features extracted with the backbone instead of the images as input')
+
 
 args = parser.parse_args()
 
@@ -34,4 +36,4 @@ else:
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_path_feature_task=cfg_feature_task)
 
-feature_extractor.trainFeatureExtractor(output_dir=output_dir, fine_tune_last_layers=True, fine_tune_rpn=args.fine_tune_RPN)
+feature_extractor.trainFeatureExtractor(output_dir=output_dir, fine_tune_last_layers=True, fine_tune_rpn=args.fine_tune_RPN, use_backbone_features=args.use_backbone_features)

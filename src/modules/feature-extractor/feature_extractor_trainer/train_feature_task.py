@@ -27,7 +27,7 @@ except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
 class TrainerFeatureTask:
-    def __init__(self, cfg_path_feature_task=None, local_rank=0):
+    def __init__(self, cfg_path_feature_task=None, local_rank=0, use_backbone_features=False):
         self.is_target_task = False
         self.config_file = cfg_path_feature_task
         self.num_gpus = int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
