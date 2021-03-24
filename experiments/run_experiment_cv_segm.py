@@ -129,4 +129,4 @@ for lam in lambdas:
         accuracy_evaluator.falkon_segmentation_models = model_segm
         accuracy_evaluator.stats_segmentation = stats_segm
 
-        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector)
+        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)

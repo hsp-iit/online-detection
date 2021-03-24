@@ -128,9 +128,9 @@ if not args.only_ood and not args.load_RPN_models:
 
 # Load trained RPN models and set them in the pipeline, if requested
 elif not args.only_ood and args.load_RPN_models:
-    feature_extractor.falkon_rpn_models = torch.load(os.path.join(output_dir, 'classifier_rpn'))
-    feature_extractor.regressors_rpn_models = torch.load(os.path.join(output_dir, 'regressor_rpn'))
-    feature_extractor.stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
+    models_falkon_rpn = torch.load(os.path.join(output_dir, 'classifier_rpn'))
+    models_reg_rpn = torch.load(os.path.join(output_dir, 'regressor_rpn'))
+    stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
 
 
 elif args.only_ood and args.load_RPN_models:
@@ -333,4 +333,4 @@ accuracy_evaluator.stats_detector = stats
 accuracy_evaluator.falkon_segmentation_models = model_segm
 accuracy_evaluator.stats_segmentation = stats_segm
 
-test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector)
+test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)

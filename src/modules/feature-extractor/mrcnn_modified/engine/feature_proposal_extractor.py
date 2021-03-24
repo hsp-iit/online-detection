@@ -118,9 +118,10 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
 
-    imset = open(imgset_path, "r")
+    #imset = open(imgset_path, "r")
 
-    img_path = imset.readlines()[i].strip('\n')
+    #img_path = imset.readlines()[i].strip('\n')
+    img_path = dataset.ids[i]
 
     filename_path = img_dir % img_path
     print(filename_path)
@@ -161,6 +162,7 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
                 gt_label = OBJECTNAME_TO_ID[name]
         else:
             gt_label = OBJECTNAME_TO_ID_21[name]
+
         gt_labels.append(gt_label)
 
         xmin = object.find('bndbox').find('xmin').text
@@ -168,13 +170,17 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         xmax = object.find('bndbox').find('xmax').text
         ymax = object.find('bndbox').find('ymax').text
 
-        gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        if 'HO3D' or 'ycbv' not in anno_dir:
+            gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        else:
+            gt_bboxes_list.append([float(xmin), float(ymin), float(xmax), float(ymax)])
+
         # Please note that that masks gts works only with the modified version of iCWT in which there is only an object per image
         # In the case that on-line segmentation will be necessary on a different extension of iCWT with possibly more than an object per image,
         # this function will be extended according to annotations' format
         if mask is not None:
             masks.append(mask)
-    imset.close()
+    #imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
 def compute_gts_ycbv(dataset, i, extract_features_segmentation):
@@ -185,9 +191,13 @@ def compute_gts_ycbv(dataset, i, extract_features_segmentation):
 
     imset = open(imgset_path, "r")
 
-    img_path = imset.readlines()[i].strip('\n').split()
+    #img_path = imset.readlines()[i].strip('\n').split()
 
-    filename_path = img_dir%(img_path[0], img_path[1])
+    img_path = dataset.ids[i].split()
+
+    filename_path = img_dir % (img_path[0], img_path[1])
+
+    #filename_path = img_dir%(img_path[0], img_path[1])
 
     scene_gt = dataset.scene_gts[int(img_path[0])]
     scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
@@ -213,10 +223,26 @@ def compute_gts_ycbv(dataset, i, extract_features_segmentation):
         bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
         if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
             continue
+
+        obj_id = scene_gt[str(int(img_path[1]))][j]["obj_id"]
+        # Manage the self.ycbv_classes_not_in_ho3d case
+        if dataset.ycbv_classes_not_in_ho3d:
+            # Do not consider gts belonging to classes in ho3d
+            if dataset.CLASSES[obj_id] in dataset.CLASSES_HO3D:
+                continue
+            else:
+                obj_id = dataset.CLASSES_NOT_IN_HO3D.index(dataset.CLASSES[obj_id])
+        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2] - 1, bbox[1] + bbox[3] - 1])
+        gt_labels.append(obj_id)
+        if extract_features_segmentation:
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])))
+
+        """
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
         gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
         if extract_features_segmentation:
             masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+        """
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 

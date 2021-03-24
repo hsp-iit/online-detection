@@ -17,7 +17,7 @@ from maskrcnn_benchmark.data.collate_batch import BatchCollator
 from maskrcnn_benchmark.data.transforms import build_transforms
 
 
-def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_target_task=False, icwt_21_objs=False):
+def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_target_task=False, icwt_21_objs=False, ycbv_classes_not_in_ho3d=False):
     """
     Arguments:
         dataset_list (list[str]): Contains the names of the datasets, i.e.,
@@ -47,8 +47,11 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_t
             args["use_difficult"] = not is_train
             args["is_target_task"] = is_target_task
             args["icwt_21_objs"] = icwt_21_objs
+            args["remove_images_without_annotations"] = is_train
         if data["factory"] == "YCBVideoDataset":
             args["use_difficult"] = not is_train
+            args["remove_images_without_annotations"] = is_train
+            args["ycbv_classes_not_in_ho3d"] = ycbv_classes_not_in_ho3d
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)
@@ -164,7 +167,8 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
     dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     transforms = build_transforms(cfg, is_train)
-    datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train, is_target_task, icwt_21_objs)
+    ycbv_classes_not_in_ho3d = cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES == 12                                 #TODO   maybe redefine this param
+    datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train, is_target_task, icwt_21_objs, ycbv_classes_not_in_ho3d)
 
     data_loaders = []
     for dataset in datasets:

@@ -440,7 +440,10 @@ def calc_segmentation_voc_prec_rec(gt_boxlists, pred_boxlists, iou_thresh=0.5):
         pred_label = pred_boxlist.get_field("labels").to('cpu').numpy()
         pred_score = pred_boxlist.get_field("scores").to('cpu').numpy()
         gt_masks = np.array([gt_boxlist.get_field("masks").get_mask_tensor().to('cpu').numpy()])
-        gt_masks = np.rint(gt_masks)[0]
+        if len(gt_masks.shape) == 4:
+            gt_masks = np.rint(gt_masks)[0]
+        else:
+            gt_masks = np.rint(gt_masks)
         gt_masks = np.array(gt_masks, dtype=np.uint8)
         gt_label = gt_boxlist.get_field("labels").to('cpu').numpy()
         gt_difficult = gt_boxlist.get_field("difficult").to('cpu').numpy()

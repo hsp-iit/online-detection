@@ -140,15 +140,16 @@ def build_transform(cfg):
     )
     return transform
 
-def compute_gts_icwt(dataset, i, icwt_21_objs = None):
+def compute_gts_icwt(dataset, i, icwt_21_objs = None, evaluate_segmentation=False):
     img_dir = dataset._imgpath
     anno_dir = dataset._annopath
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
 
-    imset = open(imgset_path, "r")
+    #imset = open(imgset_path, "r")
 
-    img_path = imset.readlines()[i].strip('\n')
+    #img_path = imset.readlines()[i].strip('\n')
+    img_path = dataset.ids[i]
 
     filename_path = img_dir % img_path
     print(filename_path)
@@ -164,7 +165,7 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     mask_path = (mask_dir % img_path)
 
     mask = None
-    if os.path.exists(mask_path):
+    if os.path.exists(mask_path) and evaluate_segmentation:
         mask = T.ToTensor()(Image.open(mask_path)).to('cuda')
     # Read in annotation file
     anno_file = anno_dir % img_path
@@ -197,15 +198,20 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         xmax = object.find('bndbox').find('xmax').text
         ymax = object.find('bndbox').find('ymax').text
 
-        gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        if 'HO3D' or 'ycbv' not in anno_dir:
+            gt_bboxes_list.append([float(xmin) - 1, float(ymin) - 1, float(xmax) - 1, float(ymax) - 1])
+        else:
+            gt_bboxes_list.append([float(xmin), float(ymin), float(xmax), float(ymax)])
+
         # Please note that that masks gts works only with the modified version of iCWT in which there is only an object per image
         # In the case that on-line segmentation will be necessary on a different extension of iCWT with possibly more than an object per image,
         # this function will be extended according to annotations' format
         if mask is not None:
             masks.append(mask)
-    imset.close()
+    #imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
+"""
 def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath
@@ -246,8 +252,75 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
             masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
+"""
 
-def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False):
+def compute_gts_ycbv(dataset, i, evaluate_segmentation):
+
+    img_dir = dataset._imgpath
+    imgset_path = dataset._imgsetpath
+    mask_dir = dataset._maskpath
+
+    imset = open(imgset_path, "r")
+
+    #img_path = imset.readlines()[i].strip('\n').split()
+
+    img_path = dataset.ids[i].split()
+
+    filename_path = img_dir % (img_path[0], img_path[1])
+
+    #filename_path = img_dir%(img_path[0], img_path[1])
+
+    scene_gt = dataset.scene_gts[int(img_path[0])]
+    scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
+
+    print(filename_path)
+    img_RGB = Image.open(filename_path)
+    # get image size such that later the boxes can be resized to the correct size
+    width, height = img_RGB.size
+    img_sizes = [width, height]
+    # convert to BGR format
+    try:
+        image = np.array(img_RGB)[:, :, [2, 1, 0]]
+    except:
+        image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
+
+    masks_paths = sorted(glob.glob(mask_dir%(img_path[0], img_path[1]+'*')))
+
+    gt_labels = []
+    gt_bboxes_list = []
+    masks = []
+
+    for j in range(len(masks_paths)):
+        bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
+        if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
+            continue
+
+        obj_id = scene_gt[str(int(img_path[1]))][j]["obj_id"]
+        # Manage the self.ycbv_classes_not_in_ho3d case
+        if dataset.ycbv_classes_not_in_ho3d:
+            # Do not consider gts belonging to classes in ho3d
+            if dataset.CLASSES[obj_id] in dataset.CLASSES_HO3D:
+                continue
+            else:
+                obj_id = dataset.CLASSES_NOT_IN_HO3D.index(dataset.CLASSES[obj_id])
+        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2] - 1, bbox[1] + bbox[3] - 1])
+        gt_labels.append(obj_id)
+        if evaluate_segmentation:
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])))
+
+        """
+        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
+        gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
+        if extract_features_segmentation:
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
+        """
+
+    return image, gt_bboxes_list, masks, gt_labels, img_sizes
+
+
+
+
+def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN=False, is_train=True, result_dir=None, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, evaluate_segmentation_icwt=False):
     model.eval()
     num_img = len(dataset.ids)
 
@@ -264,7 +337,7 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
 
     for i in range(num_img):
         if type(dataset).__name__ is 'iCubWorldDataset':
-            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
+            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs, evaluate_segmentation=evaluate_segmentation_icwt)
         elif type(dataset).__name__ is 'YCBVideoDataset':
             image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i, evaluate_segmentation=evaluate_segmentation)
 
@@ -315,7 +388,9 @@ def compute_predictions(cfg, dataset, model, transforms, icwt_21_objs=False, com
             is_target_task=True,
             icwt_21_objs=icwt_21_objs,
             iou_thresholds=model.roi_heads.box.cfg.EVALUATION.IOU_THRESHOLDS,
-            use_07_metric=model.roi_heads.box.cfg.EVALUATION.USE_VOC07_METRIC
+            use_07_metric=model.roi_heads.box.cfg.EVALUATION.USE_VOC07_METRIC,
+            evaluate_segmentation=evaluate_segmentation_icwt,
+
         )
     elif type(dataset).__name__ is 'YCBVideoDataset':
         extra_args = dict(
@@ -349,7 +424,8 @@ def inference(
         is_train = True,
         result_dir=None,
         evaluate_segmentation=True,
-        eval_segm_with_gt_bboxes=False
+        eval_segm_with_gt_bboxes=False,
+        evaluate_segmentation_icwt=False
 ):
     # convert to a torch.device for efficiency
     device = torch.device(device)
@@ -360,7 +436,7 @@ def inference(
     total_timer = Timer()
     inference_timer = Timer()
     total_timer.tic()
-    res = compute_predictions(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train=is_train, result_dir=result_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes)
+    res = compute_predictions(cfg, dataset, model, build_transform(cfg), icwt_21_objs, compute_average_recall_RPN= not is_train, is_train=is_train, result_dir=result_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes, evaluate_segmentation_icwt=evaluate_segmentation_icwt)
 
     synchronize()
     total_time = total_timer.toc()

@@ -85,13 +85,6 @@ if not os.path.exists(output_dir):
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_target_task, train_in_cpu=args.CPU)
 
-negatives_RPN, positives_RPN, COXY_RPN, negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeaturesRPNDetector(
-    is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True,
-    use_only_gt_positives_detection=args.use_only_gt_positives_detection)
-
-del feature_extractor
-torch.cuda.empty_cache()
-
 # Train RPN
 if not args.only_ood and not args.load_RPN_models:
     # Extract RPN features for the training set
@@ -101,6 +94,14 @@ if not args.only_ood and not args.load_RPN_models:
     #    if args.save_RPN_features:
     #        feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
     #    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+    negatives_RPN, positives_RPN, COXY_RPN, negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeaturesRPNDetector(
+        is_train=True, output_dir=output_dir, save_features=args.save_detector_features,
+        extract_features_segmentation=True,
+        use_only_gt_positives_detection=args.use_only_gt_positives_detection)
+
+    del feature_extractor
+    torch.cuda.empty_cache()
+
     stats_rpn = computeFeatStatistics_torch(positives_RPN, negatives_RPN, features_dim=positives_RPN[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
 
     # RPN Region Classifier initialization
@@ -128,7 +129,11 @@ if not args.only_ood and not args.load_RPN_models:
     del negatives_RPN, positives_RPN, COXY_RPN, regionClassifier, region_refiner, classifier
     torch.cuda.empty_cache()
 
-
+# Load trained RPN models and set them in the pipeline, if requested
+elif not args.only_ood and args.load_RPN_models:
+    models_falkon_rpn = torch.load(os.path.join(output_dir, 'classifier_rpn'))
+    models_reg_rpn = torch.load(os.path.join(output_dir, 'regressor_rpn'))
+    stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
 
 elif args.only_ood and args.load_RPN_models:
     print('Unconsistency! It is not possible to run only the online object detection experiment and to load RPN models. Quitting.')
@@ -308,4 +313,4 @@ accuracy_evaluator.stats_detector = stats
 accuracy_evaluator.falkon_segmentation_models = model_segm
 accuracy_evaluator.stats_segmentation = stats_segm
 
-test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector)
+test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)

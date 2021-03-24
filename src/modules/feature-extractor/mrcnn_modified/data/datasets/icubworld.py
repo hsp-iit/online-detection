@@ -12,6 +12,9 @@ else:
 
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
+from torchvision import transforms as T
+from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
+
 
 
 def _has_only_empty_bbox(anno):
@@ -83,18 +86,6 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         'hairclip2', 'hairclip8', 'hairclip6',
         'sprayer6', 'sprayer8', 'sprayer9'
     )
-    CLASSES_TARGET_TASK_21_OBJS = (
-        "__background__",
-        'sodabottle3', 'sodabottle4',
-        'mug1', 'mug3', 'mug4',
-        'pencilcase5', 'pencilcase3',
-        'ringbinder4', 'ringbinder5',
-        'wallet6',
-        'flower7', 'flower5', 'flower2',
-        'book6', 'book9',
-        'hairclip2', 'hairclip8', 'hairclip6',
-        'sprayer6', 'sprayer8', 'sprayer9'
-    )
     CLASSES_YCBV_IN_HAND = (
         "__background__",
         "002_master_chef_can",
@@ -132,7 +123,7 @@ class iCubWorldDataset(torch.utils.data.Dataset):
     )
 
 
-    def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False):
+    def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False, remove_images_without_annotations=True):
 
         self.root = data_dir
         self.image_set = image_set
@@ -144,7 +135,7 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         self._annopath = os.path.join(self.root, "Annotations", "%s.xml")
         self._imgpath = os.path.join(self.root, "Images", "%s.jpg")
         self._maskpath = os.path.join(self.root, "Masks", "%s.png")
-
+        self.compute_masks = False
                 
         self._imgsetpath = os.path.join(self.root, "ImageSets", self.image_set, self.split + ".txt")
 
@@ -154,9 +145,11 @@ class iCubWorldDataset(torch.utils.data.Dataset):
 
         if 'ycbv' in data_dir:
             cls = iCubWorldDataset.CLASSES_YCBV_IN_HAND
+            self.compute_masks = True
         elif 'HO3D' in data_dir:
             cls = iCubWorldDataset.CLASSES_HO3D
             self._imgpath = self._imgpath.replace('.jpg', '.png')
+            self.compute_masks = True
         else:
             if is_target_task is False:
                 cls = iCubWorldDataset.CLASSES
@@ -168,7 +161,6 @@ class iCubWorldDataset(torch.utils.data.Dataset):
 
         self.class_to_ind = dict(zip(cls, range(len(cls))))
 
-        remove_images_without_annotations = True
         if remove_images_without_annotations:
             ids = []
             for img_id in self.ids:
@@ -186,7 +178,7 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         img_id = self.ids[index]
         img = Image.open(self._imgpath % img_id).convert("RGB")
 
-        target = self.get_groundtruth(index)
+        target = self.get_groundtruth(index, self.compute_masks)
         target = target.clip_to_image(remove_empty=True)
 
         if len(target) == 0:
@@ -200,16 +192,23 @@ class iCubWorldDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.ids)
 
-    def get_groundtruth(self, index):
+    def get_groundtruth(self, index, evaluate_segmentation=False):
         img_id = self.ids[index]
         anno = ET.parse(self._annopath % img_id).getroot()
         anno = self._preprocess_annotation(anno)
 
         height, width = anno["im_info"]
+        if evaluate_segmentation:
+            mask_path = (self._maskpath % img_id)
+            masks = SegmentationMask(T.ToTensor()(Image.open(mask_path)), (width, height), mode="mask")
+
 
         target = BoxList(anno["boxes"], (width, height), mode="xyxy")
         target.add_field("labels", anno["labels"])
         target.add_field("difficult", anno["difficult"])
+        if evaluate_segmentation:
+            target.add_field("masks", masks)
+
         return target
 
     def _preprocess_annotation(self, target):
@@ -217,7 +216,10 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         gt_classes = []
         difficult_boxes = []
         masks = []
-        TO_REMOVE = 1
+        if 'HO3D' or 'ycbv' in self.root:
+            TO_REMOVE = 0
+        else:
+            TO_REMOVE = 1
         
         for obj in target.iter("object"):
             try:
@@ -263,10 +265,15 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         return {"height": im_info[0], "width": im_info[1]}
 
     def map_class_id_to_class_name(self, class_id, is_target_task=False, icwt_21_objs=False):
-        if is_target_task is False:
-            return iCubWorldDataset.CLASSES[class_id]
+        if 'ycbv' in self.root:
+            return iCubWorldDataset.CLASSES_YCBV_IN_HAND[class_id]
+        elif 'HO3D' in self.root:
+            return iCubWorldDataset.CLASSES_HO3D[class_id]
         else:
-            if icwt_21_objs is False:
-                return iCubWorldDataset.CLASSES_TARGET_TASK[class_id]
+            if is_target_task is False:
+                return iCubWorldDataset.CLASSES[class_id]
             else:
-                return iCubWorldDataset.CLASSES_TARGET_TASK_21_OBJS[class_id]
+                if icwt_21_objs is False:
+                    return iCubWorldDataset.CLASSES_TARGET_TASK[class_id]
+                else:
+                    return iCubWorldDataset.CLASSES_TARGET_TASK_21_OBJS[class_id]

@@ -50,7 +50,7 @@ class AccuracyEvaluatorDetector:
         self.stats_segmentation = None
 
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False, evaluate_segmentation_icwt=False):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
@@ -61,7 +61,7 @@ class AccuracyEvaluatorDetector:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes, normalize_features_regressors=normalize_features_regressors)
+        return self.train(is_train, result_dir=output_dir, evaluate_segmentation=evaluate_segmentation, eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes, normalize_features_regressors=normalize_features_regressors, evaluate_segmentation_icwt=evaluate_segmentation_icwt)
 
     def load_parameters(self):
         if self.distributed:
@@ -88,7 +88,7 @@ class AccuracyEvaluatorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False):
+    def train(self, is_train, result_dir=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False, evaluate_segmentation_icwt=False):
 
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
@@ -180,7 +180,8 @@ class AccuracyEvaluatorDetector:
                                              is_train = is_train,
                                              result_dir=result_dir,
                                              evaluate_segmentation=evaluate_segmentation,
-                                             eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes
+                                             eval_segm_with_gt_bboxes=eval_segm_with_gt_bboxes,
+                                             evaluate_segmentation_icwt=evaluate_segmentation_icwt
                                             )
 
             if result_dir and is_train:

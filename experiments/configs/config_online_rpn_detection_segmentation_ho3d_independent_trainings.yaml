@@ -1,0 +1,74 @@
+NUM_CLASSES: 10
+
+ONLINE_REGION_CLASSIFIER:
+    MINIBOOTSTRAP:
+        EASY_THRESH: -0.9
+        HARD_THRESH: -0.7
+    CLASSIFIER:
+        lambda: 0.0001
+        sigma: 15
+        M: 2000
+        kernel_type: 'gauss'
+
+REGION_REFINER:
+    opts:
+        lambda: 1000
+
+ONLINE_SEGMENTATION:
+    MINIBOOTSTRAP:
+        EASY_THRESH: -0.9
+        HARD_THRESH: -0.7
+    CLASSIFIER:
+        lambda: 0.00001
+        sigma: 5
+        M: 2000
+        kernel_type: 'gauss'
+
+EVALUATION:
+    SCORE_THRESH: -2
+    NMS: 0.3
+    DETECTIONS_PER_IMAGE: 100
+
+CHOSEN_CLASSES:
+    0: '_background_'
+    1: '003_cracker_box'
+    2: '004_sugar_box'
+    3: '006_mustard_bottle'
+    4: '010_potted_meat_can'
+    5: '011_banana'
+    6: '021_bleach_cleanser'
+    7: '025_mug'
+    8: '035_power_drill'
+    9: '037_scissors'
+
+RPN:
+    ONLINE_REGION_CLASSIFIER:
+        MINIBOOTSTRAP:
+            EASY_THRESH: -0.9
+            HARD_THRESH: -0.7
+        CLASSIFIER:
+            lambda: 0.0001
+            sigma: 25
+            M: 1000
+            kernel_type: 'gauss'
+
+    REGION_REFINER:
+        opts:
+            lambda: 0.01
+
+    CHOSEN_CLASSES:
+        0: '0'
+        1: '1'
+        2: '2'
+        3: '3'
+        4: '4'
+        5: '5'
+        6: '6'
+        7: '7'
+        8: '8'
+        9: '9'
+        10: '10'
+        11: '11'
+        12: '12'
+        13: '13'
+        14: '14'

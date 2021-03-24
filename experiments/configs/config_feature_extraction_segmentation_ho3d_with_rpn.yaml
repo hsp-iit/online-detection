@@ -3,7 +3,7 @@ MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
   WEIGHT: "catalog://Caffe2Detectron/COCO/35858791/e2e_mask_rcnn_R-50-C4_1x"
   RPN:
-    RPN_HEAD: "SingleConvRPNHead_getProposals"
+    RPN_HEAD: "OnlineRPNHead"
     PRE_NMS_TOP_N_TRAIN: 1000
     POST_NMS_TOP_N_TRAIN: 300
     PRE_NMS_TOP_N_TEST: 1000
@@ -16,7 +16,7 @@ MODEL:
   MASK_ON: True
 DATASETS:
   TRAIN: ("ho3d_v2_train_icubworld_format_1_out_of_2",) #("ho3d_v2_train_icubworld_format_1_out_of_2_3_seq",) #("ho3d_v2_train_icubworld_format",)
-  TEST: ("ho3d_v2_test_icubworld_format_1_out_of_5",) #("ho3d_v2_test_icubworld_format",)
+  TEST: ("ho3d_v2_test_icubworld_format_1_out_of_5",) #("ho3d_v2_val_icubworld_format_1_out_of_5",) #("ho3d_v2_test_icubworld_format",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333

@@ -58,10 +58,10 @@ else:
 # Set chosen experiment
 is_tabletop = not args.icwt30
 
-cfg_target_task = 'configs/config_feature_extraction_segmentation_ycbv_with_rpn.yaml'
+cfg_target_task = 'configs/config_feature_extraction_segmentation_ycbv_no_ho3d_objects_with_rpn.yaml' #'configs/config_feature_extraction_segmentation_ho3d_with_rpn.yaml' #'configs/config_feature_extraction_segmentation_ycbv_with_rpn.yaml'
 
-cfg_rpn = 'configs/config_rpn_ycb.yaml'
-cfg_online_path = 'configs/config_online_rpn_detection_segmentation_ycbv.yaml'
+cfg_rpn = 'configs/config_rpn_ycbv_no_ho3d_objects.yaml' #'configs/config_rpn_ho3d.yaml' #'configs/config_rpn_ycb.yaml'
+cfg_online_path = 'configs/config_online_rpn_detection_segmentation_ycbv_no_ho3d_objects.yaml' #'configs/config_online_rpn_detection_segmentation_ho3d.yaml' #'configs/config_online_rpn_detection_segmentation_ycbv.yaml'
 
 
 # Set and create output directory

@@ -75,14 +75,15 @@ if not os.path.exists(output_dir):
 feature_extractor = FeatureExtractor(cfg_target_task, train_in_cpu=args.CPU)
 
 if args.load_RPN_models:
+    print('Loading rpn models')
     feature_extractor.falkon_rpn_models = torch.load(os.path.join(output_dir, 'classifier_rpn'))
     feature_extractor.regressors_rpn_models = torch.load(os.path.join(output_dir, 'regressor_rpn'))
     feature_extractor.stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
 
 lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
 sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
-lambdas = [0.00001]
-sigmas = [10]
+#lambdas = [0.0001]
+#sigmas = [15]
 for lam in lambdas:
     for sigma in sigmas:
         print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' % (str(lam), str(sigma)))
@@ -179,4 +180,4 @@ for lam in lambdas:
         accuracy_evaluator.regressors_detector_models = models
         accuracy_evaluator.stats_detector = stats
 
-        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation=False)
+        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation=False, evaluate_segmentation_icwt=False)

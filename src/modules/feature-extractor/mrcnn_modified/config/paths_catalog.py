@@ -224,6 +224,41 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_test"
         },
+        "ho3d_v2_train_icubworld_format_1_out_of_10": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_10"
+        },
+        "ho3d_v2_train_icubworld_format_1_out_of_5": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_5"
+        },
+        "ho3d_v2_train_icubworld_format_1_out_of_2": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_2"
+        },
+        "ho3d_v2_train_icubworld_format_1_out_of_2_3_seq": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_2_3_seq"
+        },
+        "ho3d_v2_train_icubworld_format_1_out_of_3": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_3"
+        },
+        "ho3d_v2_test_icubworld_format_1_out_of_5": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_test_1_out_of_5"
+        },
+        "ho3d_v2_val_icubworld_format_1_out_of_5": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_val_1_out_of_5"
+        },
     }
 
     @staticmethod
