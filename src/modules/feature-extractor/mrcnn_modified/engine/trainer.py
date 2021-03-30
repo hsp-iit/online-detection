@@ -53,7 +53,8 @@ def do_train(
     test_period,
     arguments,
     is_target_task=False,
-    icwt_21_objs=False
+    icwt_21_objs=False,
+    training_seconds=None
 ):
     logger = logging.getLogger("maskrcnn_benchmark.trainer")
     logger.info("Start training")
@@ -125,59 +126,115 @@ def do_train(
                     memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                 )
             )
-        if iteration % checkpoint_period == 0:
-            checkpointer.save("model_{:07d}".format(iteration), **arguments)
-        if data_loader_val is not None and test_period > 0 and iteration % test_period == 0:
-            meters_val = MetricLogger(delimiter="  ")
-            synchronize()
-            _ = inference(  # The result can be used for additional logging, e. g. for TensorBoard
-                model,
-                # The method changes the segmentation mask format in a data loader,
-                # so every time a new data loader is created:
-                make_data_loader(cfg, is_train=False, is_distributed=(get_world_size() > 1), is_target_task=is_target_task, icwt_21_objs=icwt_21_objs),# is_for_period=True),
-                dataset_name="[Test]",
-                iou_types=iou_types,
-                box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
-                device=cfg.MODEL.DEVICE,
-                expected_results=cfg.TEST.EXPECTED_RESULTS,
-                expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
-                output_folder=None,
-                is_target_task=is_target_task,
-                icwt_21_objs=icwt_21_objs
-            )
-            synchronize()
-            model.train()
-            with torch.no_grad():
-                # Should be one image for each GPU:
-                for iteration_val, (images_val, targets_val, _) in enumerate(tqdm(data_loader_val)):
-                    images_val = images_val.to(device)
-                    targets_val = [target.to(device) for target in targets_val]
-                    loss_dict = model(images_val, targets_val)
-                    losses = sum(loss for loss in loss_dict.values())
-                    loss_dict_reduced = reduce_loss_dict(loss_dict)
-                    losses_reduced = sum(loss for loss in loss_dict_reduced.values())
-                    meters_val.update(loss=losses_reduced, **loss_dict_reduced)
-            synchronize()
-            logger.info(
-                meters_val.delimiter.join(
-                    [
-                        "[Test]: ",
-                        "eta: {eta}",
-                        "iter: {iter}",
-                        "{meters}",
-                        "lr: {lr:.6f}",
-                        "max mem: {memory:.0f}",
-                    ]
-                ).format(
-                    eta=eta_string,
-                    iter=iteration,
-                    meters=str(meters_val),
-                    lr=optimizer.param_groups[0]["lr"],
-                    memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+
+        if training_seconds:
+            if end - start_training_time > training_seconds:
+                if data_loader_val is not None:
+                    meters_val = MetricLogger(delimiter="  ")
+                    synchronize()
+                    _ = inference(  # The result can be used for additional logging, e. g. for TensorBoard
+                        model,
+                        # The method changes the segmentation mask format in a data loader,
+                        # so every time a new data loader is created:
+                        make_data_loader(cfg, is_train=False, is_distributed=(get_world_size() > 1), is_target_task=is_target_task, icwt_21_objs=icwt_21_objs),  # is_for_period=True),
+                        dataset_name="[Test]",
+                        iou_types=iou_types,
+                        box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
+                        device=cfg.MODEL.DEVICE,
+                        expected_results=cfg.TEST.EXPECTED_RESULTS,
+                        expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
+                        output_folder=None,
+                        is_target_task=is_target_task,
+                        icwt_21_objs=icwt_21_objs
+                    )
+                    synchronize()
+                    model.train()
+                    with torch.no_grad():
+                        # Should be one image for each GPU:
+                        for iteration_val, (images_val, targets_val, _) in enumerate(tqdm(data_loader_val)):
+                            images_val = images_val.to(device)
+                            targets_val = [target.to(device) for target in targets_val]
+                            loss_dict = model(images_val, targets_val)
+                            losses = sum(loss for loss in loss_dict.values())
+                            loss_dict_reduced = reduce_loss_dict(loss_dict)
+                            losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+                            meters_val.update(loss=losses_reduced, **loss_dict_reduced)
+                    synchronize()
+                    logger.info(
+                        meters_val.delimiter.join(
+                            [
+                                "[Test]: ",
+                                "eta: {eta}",
+                                "iter: {iter}",
+                                "{meters}",
+                                "lr: {lr:.6f}",
+                                "max mem: {memory:.0f}",
+                            ]
+                        ).format(
+                            eta=eta_string,
+                            iter=iteration,
+                            meters=str(meters_val),
+                            lr=optimizer.param_groups[0]["lr"],
+                            memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                        )
+                    )
+                checkpointer.save("model_{:07d}".format(iteration), **arguments)
+
+
+        else:
+            if iteration % checkpoint_period == 0:
+                checkpointer.save("model_{:07d}".format(iteration), **arguments)
+            if data_loader_val is not None and test_period > 0 and iteration % test_period == 0:
+                meters_val = MetricLogger(delimiter="  ")
+                synchronize()
+                _ = inference(  # The result can be used for additional logging, e. g. for TensorBoard
+                    model,
+                    # The method changes the segmentation mask format in a data loader,
+                    # so every time a new data loader is created:
+                    make_data_loader(cfg, is_train=False, is_distributed=(get_world_size() > 1), is_target_task=is_target_task, icwt_21_objs=icwt_21_objs),# is_for_period=True),
+                    dataset_name="[Test]",
+                    iou_types=iou_types,
+                    box_only=False if cfg.MODEL.RETINANET_ON else cfg.MODEL.RPN_ONLY,
+                    device=cfg.MODEL.DEVICE,
+                    expected_results=cfg.TEST.EXPECTED_RESULTS,
+                    expected_results_sigma_tol=cfg.TEST.EXPECTED_RESULTS_SIGMA_TOL,
+                    output_folder=None,
+                    is_target_task=is_target_task,
+                    icwt_21_objs=icwt_21_objs
                 )
-            )
-        if iteration == max_iter:
-            checkpointer.save("model_final", **arguments)
+                synchronize()
+                model.train()
+                with torch.no_grad():
+                    # Should be one image for each GPU:
+                    for iteration_val, (images_val, targets_val, _) in enumerate(tqdm(data_loader_val)):
+                        images_val = images_val.to(device)
+                        targets_val = [target.to(device) for target in targets_val]
+                        loss_dict = model(images_val, targets_val)
+                        losses = sum(loss for loss in loss_dict.values())
+                        loss_dict_reduced = reduce_loss_dict(loss_dict)
+                        losses_reduced = sum(loss for loss in loss_dict_reduced.values())
+                        meters_val.update(loss=losses_reduced, **loss_dict_reduced)
+                synchronize()
+                logger.info(
+                    meters_val.delimiter.join(
+                        [
+                            "[Test]: ",
+                            "eta: {eta}",
+                            "iter: {iter}",
+                            "{meters}",
+                            "lr: {lr:.6f}",
+                            "max mem: {memory:.0f}",
+                        ]
+                    ).format(
+                        eta=eta_string,
+                        iter=iteration,
+                        meters=str(meters_val),
+                        lr=optimizer.param_groups[0]["lr"],
+                        memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
+                    )
+                )
+            if iteration == max_iter:
+                checkpointer.save("model_final", **arguments)
 
     total_training_time = time.time() - start_training_time
     total_time_str = str(datetime.timedelta(seconds=total_training_time))

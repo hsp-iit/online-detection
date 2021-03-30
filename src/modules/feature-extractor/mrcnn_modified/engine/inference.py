@@ -254,7 +254,7 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 """
 
-def compute_gts_ycbv(dataset, i, evaluate_segmentation):
+def compute_gts_ycbv(dataset, i, evaluate_segmentation):    #TODO evaluate if filename_path must be returned, it shouldn't be necessary
 
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath

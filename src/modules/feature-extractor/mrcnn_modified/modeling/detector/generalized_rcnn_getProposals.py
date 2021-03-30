@@ -10,7 +10,7 @@ from maskrcnn_benchmark.structures.image_list import to_image_list
 
 from maskrcnn_benchmark.modeling.backbone import build_backbone
 from ..roi_heads.roi_heads_getProposals import build_roi_heads
-
+import os
 import time
 
 class GeneralizedRCNN(nn.Module):
@@ -36,7 +36,7 @@ class GeneralizedRCNN(nn.Module):
 
         self.cfg = cfg.clone()
 
-    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False):
+    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False, img_name=None):  #TODO check if img_name must be added also in generalized rcnn for rpn
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -51,6 +51,21 @@ class GeneralizedRCNN(nn.Module):
         """
         images = to_image_list(images)
         features = self.backbone(images.tensors)
+        if False:    #TODO edit this
+            features_name = img_name.replace('rgb', 'feat').replace('.png', '.pth').replace('.jpg', '.pth')
+            feat_path = os.path.dirname(features_name)
+            if not os.path.exists(feat_path):
+                os.makedirs(feat_path)
+            torch.save(features, features_name)
+
+            targets_name = img_name.replace('rgb', 'targets').replace('.png', '.pth').replace('.jpg', '.pth')
+            targets_path = os.path.dirname(targets_name)
+            if not os.path.exists(targets_path):
+                os.makedirs(targets_path)
+            torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
+
+
+
         if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
             proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN, propagate_rpn_boxes=True)
         else:

@@ -179,6 +179,11 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_train_1_out_of_10"
         },
+        "ycb_video_train_real_1_out_of_10_from_feat": {
+            "data_dir": "YCB-Video/train_real",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_10"
+        },
         "ycb_video_test": {
             "data_dir": "YCB-Video/test",
             "image_set": "",
@@ -297,7 +302,7 @@ class DatasetCatalog(object):
                 factory="iCubWorldDataset",
                 args=args,
             )
-        elif "ycb" in name:
+        elif "ycb" in name and not 'from_feat' in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -307,6 +312,19 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="YCBVideoDataset",
+                args=args,
+                split=attrs["split"],
+            )
+        elif "ycb" in name and 'from_feat' in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                data_dir=os.path.join(data_dir, attrs["data_dir"]),
+                image_set=attrs["image_set"],
+                split=attrs["split"],
+            )
+            return dict(
+                factory="YCBVideoDatasetFromFeat",
                 args=args,
                 split=attrs["split"],
             )

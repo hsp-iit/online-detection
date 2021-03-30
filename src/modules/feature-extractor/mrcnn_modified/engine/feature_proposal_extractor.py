@@ -181,7 +181,7 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         if mask is not None:
             masks.append(mask)
     #imset.close()
-    return image, gt_bboxes_list, masks, gt_labels, img_sizes
+    return image, gt_bboxes_list, masks, gt_labels, img_sizes, filename_path
 
 def compute_gts_ycbv(dataset, i, extract_features_segmentation):
 
@@ -244,7 +244,7 @@ def compute_gts_ycbv(dataset, i, extract_features_segmentation):
             masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
         """
 
-    return image, gt_bboxes_list, masks, gt_labels, img_sizes
+    return image, gt_bboxes_list, masks, gt_labels, img_sizes, filename_path
 
 
 
@@ -264,9 +264,9 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
 
     for i in range(num_img):
         if type(dataset).__name__ is 'iCubWorldDataset':
-            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_icwt(dataset, i, icwt_21_objs)
+            image, gt_bboxes_list, masks, gt_labels, img_sizes, img_name = compute_gts_icwt(dataset, i, icwt_21_objs)
         elif type(dataset).__name__ is 'YCBVideoDataset':
-            image, gt_bboxes_list, masks, gt_labels, img_sizes = compute_gts_ycbv(dataset, i, extract_features_segmentation=extract_features_segmentation)
+            image, gt_bboxes_list, masks, gt_labels, img_sizes, img_name = compute_gts_ycbv(dataset, i, extract_features_segmentation=extract_features_segmentation)
 
         # Save list of boxes as tensor
         gt_bbox_tensor = torch.tensor(gt_bboxes_list, device="cuda")
@@ -284,6 +284,8 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
                 pass
         except:
             gt_bbox_boxlist = BoxList(torch.empty((0,4), device="cuda"), image_size=img_sizes, mode='xyxy')
+
+        gt_bbox_boxlist.add_field("labels", torch.tensor(gt_labels))
             
         # apply pre-processing to image
         image = transforms(image)
@@ -292,7 +294,7 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
         image_list = image_list.to("cuda")
         # compute predictions
         with torch.no_grad():
-            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, compute_average_recall_RPN=compute_average_recall_RPN, gt_labels_list=gt_labels, is_train=is_train, result_dir=result_dir, extract_features_segmentation=extract_features_segmentation)
+            AR = model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, compute_average_recall_RPN=compute_average_recall_RPN, gt_labels_list=gt_labels, is_train=is_train, result_dir=result_dir, extract_features_segmentation=extract_features_segmentation, img_name=img_name)
             if compute_average_recall_RPN:
                 average_recall_RPN += AR
 

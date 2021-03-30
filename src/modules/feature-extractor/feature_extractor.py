@@ -57,11 +57,11 @@ class FeatureExtractor(FeatureExtractorAbstract):
                                      use_only_gt_positives_detection=use_only_gt_positives_detection)
 
         return features
-    def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False, use_backbone_features=False):
+    def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False, use_backbone_features=False, training_seconds=None):
         from feature_extractor_trainer import TrainerFeatureTask
         # call class to train from scratch a model on the feature task
         trainer = TrainerFeatureTask(self.cfg_path_feature_task, use_backbone_features=use_backbone_features)
-        trainer(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers, fine_tune_rpn=fine_tune_rpn)
+        trainer(output_dir=output_dir, fine_tune_last_layers=fine_tune_last_layers, fine_tune_rpn=fine_tune_rpn, training_seconds=training_seconds)
 
     def testFeatureExtractor(self, output_dir=None, model_to_test=None):
         from feature_extractor_tester import TesterFeatureTask

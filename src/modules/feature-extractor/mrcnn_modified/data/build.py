@@ -52,6 +52,10 @@ def build_dataset(dataset_list, transforms, dataset_catalog, is_train=True, is_t
             args["use_difficult"] = not is_train
             args["remove_images_without_annotations"] = is_train
             args["ycbv_classes_not_in_ho3d"] = ycbv_classes_not_in_ho3d
+        if data["factory"] == "YCBVideoDatasetFromFeat":
+            args["use_difficult"] = not is_train
+            args["remove_images_without_annotations"] = is_train
+            args["ycbv_classes_not_in_ho3d"] = ycbv_classes_not_in_ho3d
         args["transforms"] = transforms
         # make dataset from factory
         dataset = factory(**args)
@@ -126,7 +130,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
         ), "SOLVER.IMS_PER_BATCH ({}) must be divisible by the number "
         "of GPUs ({}) used.".format(images_per_batch, num_gpus)
         images_per_gpu = images_per_batch // num_gpus
-        shuffle = True
+        shuffle = False #True       #TODO edit this
         num_iters = cfg.SOLVER.MAX_ITER
     else:
         images_per_batch = cfg.TEST.IMS_PER_BATCH
