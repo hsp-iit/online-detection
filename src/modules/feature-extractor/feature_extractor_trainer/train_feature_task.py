@@ -70,9 +70,6 @@ class TrainerFeatureTask:
             from mrcnn_modified.modeling.detector.detectors_train_from_backbone_features import build_detection_model
             # Build the complete model for testing, to avoid saving features for the val/test set
             from maskrcnn_benchmark.modeling.detector import build_detection_model as build_detection_model_val
-            cfg_val = self.cfg.clone()
-            cfg_val.MODEL.ROI_BOX_HEAD.NUM_CLASSES = cfg_val.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES + 1
-            model_val = build_detection_model_val(cfg_val)
         else:
             from maskrcnn_benchmark.modeling.detector import build_detection_model
             # If features are not loaded from features, training and validation models are the same
@@ -91,7 +88,11 @@ class TrainerFeatureTask:
         checkpointer = DetectronCheckpointer(
             self.cfg, model, None, None, output_dir, save_to_disk
         )
-        if model_val:
+        if self.use_backbone_features:
+            cfg_val = self.cfg.clone()
+            #cfg_val.MODEL.ROI_BOX_HEAD.NUM_CLASSES = cfg_val.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES + 1
+            model_val = build_detection_model_val(cfg_val)
+
             model_val.to(device)
             checkpointer_val = DetectronCheckpointer(
                 cfg_val, model_val, None, None, output_dir, save_to_disk
@@ -156,6 +157,14 @@ class TrainerFeatureTask:
                 # this should be removed if we update BatchNorm stats
                 broadcast_buffers=False,
             )
+
+        if model_val:
+            # Load weights of all the net, otherwise the backbone is excluded if the weights will be copied only later from the trained model
+            extra_checkpoint_data_val = checkpointer_val.load(model_path)
+            # Substitute final layers to be sure that the number of outputs is the same
+            checkpointer_val.model.roi_heads.box.predictor.cls_score = checkpointer.model.roi_heads.box.predictor.cls_score
+            checkpointer_val.model.roi_heads.box.predictor.bbox_pred = checkpointer.model.roi_heads.box.predictor.bbox_pred
+            checkpointer_val.model.roi_heads.mask.predictor.mask_fcn_logits = checkpointer.model.roi_heads.mask.predictor.mask_fcn_logits
 
         data_loader = make_data_loader(
             self.cfg,
