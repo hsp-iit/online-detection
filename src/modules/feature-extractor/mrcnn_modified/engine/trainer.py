@@ -15,6 +15,9 @@ from mrcnn_modified.engine.inference_full_mask import inference
 
 from apex import amp
 
+from maskrcnn_benchmark.utils.model_serialization import load_state_dict
+
+
 def reduce_loss_dict(loss_dict):
     """
     Reduce the loss dictionary from all processes so that process with rank
@@ -54,7 +57,9 @@ def do_train(
     arguments,
     is_target_task=False,
     icwt_21_objs=False,
-    training_seconds=None
+    training_seconds=None,
+    model_val = None,
+    checkpointer_val=None
 ):
     logger = logging.getLogger("maskrcnn_benchmark.trainer")
     logger.info("Start training")
@@ -132,6 +137,9 @@ def do_train(
                 if data_loader_val is not None:
                     meters_val = MetricLogger(delimiter="  ")
                     synchronize()
+                    if model_val:
+                        load_state_dict(checkpointer_val.model, checkpointer.model.state_dict())
+                        model = checkpointer_val.model
                     _ = inference(  # The result can be used for additional logging, e. g. for TensorBoard
                         model,
                         # The method changes the segmentation mask format in a data loader,
@@ -188,6 +196,9 @@ def do_train(
             if data_loader_val is not None and test_period > 0 and iteration % test_period == 0:
                 meters_val = MetricLogger(delimiter="  ")
                 synchronize()
+                if model_val:
+                    load_state_dict(checkpointer_val.model, checkpointer.model.state_dict())
+                    model = checkpointer_val.model
                 _ = inference(  # The result can be used for additional logging, e. g. for TensorBoard
                     model,
                     # The method changes the segmentation mask format in a data loader,
@@ -234,6 +245,11 @@ def do_train(
                         memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                     )
                 )
+                if model_val:
+                    #Restore the old model to restart the training
+                    # TODO to check if it works correctly
+                    load_state_dict(checkpointer.model, checkpointer_val.model.state_dict())
+                    model = checkpointer.model
             if iteration == max_iter:
                 checkpointer.save("model_final", **arguments)
 

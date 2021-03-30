@@ -68,8 +68,16 @@ class TrainerFeatureTask:
             self.cfg.OUTPUT_DIR = output_dir
         if self.use_backbone_features:
             from mrcnn_modified.modeling.detector.detectors_train_from_backbone_features import build_detection_model
+            # Build the complete model for testing, to avoid saving features for the val/test set
+            from maskrcnn_benchmark.modeling.detector import build_detection_model as build_detection_model_val
+            cfg_val = self.cfg.clone()
+            cfg_val.MODEL.ROI_BOX_HEAD.NUM_CLASSES = cfg_val.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES + 1
+            model_val = build_detection_model_val(cfg_val)
         else:
             from maskrcnn_benchmark.modeling.detector import build_detection_model
+            # If features are not loaded from features, training and validation models are the same
+            model_val = None
+            checkpointer_val = None
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -83,6 +91,11 @@ class TrainerFeatureTask:
         checkpointer = DetectronCheckpointer(
             self.cfg, model, None, None, output_dir, save_to_disk
         )
+        if model_val:
+            model_val.to(device)
+            checkpointer_val = DetectronCheckpointer(
+                cfg_val, model_val, None, None, output_dir, save_to_disk
+            )
 
         if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
             model_path = self.cfg.MODEL.WEIGHT
@@ -173,7 +186,9 @@ class TrainerFeatureTask:
             test_period,
             arguments,
             is_target_task=self.is_target_task,
-            training_seconds=training_seconds
+            training_seconds=training_seconds,
+            model_val=model_val,
+            checkpointer_val=checkpointer_val
         )
 
         logger = logging.getLogger("maskrcnn_benchmark")
