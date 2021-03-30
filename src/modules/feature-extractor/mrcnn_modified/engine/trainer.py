@@ -186,7 +186,7 @@ def do_train(
                             memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                         )
                     )
-                checkpointer.save("model_{:07d}".format(iteration), **arguments)
+                #checkpointer.save("model_{:07d}".format(iteration), **arguments)
                 break
 
 
