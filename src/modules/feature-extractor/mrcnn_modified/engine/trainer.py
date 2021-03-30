@@ -179,6 +179,7 @@ def do_train(
                         )
                     )
                 checkpointer.save("model_{:07d}".format(iteration), **arguments)
+                break
 
 
         else:
