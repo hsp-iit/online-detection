@@ -42,10 +42,10 @@ args = parser.parse_args()
 
 # Import the different online classifiers, depending on the device in which they must be trained
 if args.CPU:
-    import OnlineRegionClassifierRPNOnline as ocr
+    import OnlineRegionClassifier as ocr
     import FALKONWrapper_with_centers_selection as falkon
 else:
-    import OnlineRegionClassifierRPNOnline_incore as ocr
+    import OnlineRegionClassifier_incore as ocr
     import FALKONWrapper_with_centers_selection_incore as falkon
 
 # Experiment configuration

@@ -120,7 +120,10 @@ class RPNModule(torch.nn.Module):
         super(RPNModule, self).__init__()
 
         self.cfg = cfg.clone()
-        self.save_features = self.cfg.SAVE_FEATURES_RPN
+        try:
+            self.save_features = self.cfg.SAVE_FEATURES_RPN
+        except:
+            self.save_features = False
 
         anchor_generator = make_anchor_generator(self.cfg)
 
@@ -142,6 +145,10 @@ class RPNModule(torch.nn.Module):
         self.box_selector_test = box_selector_test
         self.loss_evaluator = loss_evaluator
 
+        self.initialize_online_rpn_params()
+
+    def initialize_online_rpn_params(self):
+
         self.anchors = None
 
         self.num_classes = self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES
@@ -161,7 +168,10 @@ class RPNModule(torch.nn.Module):
             else:
                 self.diag_list.append(torch.arange(0,i**2, i+1, dtype=torch.long, device='cuda'))
         self.negatives_to_pick = None
-        self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        try:
+            self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
+        except:
+            self.training_device = 'cuda'
 
     def forward(self, images, features, gt_bbox=None, img_size = None, compute_average_recall_RPN = False, is_train = None, result_dir = None):
 
@@ -308,11 +318,13 @@ class RPNModule(torch.nn.Module):
                 elem = elem.unsqueeze(0)
                 # Find indices where there are anchors associated to this gt_bbox
                 indices, _= torch.min(torch.eq(anchors_to_return.get_field('gt_bbox'), elem.repeat(anchors_to_return.bbox.size()[0],1)), dim=1, keepdim=True)
-                # Find max overlap with this gt_bbox
-                values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
-                positives_i = anchors_to_return[indices.squeeze()]
-                positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
-                positive_anchors = cat_boxlist([positive_anchors, positives_i])
+                # Additional check to avoid max on an empty tensor
+                if True in indices:
+                    # Find max overlap with this gt_bbox
+                    values, _ = torch.max(anchors_to_return[indices.squeeze()].get_field('overlap'), 0)
+                    positives_i = anchors_to_return[indices.squeeze()]
+                    positives_i = positives_i[positives_i.get_field('overlap') == values.item()]
+                    positive_anchors = cat_boxlist([positive_anchors, positives_i])
                 
         # Find anchors associated to the positives, to avoid unuseful computation
         pos_inds = torch.unique(positive_anchors.get_field('classifier'))

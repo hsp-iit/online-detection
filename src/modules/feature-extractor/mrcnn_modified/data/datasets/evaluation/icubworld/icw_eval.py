@@ -146,7 +146,7 @@ def draw_preds_icw(dataset, image_id, pred, gt, output_folder):
     return result
 
 
-def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, is_target_task=False, icwt_21_objs=False, use_07_metric=True):
+def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, iou_thresholds=(0.5,), use_07_metric=True, is_target_task=False, icwt_21_objs=False):
 
     pred_boxlists = []
     gt_boxlists = []
@@ -160,6 +160,9 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
 
         image_width = img_info["width"]
         image_height = img_info["height"]
+        if isinstance(prediction, list):
+            if len(prediction) == 1:
+                prediction = prediction[0]
         prediction = prediction.resize((image_width, image_height))
         pred_boxlists.append(prediction)
 
@@ -169,27 +172,29 @@ def do_icw_evaluation(dataset, predictions, output_folder, draw_preds, logger, i
         if draw_preds:
             draw_preds_icw(dataset, image_id, prediction, gt_boxlist, output_folder)
 
-    result = eval_detection_icw(
-        pred_boxlists=pred_boxlists,
-        gt_boxlists=gt_boxlists,
-        iou_thresh=0.5,
-        use_07_metric=use_07_metric,
-    )
+    for iou_thresh in iou_thresholds:
 
-    result_str = "mAP: {:.4f}\n".format(result["map"])
-    for i, ap in enumerate(result["ap"]):
-        if i == 0:  # skip background
-            continue
-        result_str += "{:<16}: {:.4f}\n".format(
-            dataset.map_class_id_to_class_name(i, is_target_task = is_target_task, icwt_21_objs=icwt_21_objs), ap
+        result = eval_detection_icw(
+            pred_boxlists=pred_boxlists,
+            gt_boxlists=gt_boxlists,
+            iou_thresh=iou_thresh,
+            use_07_metric=use_07_metric,
         )
-    result_str += "\n"    
 
-    logger.info(result_str)
+        result_str = "Detection mAP{}: {:.4f}\n\n".format(int(iou_thresh*100), result["map"])
+        for i, ap in enumerate(result["ap"]):
+            if i == 0:  # skip background
+                continue
+            result_str += "{:<16}: {:.4f}\n".format(
+                dataset.map_class_id_to_class_name(i, is_target_task = is_target_task, icwt_21_objs=icwt_21_objs), ap
+            )
+        result_str += "\n"
 
-    if output_folder:
-        with open(os.path.join(output_folder, "result.txt"), "a") as fid:
-            fid.write(result_str)
+        logger.info(result_str)
+
+        if output_folder:
+            with open(os.path.join(output_folder, "result.txt"), "a") as fid:
+                fid.write(result_str)
 
     return result
 

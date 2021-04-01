@@ -18,18 +18,28 @@ import copy
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
-    def __init__(self, classifier, positives, negatives, stats, cfg_path=None, is_rpn=False):
+    def __init__(self, classifier, positives, negatives, stats=None, cfg_path=None, is_rpn=False, is_segmentation=False):
         if cfg_path is not None:
             self.cfg = yaml.load(open(cfg_path), Loader=yaml.FullLoader)
             if is_rpn:
                 self.cfg = self.cfg['RPN']
-            self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
+            if not is_segmentation:
+                self.classifier_options = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']
+                self.lam = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['lambda']
+                self.sigma = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['sigma']
+                self.hard_tresh = self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH']
+                self.easy_tresh = self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH']
+            else:
+                self.classifier_options = self.cfg['ONLINE_SEGMENTATION']['CLASSIFIER']
+                self.lam = self.cfg['ONLINE_SEGMENTATION']['CLASSIFIER']['lambda']
+                self.sigma = self.cfg['ONLINE_SEGMENTATION']['CLASSIFIER']['sigma']
+                self.hard_tresh = self.cfg['ONLINE_SEGMENTATION']['MINIBOOTSTRAP']['HARD_THRESH']
+                self.easy_tresh = self.cfg['ONLINE_SEGMENTATION']['MINIBOOTSTRAP']['EASY_THRESH']
             self.mean = 0
             self.std = 0
             self.mean_norm = 0
             self.is_rpn = is_rpn
-            self.lam = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['lambda']
-            self.sigma = self.cfg['ONLINE_REGION_CLASSIFIER']['CLASSIFIER']['sigma']
+
 
         else:
             print('Config file path not given. cfg variable set to None.')
@@ -41,12 +51,16 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         self.num_classes = len(self.cfg['CHOSEN_CLASSES'])
         if is_rpn:
             self.num_classes += 1
-        self.stats = stats
-        self.mean = self.stats['mean']
-        self.std = self.stats['std']
-        self.mean_norm = self.stats['mean_norm']
+        if stats:
+            self.stats = stats
+            self.mean = self.stats['mean']
+            self.std = self.stats['std']
+            self.mean_norm = self.stats['mean_norm']
 
         self.normalized = False
+        self.is_segmentation = is_segmentation
+
+        self.return_caches = False
 
 
     def loadRegionClassifier(self) -> None:
@@ -65,6 +79,10 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.lam = opts['lam']
         if 'sigma' in opts:
             self.sigma = opts['sigma']
+        if 'return_caches' in opts:
+            self.return_caches = opts['return_caches']
+        if 'normalized' in opts:
+            self.normalized = opts['normalized']
 
 
     def updateModel(self, cache):
@@ -83,7 +101,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             return self.classifier.train(X, y)
 
     def trainWithMinibootstrap(self, negatives, positives, output_dir=None):
-        iterations = len(negatives[0])
         caches = []
         model = []
         t = time.time()
@@ -103,7 +120,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     else:
                         t_hard = time.time()
                         neg_pred = self.classifier.predict(model[i], negatives[i][j])
-                        hard_idx = torch.where(neg_pred > self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['HARD_THRESH'])[0]
+                        hard_idx = torch.where(neg_pred > self.hard_tresh)[0]
                         caches[i]['neg'] = torch.cat((caches[i]['neg'], negatives[i][j][hard_idx]), 0)
                         print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
                         print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
@@ -114,14 +131,18 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                     print('Model updated in {} seconds'.format(time.time() - t_update))
 
                     t_easy = time.time()
-                    if len(caches[i]['neg']) != 0:
+                    if len(caches[i]['neg']) != 0 and not j == len(negatives[i]) - 1:
                         neg_pred = self.classifier.predict(model[i], caches[i]['neg'])
-                        keep_idx = torch.where(neg_pred >= self.cfg['ONLINE_REGION_CLASSIFIER']['MINIBOOTSTRAP']['EASY_THRESH'])[0]
+                        keep_idx = torch.where(neg_pred >= self.easy_tresh)[0]
                         easy_idx = len(caches[i]['neg']) - len(keep_idx)
                         caches[i]['neg'] = caches[i]['neg'][keep_idx]
                         print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
                         print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches[i]['neg'])))
                         print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
+                    # Delete cache of the i-th classifier if it is the last iteration to free memory
+                    if j == len(negatives[i]) - 1 and not self.return_caches:
+                        caches[i] = None
+                        torch.cuda.empty_cache()
             else:
                 model.append(None)
                 dataset = {}
@@ -132,9 +153,14 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if output_dir and self.is_rpn:
             with open(os.path.join(output_dir, "result.txt"), "a") as fid:
                 fid.write("RPN's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
-        elif output_dir and not self.is_rpn:
+        elif output_dir and self.is_segmentation:
+            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+                fid.write("Online Segmentation training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        elif output_dir and not self.is_rpn and not self.is_segmentation:
             with open(os.path.join(output_dir, "result.txt"), "a") as fid:
                 fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
+        if self.return_caches:
+            self.caches = caches
         return model
 
     def trainRegionClassifier(self, opts=None, output_dir=None):
@@ -153,9 +179,11 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
                         negatives[i][j] = self.zScores(negatives[i][j])
             self.normalized = True
 
-        
         model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
-        return model
+        if not self.return_caches:
+            return model
+        else:
+            return model, self.caches
 
     def testRegionClassifier(self, model, test_boxes):
         print('Online Region Classifier testing')

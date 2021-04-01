@@ -1,14 +1,15 @@
 from mrcnn_modified.modeling.roi_heads.box_head.inference import PostProcessor
-import torch.nn.functional as F
 import torch
 
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 from maskrcnn_benchmark.structures.boxlist_ops import boxlist_nms
 from maskrcnn_benchmark.structures.boxlist_ops import cat_boxlist
 
+from py_od_utils import decode_boxes_detector
+
 
 class OnlineDetectionPostProcessor(PostProcessor):
-    def forward(self, boxes, num_classes):
+    def forward(self, x, proposals, num_classes, img_size):
         """
         Arguments:
             x (tuple[tensor, tensor]): x contains the class logits
@@ -19,45 +20,17 @@ class OnlineDetectionPostProcessor(PostProcessor):
             results (list[BoxList]): one BoxList for each image, containing
                 the extra fields labels and scores
         """
-        # class_logits, proposals = x
-        # class_prob = F.softmax(torch.from_numpy(class_logits))
-        # class_prob = torch.from_numpy(class_logits)
-        # proposals = torch.from_numpy(proposals)
+        cls_scores, bbox_pred = x
 
-        # image_shapes = [box.size for box in boxes]
-        # boxes_per_image = [len(box) for box in boxes]
-        # concat_boxes = torch.cat([a.bbox for a in boxes], dim=0)
+        proposals = proposals[0].resize(img_size)
 
-        # if self.cls_agnostic_bbox_reg:
-        #     box_regression = box_regression[:, -4:]
-        # proposals = self.box_coder.decode(
-        #     box_regression.view(sum(boxes_per_image), -1), concat_boxes
-        # )
-        # if self.cls_agnostic_bbox_reg:
-        #     proposals = proposals.repeat(1, class_prob.shape[1])
+        refined_boxes = decode_boxes_detector(proposals, bbox_pred)
 
-        # num_classes = class_prob.shape[1]
+        boxlist = self.prepare_boxlist(refined_boxes, cls_scores, proposals.size)
+        boxlist = boxlist.clip_to_image(remove_empty=False)
+        boxlist = self.filter_results(boxlist, num_classes)
 
-        # proposals = proposals.split(boxes_per_image, dim=0)
-        # class_prob = class_prob.split(boxes_per_image, dim=0)
-
-        results = []
-        # for prob, boxes_per_img, image_shape in zip(
-        #         class_prob, proposals, image_shapes
-        # ):
-        #     boxlist = self.prepare_boxlist(boxes_per_img, prob, image_shape)
-        #     boxlist = boxlist.clip_to_image(remove_empty=False)
-        #     boxlist = self.filter_results(boxlist, num_classes)
-        #     results.append(boxlist)
-
-        for box in boxes:
-            if self.cls_agnostic_bbox_reg:
-                box.bbox = box.bbox.repeat(1, num_classes)
-            boxlist = self.prepare_boxlist(box.bbox, box.get_field('scores'), box.size)
-            boxlist = boxlist.clip_to_image(remove_empty=False)
-            boxlist = self.filter_results(boxlist, num_classes)
-            results.append(boxlist)
-        return results
+        return boxlist
 
     def filter_results(self, boxlist, num_classes):
         """Returns bounding-box detection results by thresholding on scores and
@@ -76,7 +49,7 @@ class OnlineDetectionPostProcessor(PostProcessor):
         for j in range(1, num_classes):
             inds = inds_all[:, j].nonzero().squeeze(1)
             scores_j = scores[inds, j]
-            boxes_j = boxes[inds, j * 4 : (j + 1) * 4]
+            boxes_j = boxes[inds, j * 4: (j + 1) * 4]
             boxlist_for_class = BoxList(boxes_j.to('cuda'), boxlist.size, mode="xyxy")
             boxlist_for_class.add_field("scores", scores_j.to('cuda'))
             boxlist_for_class = boxlist_nms(
@@ -87,6 +60,9 @@ class OnlineDetectionPostProcessor(PostProcessor):
                 "labels", torch.full((num_labels,), j, dtype=torch.int64, device=device)
             )
             result.append(boxlist_for_class)
+
+        if not result:
+            return None
 
         result = cat_boxlist(result)
         number_of_detections = len(result)

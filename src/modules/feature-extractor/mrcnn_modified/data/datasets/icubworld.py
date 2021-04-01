@@ -83,6 +83,40 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         'hairclip2', 'hairclip8', 'hairclip6',
         'sprayer6', 'sprayer8', 'sprayer9'
     )
+    CLASSES_TARGET_TASK_21_OBJS = (
+        "__background__",
+        'sodabottle3', 'sodabottle4',
+        'mug1', 'mug3', 'mug4',
+        'pencilcase5', 'pencilcase3',
+        'ringbinder4', 'ringbinder5',
+        'wallet6',
+        'flower7', 'flower5', 'flower2',
+        'book6', 'book9',
+        'hairclip2', 'hairclip8', 'hairclip6',
+        'sprayer6', 'sprayer8', 'sprayer9'
+    )
+    CLASSES_YCBV_IN_HAND = (
+        "__background__",
+        "002_master_chef_can",
+        "003_cracker_box",
+        "004_sugar_box",
+        "005_tomato_soup_can",
+        "006_mustard_bottle",
+        "007_tuna_fish_can",
+        "008_pudding_box",
+        "009_gelatin_box",
+        "010_potted_meat_can",
+        "011_banana",
+        "019_pitcher_base",
+        "024_bowl",
+        "025_mug",
+        "035_power_drill",
+        "036_wood_block",
+        "037_scissors",
+        "051_large_clamp",
+        "052_extra_large_clamp",
+        "061_foam_brick"
+    )
 
 
     def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False):
@@ -96,6 +130,8 @@ class iCubWorldDataset(torch.utils.data.Dataset):
 
         self._annopath = os.path.join(self.root, "Annotations", "%s.xml")
         self._imgpath = os.path.join(self.root, "Images", "%s.jpg")
+        self._maskpath = os.path.join(self.root, "Masks", "%s.png")
+
                 
         self._imgsetpath = os.path.join(self.root, "ImageSets", self.image_set, self.split + ".txt")
 
@@ -103,13 +139,18 @@ class iCubWorldDataset(torch.utils.data.Dataset):
             self.ids = f.readlines()
         self.ids = [x.strip("\n") for x in self.ids]
 
-        if is_target_task is False:
-            cls = iCubWorldDataset.CLASSES
+        if 'ycbv' in data_dir:
+            cls = iCubWorldDataset.CLASSES_YCBV_IN_HAND
         else:
-            if icwt_21_objs is False:
-                cls = iCubWorldDataset.CLASSES_TARGET_TASK
+            if is_target_task is False:
+                cls = iCubWorldDataset.CLASSES
             else:
-                cls = iCubWorldDataset.CLASSES_TARGET_TASK_21_OBJS
+                if icwt_21_objs is False:
+                    cls = iCubWorldDataset.CLASSES_TARGET_TASK
+                else:
+                    cls = iCubWorldDataset.CLASSES_TARGET_TASK_21_OBJS
+
+
 
         self.class_to_ind = dict(zip(cls, range(len(cls))))
 
@@ -161,6 +202,7 @@ class iCubWorldDataset(torch.utils.data.Dataset):
         boxes = []
         gt_classes = []
         difficult_boxes = []
+        masks = []
         TO_REMOVE = 1
         
         for obj in target.iter("object"):

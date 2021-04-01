@@ -3,7 +3,7 @@ import logging
 from .icw_eval import do_icw_evaluation
 
 
-def icw_evaluation(dataset, predictions, output_folder, box_only, iou_types, expected_results, expected_results_sigma_tol, draw_preds, is_target_task=False, icwt_21_objs=False):
+def icw_evaluation(dataset, predictions, output_folder, box_only, iou_types, expected_results, expected_results_sigma_tol, draw_preds, is_target_task=False, icwt_21_objs=False, iou_thresholds=(0.5,), use_07_metric=True):
 
     logger = logging.getLogger("maskrcnn_benchmark.inference")
     if box_only:
@@ -17,5 +17,7 @@ def icw_evaluation(dataset, predictions, output_folder, box_only, iou_types, exp
         draw_preds=draw_preds,
         logger=logger,
         is_target_task=is_target_task,
-        icwt_21_objs=icwt_21_objs
+        icwt_21_objs=icwt_21_objs,
+        iou_thresholds=iou_thresholds,
+        use_07_metric=use_07_metric
     )

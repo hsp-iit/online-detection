@@ -52,10 +52,10 @@ class RegionRefinerTrainer():
                 continue
             # Extract the corresponding values in the X matrix
             # Transpose is used to set the number of features as the number of columns (instead of the number of rows)
-            Xi = self.COXY['X'][I]
-            Yi = self.COXY['Y'][I]
+            Xi = self.COXY['X'][I].type(torch.float64)
+            Yi = self.COXY['Y'][I].type(torch.float64)
             # Add bias values to Xi
-            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float32, device=Xi.device)
+            bias = torch.ones((Xi.size()[0], 1), dtype=torch.float64, device=Xi.device)
             Xi = torch.cat((Xi, bias), dim=1)
 
             # Center and decorrelate targets
@@ -81,13 +81,13 @@ class RegionRefinerTrainer():
                 Beta = self.solve(Xi, Yi, self.lambd, Xi_test, Yi_test, indices)
 
             models = np.append(models, {
-                'mu': mu.to("cuda"),
-                'T': T.to("cuda"),
-                'T_inv': T_inv.to("cuda"),
+                'mu': mu.to("cuda").type(torch.float32),
+                'T': T.to("cuda").type(torch.float32),
+                'T_inv': T_inv.to("cuda").type(torch.float32),
                 'Beta': Beta
             })
 
-            mean_losses = torch.empty(0, device=Xi.device)
+            mean_losses = torch.empty(0, device=Xi.device, dtype=torch.float32)
 
             for elem in models[i - start_index]['Beta']:
                 mean_losses = torch.cat((mean_losses, torch.mean(models[i - start_index]['Beta'][elem]['losses'], dim=0, keepdim=True)))
@@ -109,7 +109,7 @@ class RegionRefinerTrainer():
 
     def solve(self, X, y, lmbd, X_test=None, Y_test=None, indices=None):
         if indices is None:
-            X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
+            X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device, dtype=torch.float64)
             R = torch.cholesky(X_transposed_X)
         to_return = {}
         X_original = X.clone()
@@ -118,14 +118,14 @@ class RegionRefinerTrainer():
             if indices is not None:
                 X = X_original[indices[i]]
                 y = y_original[indices[i]]
-                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device)
+                X_transposed_X = torch.matmul(torch.t(X), X) + lmbd * torch.eye(X.size()[1], device=X.device, dtype=torch.float64)
                 R = torch.cholesky(X_transposed_X)
             y_torch_i = y[:, i]
             z = torch.triangular_solve(torch.matmul(torch.t(X), y_torch_i).view(X.size()[1], 1), R, upper=False).solution
             w = torch.triangular_solve(z, torch.t(R)).solution.view(X.size()[1])
             losses = 0.5 * torch.pow((torch.matmul(X, w) - y_torch_i), 2)
-            to_return[str(i)] = {'weights': w.to('cuda'),
-                                 'losses': losses}
+            to_return[str(i)] = {'weights': w.to('cuda').type(torch.float32),
+                                 'losses': losses.type(torch.float32)}
         return to_return
 
 

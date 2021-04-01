@@ -46,18 +46,23 @@ class FeatureExtractorDetector:
         self.regressors_rpn_models = None
         self.stats_rpn = None
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
+        self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = use_only_gt_positives_detection
         if save_features:
             if output_dir:
                 features_path = os.path.join(output_dir, 'features_detector')
                 if not os.path.exists(features_path):
                     os.mkdir(features_path)
+                if extract_features_segmentation:
+                    features_path_segm = os.path.join(output_dir, 'features_segmentation')
+                    if not os.path.exists(features_path_segm):
+                        os.mkdir(features_path_segm)
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
-        return self.train(is_train, result_dir=output_dir)
+        return self.train(is_train, result_dir=output_dir, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection)
 
     def load_parameters(self):
         if self.distributed:
@@ -81,7 +86,7 @@ class FeatureExtractorDetector:
         logger.info("Running with config:\n{}".format(self.cfg))
 
 
-    def train(self, is_train, result_dir=False):
+    def train(self, is_train, result_dir=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
         model = build_detection_model(self.cfg)
         device = torch.device(self.cfg.MODEL.DEVICE)
         model.to(device)
@@ -111,12 +116,12 @@ class FeatureExtractorDetector:
             self.cfg, model, optimizer, scheduler, output_dir, save_to_disk
         )
 
-        if self.cfg.MODEL.WEIGHT.startswith('/'):
-            model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
+        if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
+            model_path = self.cfg.MODEL.WEIGHT
         else:
             model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
-            model_pretrained = torch.load(model_path)
-        checkpointer._load_model(model_pretrained)
+
+        extra_checkpoint_data = checkpointer.load(model_path)
 
         if self.falkon_rpn_models is not None:
             model.rpn.head.classifiers = self.falkon_rpn_models            
@@ -124,6 +129,13 @@ class FeatureExtractorDetector:
             model.rpn.head.regressors = self.regressors_rpn_models
         if self.stats_rpn is not None:
             model.rpn.head.stats = self.stats_rpn
+
+        if self.falkon_detector_models is not None:
+            model.roi_heads.box.predictor.classifiers = self.falkon_detector_models
+        if self.regressors_detector_models is not None:
+            model.roi_heads.box.predictor.regressors = self.regressors_detector_models
+        if self.stats_detector is not None:
+            model.roi_heads.box.predictor.stats = self.stats_detector
 
         if self.distributed:
             model = model.module
@@ -157,6 +169,7 @@ class FeatureExtractorDetector:
                                              icwt_21_objs=self.icwt_21_objs,
                                              is_train = is_train,
                                              result_dir=result_dir,
+                                             extract_features_segmentation=extract_features_segmentation
                                             )
 
             if result_dir and is_train:
@@ -175,16 +188,47 @@ class FeatureExtractorDetector:
                             if model.roi_heads.box.negatives[clss][batch].size()[0] > 0:
                                 path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(clss, batch))
                                 torch.save(model.roi_heads.box.negatives[clss][batch], path_to_save)
+                        if use_only_gt_positives_detection:
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.box.positives[clss][0].size()[0] == 0 and len(model.roi_heads.box.positives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.box.feat_size), device=model.roi_heads.box.negatives[clss][0].device), path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.box.positives[clss])):
+                                    if model.roi_heads.box.positives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
 
-                        # If a class does not have positive examples, save an empty tensor
-                        if model.roi_heads.box.positives[clss][0].size()[0] == 0 and len(model.roi_heads.box.positives[clss]) == 1:
-                            path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, 0))
-                            torch.save(torch.empty((0, model.roi_heads.box.feat_size), device=model.roi_heads.box.negatives[clss][0].device), path_to_save)
-                        else:
-                            for batch in range(len(model.roi_heads.box.positives[clss])):
-                                if model.roi_heads.box.positives[clss][batch].size()[0] > 0:
-                                    path_to_save = os.path.join(result_dir, 'features_detector', 'positives_cl_{}_batch_{}'.format(clss, batch))
-                                    torch.save(model.roi_heads.box.positives[clss][batch], path_to_save)
+                        if extract_features_segmentation:
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.mask.positives[clss][0].size()[0] == 0 and len(
+                                    model.roi_heads.mask.positives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                            'positives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.mask.feat_size),
+                                                       device=model.roi_heads.mask.negatives[clss][0].device),
+                                           path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.mask.positives[clss])):
+                                    if model.roi_heads.mask.positives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                                    'positives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.mask.positives[clss][batch], path_to_save)
+
+                            # If a class does not have positive examples, save an empty tensor
+                            if model.roi_heads.mask.negatives[clss][0].size()[0] == 0 and len(
+                                    model.roi_heads.mask.negatives[clss]) == 1:
+                                path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                            'negatives_cl_{}_batch_{}'.format(clss, 0))
+                                torch.save(torch.empty((0, model.roi_heads.mask.feat_size),
+                                                       device=model.roi_heads.mask.negatives[clss][0].device),
+                                           path_to_save)
+                            else:
+                                for batch in range(len(model.roi_heads.mask.negatives[clss])):
+                                    if model.roi_heads.mask.negatives[clss][batch].size()[0] > 0:
+                                        path_to_save = os.path.join(result_dir, 'features_segmentation',
+                                                                    'negatives_cl_{}_batch_{}'.format(clss, batch))
+                                        torch.save(model.roi_heads.mask.negatives[clss][batch], path_to_save)
 
                     for i in range(len(model.roi_heads.box.X)):
                         if model.roi_heads.box.X[i].size()[0] > 0:
@@ -204,8 +248,26 @@ class FeatureExtractorDetector:
                             'Y': torch.cat(model.roi_heads.box.Y)
                             }
                     for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
-                        model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
-                    return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                        if use_only_gt_positives_detection:
+                            model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
+                        if extract_features_segmentation:
+                            if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
+                                model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1] = model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1].to('cpu')
+                            model.roi_heads.mask.negatives[i] = torch.cat(model.roi_heads.mask.negatives[i])
+                            if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
+                                model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1] = model.roi_heads.mask.positives[i][len(model.roi_heads.mask.positives[i])-1].to('cpu')
+                            model.roi_heads.mask.positives[i] = torch.cat(model.roi_heads.mask.positives[i])
+                    if extract_features_segmentation:
+                        if use_only_gt_positives_detection:
+                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                        else:
+                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+
+                    else:
+                        if use_only_gt_positives_detection:
+                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                        else:
+                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY)
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
