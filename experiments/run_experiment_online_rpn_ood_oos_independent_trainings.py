@@ -41,6 +41,7 @@ parser.add_argument('--config_file_rpn', action='store', type=str, default="conf
 parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--only_ood', action='store_true', help='Run only the online-object-detection experiment, i.e. without updating the RPN.') #TODO rename this
+parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
 
 
 args = parser.parse_args()
@@ -94,10 +95,15 @@ if not args.only_ood and not args.load_RPN_models:
     #    if args.save_RPN_features:
     #        feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
     #    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+    cfg_options = {}
+    if args.minibootstrap_iterations:
+        cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
     negatives_RPN, positives_RPN, COXY_RPN, negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeaturesRPNDetector(
         is_train=True, output_dir=output_dir, save_features=args.save_detector_features,
         extract_features_segmentation=True,
-        use_only_gt_positives_detection=args.use_only_gt_positives_detection)
+        use_only_gt_positives_detection=args.use_only_gt_positives_detection,
+        cfg_options=cfg_options
+        )
 
     del feature_extractor
     torch.cuda.empty_cache()

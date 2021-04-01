@@ -45,7 +45,7 @@ class FeatureExtractor(FeatureExtractorAbstract):
 
         return features
 
-    def extractFeaturesRPNDetector(self, is_train, output_dir=None, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
+    def extractFeaturesRPNDetector(self, is_train, output_dir=None, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True, cfg_options={}):
         from feature_extractor_RPN_detector import FeatureExtractorRPNDetector
         feature_extractor = FeatureExtractorRPNDetector(self.cfg_path_target_task)
 
@@ -54,7 +54,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
             feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
         features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu,
                                      save_features=save_features, extract_features_segmentation=extract_features_segmentation,
-                                     use_only_gt_positives_detection=use_only_gt_positives_detection)
+                                     use_only_gt_positives_detection=use_only_gt_positives_detection,
+                                     cfg_options=cfg_options)
 
         return features
     def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False, use_backbone_features=False, training_seconds=None):
