@@ -182,11 +182,13 @@ class OnlineSegmentationDemo(object):
             top_predictions = self.select_top_predictions(predictions)
             result = image.copy()
         else:
-            return image.copy()
+            return image.copy(), None
         result = self.overlay_boxes(result, top_predictions)
         if self.cfg.MODEL.MASK_ON:
             result = self.overlay_mask(result, top_predictions)
-        result = self.overlay_class_names(result, top_predictions)
+            result = (self.overlay_class_names(result[0], top_predictions), result[1])
+        else:
+            result = self.overlay_class_names(result, top_predictions)
 
         return result
 
@@ -310,7 +312,7 @@ class OnlineSegmentationDemo(object):
 
         composite = image
 
-        return composite
+        return composite, masks
 
     def overlay_class_names(self, image, predictions):
         """

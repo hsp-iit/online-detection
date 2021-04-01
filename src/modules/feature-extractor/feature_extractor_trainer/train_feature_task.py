@@ -105,6 +105,7 @@ class TrainerFeatureTask:
 
         extra_checkpoint_data = checkpointer.load(model_path)
 
+        # TODO add a flag to initialize the final layer in any case, avoiding this only if the training is a "restart"
         if self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1 != self.cfg.MODEL.ROI_BOX_HEAD.NUM_CLASSES:
             checkpointer.model.roi_heads.box.predictor.cls_score = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1, bias=True)
             checkpointer.model.roi_heads.box.predictor.bbox_pred = torch.nn.Linear(in_features=checkpointer.model.roi_heads.box.predictor.cls_score.in_features, out_features=(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES+1)*4, bias=True)

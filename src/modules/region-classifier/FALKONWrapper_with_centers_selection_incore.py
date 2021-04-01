@@ -49,6 +49,8 @@ class FALKONWrapper(ca.ClassifierAbstract):
         self.kernel = kernels.GaussianKernel(sigma=sigma)
         # Compute indices of nystrom centers
         indices = self.compute_indices_selection(y)
+        if isinstance(indices, int):
+            indices = [indices]
         center_selector = MyCenterSelector(indices)
         opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0,  keops_active="no", min_cuda_pc_size_32=0, min_cuda_pc_size_64=0)
         # Initialize FALKON model
