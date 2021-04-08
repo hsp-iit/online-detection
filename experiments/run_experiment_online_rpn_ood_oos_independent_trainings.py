@@ -42,6 +42,7 @@ parser.add_argument('--config_file_online_detection_online_segmentation', action
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--only_ood', action='store_true', help='Run only the online-object-detection experiment, i.e. without updating the RPN.') #TODO rename this
 parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
+parser.add_argument('--sampling_ratio_positives_detection', action='store', type=float, default=1.0, help='Set the fraction of positives samples to be used to train the online detection head, when loading the positives from COXY.')
 
 
 args = parser.parse_args()
@@ -166,7 +167,7 @@ else:
             torch.cuda.empty_cache()
 
         if not args.use_only_gt_positives_detection:
-            positives = load_positives_from_COXY(COXY)
+            positives = load_positives_from_COXY(COXY, samples_fraction=args.sampling_ratio_positives_detection)
 
         # Delete already used data
         if not args.normalize_features_regressor_detector:
@@ -226,7 +227,7 @@ else:
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:
-            positives = load_positives_from_COXY(COXY)#, del_COXY=True)
+            positives = load_positives_from_COXY(COXY, samples_fraction=args.sampling_ratio_positives_detection)#, del_COXY=True)
             # If regressor's features normalization is not required, delete COXY
             if not args.normalize_features_regressor_detector:
                 del COXY

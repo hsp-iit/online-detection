@@ -193,11 +193,13 @@ def load_features_regressor(features_dir, samples_fraction=1.0):
             }
     return COXY
 
-def load_positives_from_COXY(COXY, del_COXY=False):
+def load_positives_from_COXY(COXY, del_COXY=False, samples_fraction=1.0):
     positives = []
-    num_classes = len(torch.unique(COXY['C']))
+    num_classes = len(torch.unique(COXY['C']))      #TODO, this should be modified, if there are not positives for one class it can cause errors
     for i in range(num_classes):
         ids_i = torch.where(COXY['C'] == i+1)[0]
+        if samples_fraction < 1.0:
+            ids_i = torch.randperm(len(ids_i))[:int(len(ids_i)*samples_fraction)]
         positives.append(COXY['X'][ids_i])
         if del_COXY:
             ids_i_to_rm = torch.where(COXY['C'] != i + 1)[0]
