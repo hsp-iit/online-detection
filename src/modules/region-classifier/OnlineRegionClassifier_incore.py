@@ -103,6 +103,7 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             print('Updating model with default lambda and sigma')
             return self.classifier.train(X, y)
 
+
     def trainWithMinibootstrap(self, negatives, positives, output_dir=None):
         caches = []
         model = []
@@ -166,7 +167,22 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.caches = caches
         return model
 
-    def compute_model_parallel(self, negatives_i, positives_i):
+    def updateModel_parallel(self, cache, classifier):
+        X_neg = cache['neg']
+        X_pos = cache['pos']
+        num_neg = len(X_neg)
+        num_pos = len(X_pos)
+        X = torch.cat((X_pos, X_neg), 0)
+        y = torch.cat((torch.transpose(torch.ones(num_pos, device='cuda'), 0, 0), -torch.transpose(torch.ones(num_neg, device='cuda'), 0, 0)), 0)
+
+        if self.sigma is not None and self.lam is not None:
+            print('Updating model with lambda: {} and sigma: {}'.format(self.lam, self.sigma))
+            return classifier.train(X, y, sigma=self.sigma, lam=self.lam)
+        else:
+            print('Updating model with default lambda and sigma')
+            return classifier.train(X, y)
+
+    def compute_model_parallel(self, negatives_i, positives_i, i, classifier):
         caches_i ={}
         model_i = None
 
@@ -174,14 +190,16 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             print('---------------------- Training Class number {} ----------------------'.format(i))
             first_time = True
             for j in range(len(negatives_i)):
+                print(i, j, "!!!")
                 t_iter = time.time()
                 if first_time:
                     caches_i['pos'] = positives_i
                     caches_i['neg'] = negatives_i[j]
+                    print(first_time)
                     first_time = False
                 else:
                     t_hard = time.time()
-                    neg_pred = self.classifier.predict(model_i, negatives_i[j])
+                    neg_pred = classifier.predict(model_i, negatives_i[j])
                     hard_idx = torch.where(neg_pred > self.hard_tresh)[0]
                     caches_i['neg'] = torch.cat((caches_i['neg'], negatives_i[j][hard_idx]), 0)
                     print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
@@ -189,12 +207,12 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
                 print('Traning with {} positives and {} negatives'.format(len(caches_i['pos']), len(caches_i['neg'])))
                 t_update = time.time()
-                model_i = self.updateModel(caches_i)
+                model_i = self.updateModel_parallel(caches_i, classifier)
                 print('Model updated in {} seconds'.format(time.time() - t_update))
 
                 t_easy = time.time()
                 if len(caches_i['neg']) != 0 and not j == len(negatives_i) - 1:
-                    neg_pred = self.classifier.predict(model_i, caches_i['neg'])
+                    neg_pred = classifier.predict(model_i, caches_i['neg'])
                     keep_idx = torch.where(neg_pred >= self.easy_tresh)[0]
                     easy_idx = len(caches_i['neg']) - len(keep_idx)
                     caches_i['neg'] = caches_i['neg'][keep_idx]
@@ -212,8 +230,8 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         #caches = []
         #model = []
         t = time.time()
-
-        models, caches = Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(self.compute_model_parallel(negatives[i], positives[i])) for i in range(len(self.num_classes-1)))
+        classifier = copy.deepcopy(self.classifier)
+        models, caches = Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
 
 
         training_time = time.time() - t
