@@ -22,6 +22,9 @@ We provide the links to instructions to reproduce the main experiments of the pr
 ### Fast Region Proposal Learning for Object Detection for Robotics
 You can find the instructions to replicate experiments at this [link](https://github.com/robotology/online-detection/blob/master/ONLINE_RPN_EXP.md)
 
+### Fast Object Segmentation Learning with Kernel-based Methods for Robotics
+You can find the instructions to replicate experiments at this [link](https://github.com/robotology/online-detection/blob/master/ONLINE_SEGMENTATION_EXP.md)
+
 ## References
 If you use this code, please, cite the following works:
 
@@ -50,4 +53,19 @@ If you use this code, please, cite the following works:
 	url="https://doi.org/10.1007/s10514-019-09894-9"
 }
 ```
-
+```
+@article{ceola2020rpn,
+  title={Fast region proposal learning for object detection for robotics},
+  author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
+  journal={arXiv preprint arXiv:2011.12790},
+  year={2020}
+}
+```
+```
+@article{ceola2020segm,
+  title={Fast Object Segmentation Learning with Kernel-based Methods for Robotics},
+  author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
+  journal={arXiv preprint arXiv:2011.12805},
+  year={2020}
+}
+```
