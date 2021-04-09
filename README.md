@@ -9,7 +9,7 @@ Object detection is a fundamental ability for robots interacting within an envir
 The proposed methods are typically validated on both computer vision and robotics datasets. This repository allows to reproduce the main experiments of the proposed works and allows the user to test the pipeline with other datasets.
 
 ## Description
-![image](https://github.com/hsp-iit/paper-corl2020-onlineRPN/blob/master/images/rpn_pipeline_green_smaller.png)
+![pipeline journal_0](https://user-images.githubusercontent.com/32268209/114162717-a8d25e80-9929-11eb-8d24-d9c24774097e.png)
 
 This picture presents the current architecture of the pipeline. The Feature Extraction Module relies on Mask R-CNN architecture and the proposed On-line RPN, to extract deep features and predict RoIs from each input image. The On-line Detection Module performs RoIs classification and refinement, providing as output the detections for the input image. The green blocks are trained off-line on the FEATURE-TASK, while the yellow blocks are trained on-line on the TARGET-TASK.
 
