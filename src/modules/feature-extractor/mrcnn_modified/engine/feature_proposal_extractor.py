@@ -20,6 +20,8 @@ import xml.etree.ElementTree as ET
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.image_list import to_image_list
 
+import random
+
 OBJECTNAME_TO_ID = {
     "__background__":0,
         "flower2":1, "flower5":2, "flower7":3,
@@ -252,6 +254,9 @@ def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=Fals
 
     model.eval()
     num_img = len(dataset.ids)
+
+    #TODO remove this, just for test purposes
+    #random.shuffle(dataset.ids)
 
     # Set the number of images that will be used to set minibootstrap parameters
     if hasattr(model, 'rpn'):

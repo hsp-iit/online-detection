@@ -199,7 +199,7 @@ def load_positives_from_COXY(COXY, del_COXY=False, samples_fraction=1.0):
     for i in range(num_classes):
         ids_i = torch.where(COXY['C'] == i+1)[0]
         if samples_fraction < 1.0:
-            ids_i = torch.randperm(len(ids_i))[:int(len(ids_i)*samples_fraction)]
+            ids_i = ids_i[torch.randperm(len(ids_i))[:int(len(ids_i)*samples_fraction)]]
         positives.append(COXY['X'][ids_i])
         if del_COXY:
             ids_i_to_rm = torch.where(COXY['C'] != i + 1)[0]
