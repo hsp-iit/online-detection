@@ -69,6 +69,7 @@ One of the dependencies of this code is the repository of FALKON [3]. The follow
 cd $HOME_DIR/external
 git clone --recurse-submodules https://github.com/FalkonML/falkon.git
 cd falkon
+git checkout --recurse-submodules 801e5f3d01b9ec5b3142f6376b18f18377c0dd37
 pip install ./keops
 pip install .
 ```
