@@ -227,12 +227,15 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         return model_i, caches_i
 
     def trainWithMinibootstrapParallel(self, negatives, positives, output_dir=None):
-        #caches = []
-        #model = []
+        caches = []
+        models = []
         t = time.time()
         classifier = copy.deepcopy(self.classifier)
-        models, caches = Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
-
+        #models, caches = Parallel(n_jobs=1, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
+        training_output = Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
+        for i in range(len(training_output)):
+            models.append(training_output[i][0])
+            caches.append(training_output[i][1])
 
         training_time = time.time() - t
         print('Online Classifier trained in {} seconds'.format(training_time))
