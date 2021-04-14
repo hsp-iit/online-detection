@@ -237,7 +237,7 @@ def compute_gts_ycbv(dataset, i, extract_features_segmentation):
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0] + bbox[2] - 1, bbox[1] + bbox[3] - 1])
         gt_labels.append(obj_id)
         if extract_features_segmentation:
-            masks.append(T.ToTensor()(Image.open(masks_paths[j])))
+            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
 
         """
         gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])

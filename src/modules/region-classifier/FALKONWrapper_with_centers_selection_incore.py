@@ -38,6 +38,7 @@ class FALKONWrapper(ca.ClassifierAbstract):
 
         self.kernel = None
         self.nyst_centers = opts['M']
+        self.maxiter = 20                   #FALKON's default training iterations
 
     def train(self, X, y, sigma=None, lam=None):
         # Set sigma and lambda
@@ -52,13 +53,13 @@ class FALKONWrapper(ca.ClassifierAbstract):
         if isinstance(indices, int):
             indices = [indices]
         center_selector = MyCenterSelector(indices)
-        #opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0,  keops_active="no", min_cuda_pc_size_32=0, min_cuda_pc_size_64=0)
-        opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0,  keops_active="no", min_cuda_pc_size_32=0, min_cuda_pc_size_64=0, store_kernel_d_threshold=1000)
+        opt = FalkonOptions(min_cuda_iter_size_32=0, min_cuda_iter_size_64=0,  keops_active="no", min_cuda_pc_size_32=0, min_cuda_pc_size_64=0)
         # Initialize FALKON model
         self.model = InCoreFalkon(
             kernel=self.kernel,
             penalty=lam,
             M=len(indices),
+            maxiter=self.maxiter,
             center_selection = center_selector,
             options=opt
         )
