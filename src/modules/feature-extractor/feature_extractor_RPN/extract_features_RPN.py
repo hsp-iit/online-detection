@@ -197,4 +197,6 @@ class FeatureExtractorRPN:
             for i in range(self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES):
                 model.rpn.positives[i] = torch.cat(model.rpn.positives[i])
 
-            return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)
+            #return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)
+            return model.rpn.negatives, model.rpn.positives, COXY
+

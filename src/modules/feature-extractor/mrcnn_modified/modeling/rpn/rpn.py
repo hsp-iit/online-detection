@@ -15,6 +15,7 @@ from .average_recall import compute_average_recall
 from joblib import Parallel, delayed, parallel_backend
 import multiprocessing
 
+import time
 
 class RPNHeadConvRegressor(nn.Module):
     """
@@ -157,6 +158,9 @@ class RPNHead(nn.Module):
     
     def compute_objectness_FALKON(self, features):
         objectness_scores = torch.empty((1, 0, self.height, self.width), device='cuda')
+        #print('RPN inference, features size:', features.size()) #TODO remove this
+        #torch.cuda.synchronize()  # TODO remove this
+        #t_s = time.time()  # TODO remove this
         for classifier in self.classifiers:
             # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
             if classifier is None:
@@ -165,6 +169,10 @@ class RPNHead(nn.Module):
             else:
                 predictions = classifier.predict(features)
             objectness_scores = torch.cat((objectness_scores, torch.t(predictions).reshape(1,1,self.height,self.width)), dim=1)
+        #torch.cuda.synchronize()  # TODO remove this
+        #t_e = time.time()  # TODO remove this
+        #print('Classifier time:', t_e - t_s)  # TODO remove this
+        #print('Classifier', classifier)  # TODO remove this
         return objectness_scores
 
     def compute_objectness_FALKON_parallel(self, features):

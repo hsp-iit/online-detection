@@ -76,7 +76,7 @@ for i in range(len(images_paths)):
     if not images_paths[i].startswith("/"):
         images_paths[i] = os.path.abspath(os.path.join(basedir, os.path.pardir, images_paths[i]))
     image = cv2.imread(images_paths[i], 1)
-    predictions = coco_demo.run_on_opencv_image(image)
+    predictions = coco_demo.run_on_opencv_image(image)[0]
     if not args.do_not_display_images:
         cv2.imshow('Predictions', predictions)
         cv2.waitKey(0)

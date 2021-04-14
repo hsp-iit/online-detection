@@ -108,9 +108,30 @@ class OnlineSegmentationDemo(object):
         self.cfg = cfg.clone()
         self.model = build_detection_model(cfg)
 
-        self.model.roi_heads.box.predictor.classifiers = []
-        self.model.roi_heads.box.predictor.regressors = np.empty((0))
-        self.model.roi_heads.box.predictor.stats = None
+        if models_dir:
+            try:
+                self.model.rpn.head.classifiers = torch.load(os.path.join(models_dir, 'classifier_rpn'))
+                self.model.rpn.head.regressors = torch.load(os.path.join(models_dir, 'regressor_rpn'))
+                self.model.rpn.head.stats = torch.load(os.path.join(models_dir, 'stats_rpn'))
+            except:
+                pass
+
+            try:
+                self.model.roi_heads.box.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_detector'))
+                self.model.roi_heads.box.predictor.regressors = torch.load(os.path.join(models_dir, 'regressor_detector'))
+                self.model.roi_heads.box.predictor.stats = torch.load(os.path.join(models_dir, 'stats_detector'))
+            except:
+                pass
+
+            try:
+                self.model.roi_heads.mask.predictor.classifiers = torch.load(os.path.join(models_dir, 'classifier_segmentation'))
+                self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(models_dir, 'stats_segmentation'))
+            except:
+                pass
+        else:
+            self.model.roi_heads.box.predictor.classifiers = []
+            self.model.roi_heads.box.predictor.regressors = np.empty((0))
+            self.model.roi_heads.box.predictor.stats = None
 
         self.model.eval()
         self.device = torch.device(cfg.MODEL.DEVICE)
