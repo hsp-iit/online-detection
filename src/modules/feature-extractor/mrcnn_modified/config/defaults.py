@@ -491,6 +491,8 @@ _C.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = 21
 # IoU thresholds to choose detector's negatives
 _C.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH = 0.3
 _C.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = True
+_C.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES = False
+
 
 # ---------------------------------------------------------------------------- #
 # Regressors parameters

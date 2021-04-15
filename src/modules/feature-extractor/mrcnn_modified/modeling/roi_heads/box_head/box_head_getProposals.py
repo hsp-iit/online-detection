@@ -48,19 +48,23 @@ class ROIBoxHead(torch.nn.Module):
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
+        self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES                        #TODO add parameter in the configuration file
         if self.compute_gt_positives:
             self.positives = []
         self.negatives = []
         self.current_batch = []
         self.current_batch_size = []
         for i in range(self.num_classes):
-            self.negatives.append([])
-            self.current_batch.append(0)
-            self.current_batch_size.append(0)
             if self.compute_gt_positives:
                 self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
-            for j in range(self.iterations):
-                self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            if not self.shuffle_negatives:
+                self.negatives.append([])
+                self.current_batch.append(0)
+                self.current_batch_size.append(0)
+                for j in range(self.iterations):
+                    self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+            else:
+                self.negatives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
 
         self.negatives_to_pick = None
 
@@ -83,7 +87,7 @@ class ROIBoxHead(torch.nn.Module):
 
         self.test_boxes = []
 
-    def add_new_class(self):
+    def add_new_class(self):            #TODO it must be modified for the demo if we want to shuffle the negatives
         self.still_to_complete.append(self.num_classes)
         self.num_classes += 1
         self.negatives.append([])
@@ -223,45 +227,66 @@ class ROIBoxHead(torch.nn.Module):
                 self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
                 self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
 
-
-        # Fill batches for minibootstrap
-        indices_to_remove = []
-        # Loop on all the classes that doesn't have full batches
-        for i in self.still_to_complete:
-            # Add random negatives, if there isn't a gt corresponding to that class
-            if i+1 not in gt_labels_list:
-                neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
-            # Add random examples with iou < 0.3 otherwise
-            else:
-                neg_i = x[overlap[:,i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
-                if neg_i.size()[0] > 0:
-                    neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
-            # Add negatives splitting them into batches
-            neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
-            ind_to_add = 0
-            for b in range(self.current_batch[i], self.iterations):
-                if self.negatives[i][b].size()[0] >= self.batch_size:
-                    # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
-                    if self.save_features:
-                        path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(i, b))
-                        torch.save(self.negatives[i][b], path_to_save)
-                        self.negatives[i][b] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
-                    self.current_batch[i] += 1
-                    if self.current_batch[i] >= self.iterations:
-                        indices_to_remove.append(i)
-                    continue
+        if not self.shuffle_negatives:
+            # Fill batches for minibootstrap
+            indices_to_remove = []
+            # Loop on all the classes that doesn't have full batches
+            for i in self.still_to_complete:
+                # Add random negatives, if there isn't a gt corresponding to that class
+                if i+1 not in gt_labels_list:
+                    neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                # Add random examples with iou < 0.3 otherwise
                 else:
-                    end_interval = int(ind_to_add + min(neg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add))
-                    if self.training_device is 'cpu':
-                        self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels).cpu()))
+                    neg_i = x[overlap[:,i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
+                    if neg_i.size()[0] > 0:
+                        neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                # Add negatives splitting them into batches
+                neg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
+                ind_to_add = 0
+                for b in range(self.current_batch[i], self.iterations):
+                    if self.negatives[i][b].size()[0] >= self.batch_size:
+                        # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
+                        if self.save_features:
+                            path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(i, b))
+                            torch.save(self.negatives[i][b], path_to_save)
+                            self.negatives[i][b] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                        self.current_batch[i] += 1
+                        if self.current_batch[i] >= self.iterations:
+                            indices_to_remove.append(i)
+                        continue
                     else:
-                        self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels)))
-                    ind_to_add = end_interval
-                    if ind_to_add == self.negatives_to_pick:
-                        break
-        for index in indices_to_remove:
-            self.still_to_complete.remove(index)
-        
+                        end_interval = int(ind_to_add + min(neg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add))
+                        if self.training_device is 'cpu':
+                            self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels).cpu()))
+                        else:
+                            self.negatives[i][b] = torch.cat((self.negatives[i][b], neg_i[ind_to_add:end_interval].view(-1, self.feature_extractor.out_channels)))
+                        ind_to_add = end_interval
+                        if ind_to_add == self.negatives_to_pick:
+                            break
+            for index in indices_to_remove:
+                self.still_to_complete.remove(index)
+        else:
+            for i in range(len(self.negatives)):
+                # Add random negatives, if there isn't a gt corresponding to that class
+                if i + 1 not in gt_labels_list:
+                    neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                # Add random examples with iou < 0.3 otherwise
+                else:
+                    neg_i = x[overlap[:, i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
+                    if neg_i.size()[0] > 0:
+                        neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+
+                if self.training_device is 'cpu':
+                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i.cpu()))
+                else:
+                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i))
+                if self.negatives[i][len(self.negatives[i]) - 1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(i, len(self.negatives[i]) - 1))
+                        torch.save(self.negatives[i][len(self.negatives[i]) - 1], path_to_save)
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)
+                    self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
+
         return feat, None, None
 
 

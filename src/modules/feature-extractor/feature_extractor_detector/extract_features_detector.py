@@ -253,6 +253,12 @@ class FeatureExtractorDetector:
                     for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
                         if use_only_gt_positives_detection:
                             model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
+                        if self.cfg.MODEL.DETECTOR.SHUFFLE_NEGATIVES:
+                            total_negatives_i = torch.cat(model.roi_heads.box.negatives[i])
+                            shuffled_ids = torch.randperm(len(total_negatives_i))
+                            for j in range(self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS):
+                                model.roi_heads.box.negatives[i][j] = total_negatives_i[shuffled_ids[j*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE:(j+1)*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE]]
+                                print('shuffling negatives')
                         if extract_features_segmentation:
                             if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
                                 model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1] = model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1].to('cpu')
