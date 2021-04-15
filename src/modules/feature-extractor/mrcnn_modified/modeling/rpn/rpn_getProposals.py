@@ -160,6 +160,8 @@ class RPNModule(torch.nn.Module):
         self.current_batch_size = []
         self.neg_iou_thresh = self.cfg.MINIBOOTSTRAP.RPN.NEG_IOU_THRESH
         self.pos_iou_thresh = self.cfg.MINIBOOTSTRAP.RPN.POS_IOU_THRESH
+        self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES
+
 
         self.diag_list=[torch.empty(0, dtype=torch.long, device='cuda')]
         for i in range(50):
@@ -230,12 +232,15 @@ class RPNModule(torch.nn.Module):
 
             # Initialize batches for minibootstrap
             for i in range(self.num_classes):
-                self.negatives.append([])
-                self.current_batch.append(0)
-                self.current_batch_size.append(0)
                 self.positives.append([torch.empty((0, self.feat_size), device=self.training_device)])
-                for j in range(self.iterations):
-                    self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
+                if not self.shuffle_negatives:
+                    self.negatives.append([])
+                    self.current_batch.append(0)
+                    self.current_batch_size.append(0)
+                    for j in range(self.iterations):
+                        self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
+                else:
+                    self.negatives.append([torch.empty((0, self.feat_size), device=self.training_device)])
 
             # Initialize tensors for box regression
             # Regressor features
@@ -264,55 +269,85 @@ class RPNModule(torch.nn.Module):
         # Filter all the negatives, i.e. with iou with the gts < self.neg_iou_thresh
         negative_anchors_total = anchors_to_return[ious < self.neg_iou_thresh]
 
-        indices_to_remove = []
-        for i in self.still_to_complete:
-            # Filter negatives for the i-th anchor
-            anchors_i = negative_anchors_total[negative_anchors_total.get_field('classifier')==i]
-            # Sample negatives, according to minibootstrap parameters
-            if anchors_i.bbox.size()[0] > self.negatives_to_pick:
-                anchors_i = anchors_i[torch.randint(anchors_i.bbox.size()[0], (self.negatives_to_pick,))]
-            # Compute their id, i.e. position in the features map
-            ids = anchors_i.get_field('feature_id')
-            ids_size = ids.size()[0]
-            # Compute at most how many negatives to add to each batch
-            reg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
-            # Initialize index of chosen negatives among all the negatives to pick
-            ind_to_add = 0
-            for b in range(self.current_batch[i], self.iterations):
-                # If the batch is full, start from the subsequent
-                if self.negatives[i][b].size()[0] >= self.batch_size:
-                    # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
-                    if self.save_features:
-                        path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, b))
-                        torch.save(self.negatives[i][b], path_to_save)
-                        self.negatives[i][b] = torch.empty((0, self.feat_size), device=self.training_device)
-                    self.current_batch[i] += 1
-                    if self.current_batch[i] >= self.iterations:
-                        indices_to_remove.append(i)
-                    continue
+        if not self.shuffle_negatives:
+            indices_to_remove = []
+            for i in self.still_to_complete:
+                # Filter negatives for the i-th anchor
+                anchors_i = negative_anchors_total[negative_anchors_total.get_field('classifier')==i]
+                # Sample negatives, according to minibootstrap parameters
+                if anchors_i.bbox.size()[0] > self.negatives_to_pick:
+                    anchors_i = anchors_i[torch.randint(anchors_i.bbox.size()[0], (self.negatives_to_pick,))]
+                # Compute their id, i.e. position in the features map
+                ids = anchors_i.get_field('feature_id')
+                ids_size = ids.size()[0]
+                # Compute at most how many negatives to add to each batch
+                reg_to_add = math.ceil(self.negatives_to_pick/self.iterations)
+                # Initialize index of chosen negatives among all the negatives to pick
+                ind_to_add = 0
+                for b in range(self.current_batch[i], self.iterations):
+                    # If the batch is full, start from the subsequent
+                    if self.negatives[i][b].size()[0] >= self.batch_size:
+                        # If features must be saved, save full batches and replace the batch in gpu with an empty tensor
+                        if self.save_features:
+                            path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, b))
+                            torch.save(self.negatives[i][b], path_to_save)
+                            self.negatives[i][b] = torch.empty((0, self.feat_size), device=self.training_device)
+                        self.current_batch[i] += 1
+                        if self.current_batch[i] >= self.iterations:
+                            indices_to_remove.append(i)
+                        continue
 
-                else:
-                    # Compute the end index of negatives to add to the batch
-                    end_interval = int(ind_to_add + min(reg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add, ids_size -ind_to_add))
-                    # Extract features corresponding to the ids and add them to the ids
-                    # Diagonal choice done for computational efficiency
-                    feat = torch.index_select(features, 1, ids[ind_to_add:end_interval, 0])
-                    feat = torch.index_select(feat, 2, ids[ind_to_add:end_interval, 1]).permute(1,2,0).view((end_interval-ind_to_add)**2,self.feat_size)
-                    try:
-                        feat = feat[self.diag_list[end_interval-ind_to_add]]
-                    except:
-                        feat = feat[list(range(0,(end_interval-ind_to_add)**2+(end_interval-ind_to_add)-1, (end_interval-ind_to_add)+1))]
-                    if self.training_device is 'cpu':
-                        self.negatives[i][b] = torch.cat((self.negatives[i][b], feat.cpu()))
                     else:
-                        self.negatives[i][b] = torch.cat((self.negatives[i][b], feat))
-                    # Update indices
-                    ind_to_add = end_interval
-                    if ind_to_add == self.negatives_to_pick:
-                        break
-        # Check to avoid unuseful computations
-        for index in indices_to_remove:
-            self.still_to_complete.remove(index)
+                        # Compute the end index of negatives to add to the batch
+                        end_interval = int(ind_to_add + min(reg_to_add, self.batch_size - self.negatives[i][b].size()[0], self.negatives_to_pick - ind_to_add, ids_size -ind_to_add))
+                        # Extract features corresponding to the ids and add them to the ids
+                        # Diagonal choice done for computational efficiency
+                        feat = torch.index_select(features, 1, ids[ind_to_add:end_interval, 0])
+                        feat = torch.index_select(feat, 2, ids[ind_to_add:end_interval, 1]).permute(1,2,0).view((end_interval-ind_to_add)**2,self.feat_size)
+                        try:
+                            feat = feat[self.diag_list[end_interval-ind_to_add]]
+                        except:
+                            feat = feat[list(range(0,(end_interval-ind_to_add)**2+(end_interval-ind_to_add)-1, (end_interval-ind_to_add)+1))]
+                        if self.training_device is 'cpu':
+                            self.negatives[i][b] = torch.cat((self.negatives[i][b], feat.cpu()))
+                        else:
+                            self.negatives[i][b] = torch.cat((self.negatives[i][b], feat))
+                        # Update indices
+                        ind_to_add = end_interval
+                        if ind_to_add == self.negatives_to_pick:
+                            break
+            # Check to avoid unuseful computations
+            for index in indices_to_remove:
+                self.still_to_complete.remove(index)
+
+        else:
+            for i in range(len(self.negatives)):
+                # Filter negatives for the i-th anchor
+                anchors_i = negative_anchors_total[negative_anchors_total.get_field('classifier') == i]
+                # Sample negatives, according to minibootstrap parameters
+                if anchors_i.bbox.size()[0] > self.negatives_to_pick:
+                    anchors_i = anchors_i[torch.randint(anchors_i.bbox.size()[0], (self.negatives_to_pick,))]
+                # Compute their id, i.e. position in the features map
+                ids = anchors_i.get_field('feature_id')
+                ids_size = ids.size()[0]
+                feat = torch.index_select(features, 1, ids[:, 0])
+                feat = torch.index_select(feat, 2, ids[:, 1]).permute(1, 2, 0).view(ids_size ** 2, self.feat_size)
+                try:
+                    feat = feat[self.diag_list[ids_size]]
+                except:
+                    feat = feat[list(range(0, ids_size ** 2 + ids_size - 1, ids_size + 1))]
+                # Add negative features for the i-th anchor to the i-th negatives list
+                if self.training_device is 'cpu':
+                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat.cpu()))
+                else:
+                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat))
+                if self.negatives[i][len(self.negatives[i]) - 1].size()[0] >= self.batch_size:
+                    if self.save_features:
+                        path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, len(self.negatives[i]) - 1))
+                        torch.save(self.negatives[i][len(self.negatives[i]) - 1], path_to_save)
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.empty((0, self.feat_size), device=self.training_device)
+                    self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
+
 
         # Select all the positives with iou with the gts > 0.7
         positive_anchors = anchors_to_return[anchors_to_return.get_field('overlap') > self.pos_iou_thresh]

@@ -48,7 +48,7 @@ class ROIBoxHead(torch.nn.Module):
         self.iterations = self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
-        self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES                        #TODO add parameter in the configuration file
+        self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES
         if self.compute_gt_positives:
             self.positives = []
         self.negatives = []

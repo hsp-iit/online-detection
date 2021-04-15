@@ -285,6 +285,14 @@ class FeatureExtractorRPNDetector:
                                }
                     for i in range(self.cfg.MINIBOOTSTRAP.RPN.NUM_CLASSES):
                         model.rpn.positives[i] = torch.cat(model.rpn.positives[i])
+                        if self.cfg.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES:
+                            total_negatives_i = torch.cat(model.rpn.negatives[i])
+                            shuffled_ids = torch.randperm(len(total_negatives_i))
+                            for j in range(self.cfg.MINIBOOTSTRAP.RPN.ITERATIONS):
+                                start_j_index = min(j * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE, self.cfg.MINIBOOTSTRAP.RPN.ITERATIONS * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE)
+                                end_j_index = min((j + 1) * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE, self.cfg.MINIBOOTSTRAP.RPN.ITERATIONS * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE)
+                                model.rpn.negatives[i][j] = total_negatives_i[shuffled_ids[start_j_index:end_j_index]]
+                                print('shuffling negatives rpn')
 
                     COXY = {'C': torch.cat(model.roi_heads.box.C),
                             'O': model.roi_heads.box.O,
@@ -298,7 +306,9 @@ class FeatureExtractorRPNDetector:
                             total_negatives_i = torch.cat(model.roi_heads.box.negatives[i])
                             shuffled_ids = torch.randperm(len(total_negatives_i))
                             for j in range(self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS):
-                                model.roi_heads.box.negatives[i][j] = total_negatives_i[shuffled_ids[j*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE:(j+1)*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE]]
+                                start_j_index = min(j * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE)
+                                end_j_index = min((j + 1) * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE)
+                                model.roi_heads.box.negatives[i][j] = total_negatives_i[shuffled_ids[start_j_index:end_j_index]]
                                 print('shuffling negatives')
                         if extract_features_segmentation:
                             if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
