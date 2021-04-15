@@ -253,7 +253,7 @@ class FeatureExtractorDetector:
                     for i in range(self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES):
                         if use_only_gt_positives_detection:
                             model.roi_heads.box.positives[i] = torch.cat(model.roi_heads.box.positives[i])
-                        if self.cfg.MODEL.DETECTOR.SHUFFLE_NEGATIVES:
+                        if self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES:
                             total_negatives_i = torch.cat(model.roi_heads.box.negatives[i])
                             shuffled_ids = torch.randperm(len(total_negatives_i))
                             for j in range(self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS):
