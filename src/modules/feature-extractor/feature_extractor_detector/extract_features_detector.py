@@ -256,10 +256,11 @@ class FeatureExtractorDetector:
                         if self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES:
                             total_negatives_i = torch.cat(model.roi_heads.box.negatives[i])
                             shuffled_ids = torch.randperm(len(total_negatives_i))
+                            model.roi_heads.box.negatives[i] = []
                             for j in range(self.cfg.MINIBOOTSTRAP.DETECTOR.ITERATIONS):
-                                start_j_index = min(j*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
-                                end_j_index = min((j+1)*self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
-                                model.roi_heads.box.negatives[i][j] = total_negatives_i[shuffled_ids[start_j_index:end_j_index]]
+                                start_j_index = min(j * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
+                                end_j_index = min((j + 1) * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
+                                model.roi_heads.box.negatives[i].append(total_negatives_i[shuffled_ids[start_j_index:end_j_index]])
                                 print('shuffling negatives')
                         if extract_features_segmentation:
                             if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':

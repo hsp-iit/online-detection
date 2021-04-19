@@ -105,7 +105,7 @@ class RPNHead(nn.Module):
             torch.nn.init.constant_(l.bias, 0)
 
         # TODO decide how to set this param
-        self.parallel_falkon = True
+        self.parallel_falkon = False
         # TODO: remove this, just for initial testing purposes
         self.check_times = True
 
@@ -155,6 +155,12 @@ class RPNHead(nn.Module):
             # Else use pretrained weights
             else:
                 logits.append(self.cls_logits(t))
+                if self.check_times:
+                    torch.cuda.synchronize()
+                    t_p = time.time()
+                    a = self.cls_logits(t)
+                    torch.cuda.synchronize()
+                    print('conv:', time.time()-t_p)
                 bbox_reg.append(self.bbox_pred(t))
         return logits, bbox_reg
 

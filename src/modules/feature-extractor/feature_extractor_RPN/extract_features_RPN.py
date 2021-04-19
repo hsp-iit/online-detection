@@ -199,10 +199,11 @@ class FeatureExtractorRPN:
                 if self.cfg.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES:
                     total_negatives_i = torch.cat(model.rpn.negatives[i])
                     shuffled_ids = torch.randperm(len(total_negatives_i))
+                    model.rpn.negatives[i] = []
                     for j in range(self.cfg.MINIBOOTSTRAP.RPN.ITERATIONS):
                         start_j_index = min(j * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE, len(shuffled_ids))
                         end_j_index = min((j + 1) * self.cfg.MINIBOOTSTRAP.RPN.BATCH_SIZE, len(shuffled_ids))
-                        model.rpn.negatives[i][j] = total_negatives_i[shuffled_ids[start_j_index:end_j_index]]
+                        model.rpn.negatives[i].append(total_negatives_i[shuffled_ids[start_j_index:end_j_index]])
                         print('shuffling negatives rpn')
 
             #return copy.deepcopy(model.rpn.negatives), copy.deepcopy(model.rpn.positives), copy.deepcopy(COXY)

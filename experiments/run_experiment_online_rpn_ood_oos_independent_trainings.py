@@ -43,7 +43,8 @@ parser.add_argument('--normalize_features_regressor_detector', action='store_tru
 parser.add_argument('--only_ood', action='store_true', help='Run only the online-object-detection experiment, i.e. without updating the RPN.') #TODO rename this
 parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
 parser.add_argument('--sampling_ratio_positives_detection', action='store', type=float, default=1.0, help='Set the fraction of positives samples to be used to train the online detection head, when loading the positives from COXY.')
-parser.add_argument('--nystrom_centers_detection_segmentation', action='store', type=int, help='Set the number of nystrom centers both for detection and segmentation.')
+parser.add_argument('--nystrom_centers_detection', action='store', type=int, help='Set the number of nystrom centers for detection.')
+parser.add_argument('--nystrom_centers_segmentation', action='store', type=int, help='Set the number of nystrom centers for segmentation.')
 parser.add_argument('--maxiter_falkon_detection_segmentation', action='store', type=int, help='Set the number of falkon training iterations both for detection and segmentation.')
 
 
@@ -182,8 +183,8 @@ else:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        if args.nystrom_centers_detection_segmentation:
-            classifier.nyst_centers = args.nystrom_centers_detection_segmentation
+        if args.nystrom_centers_detection:
+            classifier.nyst_centers = args.nystrom_centers_detection
         if args.maxiter_falkon_detection_segmentation:
             classifier.maxiter = args.maxiter_falkon_detection_segmentation
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
@@ -251,8 +252,8 @@ else:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        if args.nystrom_centers_detection_segmentation:
-            classifier.nyst_centers = args.nystrom_centers_detection_segmentation
+        if args.nystrom_centers_detection:
+            classifier.nyst_centers = args.nystrom_centers_detection
         if args.maxiter_falkon_detection_segmentation:
             classifier.maxiter = args.maxiter_falkon_detection_segmentation
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
@@ -303,8 +304,8 @@ if not args.load_segmentation_models:
     stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
     # Per-pixel classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
-    if args.nystrom_centers_detection_segmentation:
-        classifier.nyst_centers = args.nystrom_centers_detection_segmentation
+    if args.nystrom_centers_segmentation:
+        classifier.nyst_centers = args.nystrom_centers_segmentation
     if args.maxiter_falkon_detection_segmentation:
         classifier.maxiter = args.maxiter_falkon_detection_segmentation
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
