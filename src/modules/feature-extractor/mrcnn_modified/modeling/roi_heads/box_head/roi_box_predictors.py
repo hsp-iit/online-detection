@@ -32,8 +32,6 @@ class FastRCNNPredictor(nn.Module):
 
         # TODO decide how to set this param
         self.parallel_inference = True
-        # TODO: remove this, just for initial testing purposes
-        self.check_times = False
 
     def forward(self, x, proposals=None):
         x = self.avgpool(x)
