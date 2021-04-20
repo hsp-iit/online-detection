@@ -105,7 +105,7 @@ class RPNHead(nn.Module):
             torch.nn.init.constant_(l.bias, 0)
 
         # TODO decide how to set this param
-        self.parallel_falkon = False
+        self.parallel_inference = False
         # TODO: remove this, just for initial testing purposes
         self.check_times = True
 
@@ -134,7 +134,7 @@ class RPNHead(nn.Module):
                 t = t - self.stats['mean']
                 t = t * (20 / self.stats['mean_norm'])
                 # Compute objectness with FALKON
-                if self.parallel_falkon:
+                if self.parallel_inference:
                     logits.append(self.compute_objectness_FALKON_parallel(t))
                 else:
                     logits.append(self.compute_objectness_FALKON(t))
@@ -150,8 +150,27 @@ class RPNHead(nn.Module):
                     b = self.compute_objectness_FALKON(t)
                     torch.cuda.synchronize()
                     print('serial:', time.time()-t_s)
+                    print(torch.max(a-b))
 
-                bbox_reg.append(self.refine_boxes(t))
+                if self.parallel_inference:
+                    bbox_reg.append(self.refine_boxes_parallel(t))
+                else:
+                    bbox_reg.append(self.refine_boxes(t))
+
+                # TODO: remove this, just for initial testing purposes
+                if self.check_times:
+                    torch.cuda.synchronize()
+                    t_p = time.time()
+                    a = self.refine_boxes_parallel(t)
+                    torch.cuda.synchronize()
+                    print('parallel:', time.time()-t_p)
+                    torch.cuda.synchronize()
+                    t_s = time.time()
+                    b = self.refine_boxes(t)
+                    torch.cuda.synchronize()
+                    print('serial:', time.time()-t_s)
+                    print(torch.max(a-b))
+
             # Else use pretrained weights
             else:
                 logits.append(self.cls_logits(t))
@@ -162,6 +181,12 @@ class RPNHead(nn.Module):
                     torch.cuda.synchronize()
                     print('conv:', time.time()-t_p)
                 bbox_reg.append(self.bbox_pred(t))
+                if self.check_times:
+                    torch.cuda.synchronize()
+                    t_p = time.time()
+                    a = self.bbox_pred(t)
+                    torch.cuda.synchronize()
+                    print('conv:', time.time()-t_p)
         return logits, bbox_reg
 
     def refine_boxes(self, features):
@@ -184,6 +209,37 @@ class RPNHead(nn.Module):
             Y = torch.t(Y).reshape(1,4,self.height,self.width)
             refined_boxes = torch.cat((refined_boxes, Y), dim=1)
         return refined_boxes
+
+    def refine_boxes_parallel(self, features):
+        if not hasattr(self, 'regressors_parallel'):
+            weights_parallel = torch.empty((self.feat_size+1, 0), device='cuda')
+            T_inv_parallel = torch.zeros((self.num_clss*4, self.num_clss*4), device='cuda') #torch.empty((0, 4), device='cuda')
+            mu_parallel = torch.empty((1, 0), device='cuda')
+            for j in range(self.num_clss):
+                # Refine boxes with RLS regressors
+                if self.regressors[j]['Beta'] is not None:
+                    weights = torch.empty((0, self.feat_size + 1), device='cuda')
+                    for k in range(0, 4):
+                        weights = torch.cat((weights, self.regressors[j]['Beta'][str(k)]['weights'].view(1, self.feat_size + 1)))
+                    # T_inv_parallel is a block diagonal matrix
+                    T_inv_parallel[j*4:(j+1)*4, j*4:(j+1)*4] = self.regressors[j]['T_inv']
+                    mu_parallel = torch.cat((mu_parallel, self.regressors[j]['mu'].view(1,4)), dim=1)
+
+                else:
+                    weights = torch.zeros((4, self.feat_size + 1), device='cuda')
+                    mu_parallel = torch.cat((mu_parallel, torch.zeros((1, 4), device='cuda')), dim=1)
+
+                weights_parallel = torch.cat((weights_parallel, torch.t(weights)), dim=1)
+            self.regressors_parallel = {'weights_parallel': weights_parallel,
+                                        'T_inv_parallel': T_inv_parallel,
+                                        'mu_parallel': mu_parallel}
+
+        Y_parallel = torch.matmul(features, self.regressors_parallel['weights_parallel'][:-1])
+        Y_parallel += self.regressors_parallel['weights_parallel'][-1]
+        Y_parallel = torch.matmul(Y_parallel, self.regressors_parallel['T_inv_parallel'])
+        Y_parallel += self.regressors_parallel['mu_parallel']
+        Y_parallel = torch.t(Y_parallel).reshape(1, self.num_clss*4, self.height, self.width)
+        return Y_parallel
     
     def compute_objectness_FALKON(self, features):
         objectness_scores = torch.empty((1, 0, self.height, self.width), device='cuda')
