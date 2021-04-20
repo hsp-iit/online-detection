@@ -105,9 +105,9 @@ class RPNHead(nn.Module):
             torch.nn.init.constant_(l.bias, 0)
 
         # TODO decide how to set this param
-        self.parallel_inference = False
+        self.parallel_inference = True
         # TODO: remove this, just for initial testing purposes
-        self.check_times = True
+        self.check_times = False
 
         self.feat_size = None
         self.height = None
@@ -261,40 +261,27 @@ class RPNHead(nn.Module):
         return objectness_scores
 
     def compute_objectness_FALKON_parallel(self, features):
-        #TODO remove the following commented lines, parellel implementation with joblib is not efficient
-        """
-        def compute_score(classifier):
-            # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
-            if classifier is None:
-                return torch.t(torch.full((self.area, 1), -2, device='cuda')).reshape(1,1,self.height,self.width)
-            # Compute objectness with falkon classifier
-            else:
-                return torch.t(classifier.predict(features)).reshape(1,1,self.height,self.width)
-
-        objectness_scores = torch.cat(Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(compute_score)(self.classifiers[i]) for i in range(len(self.classifiers))), dim=1)
-
-        return objectness_scores
-        """
         if not hasattr(self, 'nystrom_parallel'):
             self.kernel = None
-            self.matrix_to_subtract = torch.zeros((1, 0, 38, 50), device='cuda')
+            self.matrix_to_subtract = torch.zeros((1, 0, self.height, self.width), device='cuda')
+            self.max_nystrom_centers = 0
+            for i in range(len(self.classifiers)):
+                if self.classifiers[i]:
+                    self.max_nystrom_centers = max(self.max_nystrom_centers, self.classifiers[i].M)
             for i in range(len(self.classifiers)):
                 if self.classifiers[i] and not self.kernel:
                     self.kernel = self.classifiers[i].kernel
                 if self.classifiers[i]:
-                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.zeros((1, 1, 38, 50), device='cuda')), dim=1)
+                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.zeros((1, 1, self.height, self.width), device='cuda')), dim=1)
                 else:
-                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.full((1, 1, 38, 50), 2, device='cuda')), dim=1)
-            self.alpha_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].alpha_, (0, 0, 0, 1000-len(self.classifiers[i].alpha_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, 1000, 1), device='cuda') for i in range(len(self.classifiers))])
-            self.nystrom_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].ny_points_, (0, 0, 0, 1000-len(self.classifiers[i].ny_points_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, 1000, 1024), device='cuda')  for i in range(len(self.classifiers))])
+                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.full((1, 1, self.height, self.width), 2, device='cuda')), dim=1)
+            self.alpha_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].alpha_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].alpha_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, 1), device='cuda') for i in range(len(self.classifiers))])
+            self.nystrom_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].ny_points_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].ny_points_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, self.feat_size), device='cuda')  for i in range(len(self.classifiers))])
 
         features = features.repeat((len(self.classifiers), 1, 1))
-        #features = torch.repeat_interleave(features, len(self.classifiers), dim=0)
         objectness_scores = batch_mmv.batch_fmmv_incore(features, self.nystrom_parallel, self.alpha_parallel, self.kernel).reshape(1,-1,self.height,self.width)
         objectness_scores -= self.matrix_to_subtract
         return objectness_scores
-
-
 
 class RPNModule(torch.nn.Module):
     """
