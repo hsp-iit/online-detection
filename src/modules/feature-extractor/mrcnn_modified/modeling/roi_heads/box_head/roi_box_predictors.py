@@ -31,7 +31,7 @@ class FastRCNNPredictor(nn.Module):
         self.normalize_features_regressors = False
 
         # TODO decide how to set this param
-        self.parallel_inference = True
+        self.parallel_inference = False
 
     def forward(self, x, proposals=None):
         x = self.avgpool(x)

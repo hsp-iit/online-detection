@@ -98,15 +98,32 @@ class OnlineSegmentationDemo(object):
         "061_foam_brick"
     ]
 
+    CATEGORIES_HO3D = [
+        "__background__",
+        "003_cracker_box",
+        "004_sugar_box",
+        "006_mustard_bottle",
+        "010_potted_meat_can",
+        "011_banana",
+        "021_bleach_cleanser",
+        "025_mug",
+        "035_power_drill",
+        "037_scissors",
+    ]
+
     def __init__(
         self,
         cfg,
         confidence_threshold,
         models_dir,
-        dataset=None
+        dataset=None,
+        fill_masks=False
     ):
         self.cfg = cfg.clone()
-        self.model = build_detection_model(cfg)
+        if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
+            print('SingleConvRPNHead_getProposals is not correct as RPN head, changed to OnlineRPNHead.')
+            self.cfg.MODEL.RPN.RPN_HEAD = 'OnlineRPNHead'
+        self.model = build_detection_model(self.cfg)
 
         if models_dir:
             try:
@@ -137,11 +154,11 @@ class OnlineSegmentationDemo(object):
         self.device = torch.device(cfg.MODEL.DEVICE)
         self.model.to(self.device)
 
-        save_dir = cfg.OUTPUT_DIR
-        checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
-        _ = checkpointer.load(cfg.MODEL.WEIGHT)
+        save_dir = self.cfg.OUTPUT_DIR
+        checkpointer = DetectronCheckpointer(self.cfg, self.model, save_dir=save_dir)
+        _ = checkpointer.load(self.cfg.MODEL.WEIGHT)
         
-        self.transforms = self.build_transform(cfg)
+        self.transforms = self.build_transform(self.cfg)
 
         self.masker = Masker(threshold=0.5, padding=1)
 
@@ -157,8 +174,12 @@ class OnlineSegmentationDemo(object):
             self.CATEGORIES = self.CATEGORIES_iCWT_TT_21
         elif dataset == 'ycbv':
             self.CATEGORIES = self.CATEGORIES_YCBV
+        elif dataset == 'ho3d':
+            self.CATEGORIES = self.CATEGORIES_HO3D
         else:
             self.CATEGORIES = None
+
+        self.fill_masks = fill_masks
 
     def build_transform(self, cfg):
         """
@@ -205,11 +226,13 @@ class OnlineSegmentationDemo(object):
         else:
             return image.copy(), None
         result = self.overlay_boxes(result, top_predictions)
+        #TODO check the second arguent when using only detection
         if self.cfg.MODEL.MASK_ON:
             result = self.overlay_mask(result, top_predictions)
-            result = (self.overlay_class_names(result[0], top_predictions), result[1])
+            result_with_names = self.overlay_class_names(result[0], top_predictions)
+            result = (result_with_names[0], result[1], result_with_names[1])
         else:
-            result = self.overlay_class_names(result, top_predictions)
+            result = self.overlay_class_names(result, top_predictions)[0]
 
         return result
 
@@ -331,6 +354,12 @@ class OnlineSegmentationDemo(object):
             )
             image = cv2.drawContours(image, contours, -1, color, 3)
 
+            if self.fill_masks:
+                coloredImg = np.zeros(image.shape, image.dtype)
+                coloredImg[:, :] = color
+                coloredMask = cv2.bitwise_and(coloredImg, coloredImg, mask=mask.astype(np.uint8).squeeze())
+                image = cv2.addWeighted(coloredMask, 1, image, 1, 0)
+
         composite = image
 
         return composite, masks
@@ -360,7 +389,7 @@ class OnlineSegmentationDemo(object):
             cv2.putText(
                 image, s, (x, y), cv2.FONT_HERSHEY_SIMPLEX, .5, (255, 255, 255), 2
             )
-        return image
+        return image, labels
 
     def update_model(self, models_rpn=None, models_detection=None, models_segmentation=None, categories=None):
         if models_rpn:

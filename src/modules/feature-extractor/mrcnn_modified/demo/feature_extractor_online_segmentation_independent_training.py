@@ -3,17 +3,15 @@ import cv2
 import torch
 from torchvision import transforms as T
 from torchvision.transforms import functional as F
-from mrcnn_modified.modeling.rpn.rpn_getProposals_RPN import build_detection_model
+from mrcnn_modified.modeling.detector.detectors_getProposals import build_detection_model
 from maskrcnn_benchmark.utils.checkpoint import DetectronCheckpointer
 from maskrcnn_benchmark.structures.image_list import to_image_list
+from maskrcnn_benchmark.modeling.roi_heads.mask_head.inference import Masker
 from maskrcnn_benchmark import layers as L
 from maskrcnn_benchmark.utils import cv2_util
 
 import numpy as np
 import os
-
-import copy
-
 
 class Resize(object):
     def __init__(self, min_size, max_size):
@@ -48,65 +46,101 @@ class Resize(object):
         image = F.resize(image, size)
         return image
 
-class OnlineRPNFeatureExtractorDemo(object):
-    CATEGORIES_RPN = [
-        "0",
-        '1',
-        '2',
-        '3',
-        '4',
-        '5',
-        '6',
-        '7',
-        '8',
-        '9',
-        '10',
-        '11',
-        '12',
-        '13',
-        '14',
+class OnlineSegmentationIndependentTrainFeatureExtractorDemo(object):
+    CATEGORIES_iCWT_TT_21 = [
+        "__background__",
+        'sodabottle3', 'sodabottle4',
+        'mug1', 'mug3', 'mug4',
+        'pencilcase5', 'pencilcase3',
+        'ringbinder4', 'ringbinder5',
+        'wallet6',
+        'flower7', 'flower5', 'flower2',
+        'book6', 'book9',
+        'hairclip2', 'hairclip8', 'hairclip6',
+        'sprayer6', 'sprayer8', 'sprayer9'
     ]
+    CATEGORIES_iCWT_TT = [
+        "__background__",
+        "flower2", "flower5", "flower7",
+        "mug1", "mug3", "mug4",
+        "wallet6", "wallet7", "wallet10",
+        "sodabottle2", "sodabottle3", "sodabottle4",
+        "book4", "book6", "book9",
+        "ringbinder4", "ringbinder5", "ringbinder6",
+        "bodylotion2", "bodylotion5", "bodylotion8",
+        "sprayer6", "sprayer8", "sprayer9",
+        "pencilcase3", "pencilcase5", "pencilcase6",
+        "hairclip2", "hairclip6", "hairclip8"
 
+    ]
+    CATEGORIES_YCBV = [
+        "__background__",
+        "002_master_chef_can",
+        "003_cracker_box",
+        "004_sugar_box",
+        "005_tomato_soup_can",
+        "006_mustard_bottle",
+        "007_tuna_fish_can",
+        "008_pudding_box",
+        "009_gelatin_box",
+        "010_potted_meat_can",
+        "011_banana",
+        "019_pitcher_base",
+        "021_bleach_cleanser",
+        "024_bowl",
+        "025_mug",
+        "035_power_drill",
+        "036_wood_block",
+        "037_scissors",
+        "040_large_marker",
+        "051_large_clamp",
+        "052_extra_large_clamp",
+        "061_foam_brick"
+    ]
 
     def __init__(
         self,
         cfg,
+        confidence_threshold,       # TODO remove
         models_dir,
+        dataset,
         max_training_images,
+        num_classes_trained_together
     ):
         self.cfg = cfg.clone()
+        self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = num_classes_trained_together
         self.cfg.NUM_IMAGES = max_training_images
+        if self.cfg.MODEL.RPN.RPN_HEAD == 'OnlineRPNHead':
+            print('OnlineRPNHead is not correct as RPN head, changed to SingleConvRPNHead_getProposals.')
+            self.cfg.MODEL.RPN.RPN_HEAD = 'SingleConvRPNHead_getProposals'
         self.model = build_detection_model(self.cfg)
 
-
         self.model.eval()
-        self.device = torch.device(self.cfg.MODEL.DEVICE)
+        self.device = torch.device(cfg.MODEL.DEVICE)
         self.model.to(self.device)
 
         save_dir = self.cfg.OUTPUT_DIR
         checkpointer = DetectronCheckpointer(self.cfg, self.model, save_dir=save_dir)
         _ = checkpointer.load(self.cfg.MODEL.WEIGHT)
-
-        #if self.cfg.MODEL.WEIGHT.startswith('/') or 'catalog' in self.cfg.MODEL.WEIGHT:
-        #    model_path = self.cfg.MODEL.WEIGHT
-        #else:
-        #    model_path = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir, os.path.pardir, os.path.pardir, 'Data', 'pretrained_feature_extractors', self.cfg.MODEL.WEIGHT))
-
-        #model_pretrained = torch.load(self.cfg.MODEL.WEIGHT)
-        #model_pretrained_copy = copy.deepcopy(checkpointer.model)
-        #for key in model_pretrained_copy['model'].keys():
-        #    if key.startswith('roi'):
-        #        del model_pretrained['model'][key]
-        #checkpointer._load_model(model_pretrained)
         
         self.transforms = self.build_transform(self.cfg)
 
+        self.masker = Masker(threshold=0.5, padding=1)
 
         # used to make colors for each class
         self.palette = torch.tensor([2 ** 25 - 1, 2 ** 15 - 1, 2 ** 21 - 1])
 
         self.cpu_device = torch.device("cpu")
-        self.CATEGORIES = self.CATEGORIES_RPN
+        self.confidence_threshold = confidence_threshold
+
+        if dataset == 'iCWT_TT':
+            self.CATEGORIES = self.CATEGORIES_iCWT_TT
+        elif dataset == 'iCWT_TT_TABLETOP':
+            self.CATEGORIES = self.CATEGORIES_iCWT_TT_21
+        elif dataset == 'ycbv':
+            self.CATEGORIES = self.CATEGORIES_YCBV
+        else:
+            self.CATEGORIES = None
 
     def build_transform(self, cfg):
         """
@@ -136,7 +170,7 @@ class OnlineRPNFeatureExtractorDemo(object):
         )
         return transform
 
-    def compute_features(self, original_image, gt_bbox_boxlist, gt_classes_list):
+    def compute_features(self, original_image, gt_bbox_boxlist, gt_classes_list, extract_features_segmentation=False):
         """
         Arguments:
             original_image (np.ndarray): an image as returned by OpenCV
@@ -155,30 +189,11 @@ class OnlineRPNFeatureExtractorDemo(object):
         img_sizes = [original_image.shape[1], original_image.shape[0]]
         gt_labels_torch = torch.tensor(gt_classes_list, device="cuda", dtype=torch.uint8).reshape((len(gt_classes_list), 1))
         with torch.no_grad():
-            #predictions = self.model(image_list, img_size=img_size)[1]
-            predictions = self.model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, gt_labels_list=gt_classes_list, is_train=True, result_dir='')
-        """
-        if not type(predictions) is list:
-            predictions = [predictions]
-        predictions = [o.to(self.cpu_device) for o in predictions]
+            predictions = self.model(image_list, gt_bbox=gt_bbox_boxlist, gt_label=gt_labels_torch, img_size=img_sizes, gt_labels_list=gt_classes_list, is_train=True, result_dir='',  extract_features_segmentation=extract_features_segmentation)
 
-        try:
-            # always single image is passed at a time
-            prediction = predictions[0]
-        except:
-            return None
-
-        # reshape prediction (a BoxList) into the original image size
-        height, width = original_image.shape[:-1]
-        prediction = prediction.resize((width, height))
-
-        if prediction.has_field("mask"):
-            # if we have masks, paste the masks in the right position
-            # in the image, as defined by the bounding boxes
-            masks = prediction.get_field("mask")
-            # always single image is passed at a time
-            masks = self.masker([masks], [prediction])[0]
-            prediction.add_field("mask", masks)
-        return prediction
-        """
+    def update_model(self, models_rpn=None):
+        if models_rpn:
+            self.model.rpn.head.classifiers = models_rpn['classifiers']
+            self.model.rpn.head.regressors = models_rpn['regressors']
+            self.model.rpn.head.stats = models_rpn['stats']
 

@@ -110,6 +110,9 @@ class OnlineSegmentationFeatureExtractorDemo(object):
         self.cfg = cfg.clone()
         self.cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = num_classes_trained_together
         self.cfg.NUM_IMAGES = max_training_images
+        if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
+            print('SingleConvRPNHead_getProposals is not correct as RPN head, changed to OnlineRPNHead.')
+            self.cfg.MODEL.RPN.RPN_HEAD = 'OnlineRPNHead'
         self.model = build_detection_model(self.cfg)
 
         try:
@@ -121,14 +124,14 @@ class OnlineSegmentationFeatureExtractorDemo(object):
 
 
         self.model.eval()
-        self.device = torch.device(cfg.MODEL.DEVICE)
+        self.device = torch.device(self.cfg.MODEL.DEVICE)
         self.model.to(self.device)
 
-        save_dir = cfg.OUTPUT_DIR
-        checkpointer = DetectronCheckpointer(cfg, self.model, save_dir=save_dir)
-        _ = checkpointer.load(cfg.MODEL.WEIGHT)
+        save_dir = self.cfg.OUTPUT_DIR
+        checkpointer = DetectronCheckpointer(self.cfg, self.model, save_dir=save_dir)
+        _ = checkpointer.load(self.cfg.MODEL.WEIGHT)
         
-        self.transforms = self.build_transform(cfg)
+        self.transforms = self.build_transform(self.cfg)
 
         self.masker = Masker(threshold=0.5, padding=1)
 
