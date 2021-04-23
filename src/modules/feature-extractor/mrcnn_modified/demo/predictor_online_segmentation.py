@@ -224,7 +224,7 @@ class OnlineSegmentationDemo(object):
             top_predictions = self.select_top_predictions(predictions)
             result = image.copy()
         else:
-            return image.copy(), None
+            return image.copy(), None, None
         result = self.overlay_boxes(result, top_predictions)
         #TODO check the second arguent when using only detection
         if self.cfg.MODEL.MASK_ON:
