@@ -244,6 +244,11 @@ class DatasetCatalog(object):
             "image_set": "",
             "split": "imageset_train_1_out_of_2"
         },
+        "ho3d_v2_train_icubworld_format_1_out_of_2_from_feat": {
+            "data_dir": "HO3D_V2_iCWT_format/train",
+            "image_set": "",
+            "split": "imageset_train_1_out_of_2"
+        },
         "ho3d_v2_train_icubworld_format_1_out_of_2_3_seq": {
             "data_dir": "HO3D_V2_iCWT_format/train",
             "image_set": "",
@@ -290,7 +295,7 @@ class DatasetCatalog(object):
                 factory="PascalVOCDataset",
                 args=args,
             )
-        elif "icubworld" in name:
+        elif "icubworld" in name and not 'from_feat' in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(
@@ -300,6 +305,18 @@ class DatasetCatalog(object):
             )
             return dict(
                 factory="iCubWorldDataset",
+                args=args,
+            )
+        elif "icubworld" in name and 'from_feat' in name:
+            data_dir = DatasetCatalog.DATA_DIR
+            attrs = DatasetCatalog.DATASETS[name]
+            args = dict(
+                data_dir=os.path.join(data_dir, attrs["data_dir"]),
+                image_set=attrs["image_set"],
+                split=attrs["split"],
+            )
+            return dict(
+                factory="iCubWorldDatasetFromFeat",
                 args=args,
             )
         elif "ycb" in name and not 'from_feat' in name:

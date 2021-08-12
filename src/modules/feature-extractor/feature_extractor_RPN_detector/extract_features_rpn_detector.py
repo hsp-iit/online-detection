@@ -31,6 +31,8 @@ try:
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
 
+import time
+
 class FeatureExtractorRPNDetector:
     def __init__(self, cfg_path_target_task=None, local_rank=0):
 
@@ -156,6 +158,9 @@ class FeatureExtractorRPNDetector:
 
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
+        torch.cuda.synchronize()
+        print('Start of feature extraction:', time.time())
+
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             feat_extraction_time = inference(self.cfg,
                                              model,
@@ -176,6 +181,7 @@ class FeatureExtractorRPNDetector:
                     fid.write("Detector's feature extraction time: {}min:{}s \n".format(int(feat_extraction_time/60), round(feat_extraction_time%60)))
 
             synchronize()
+            print('End of feature extraction:', time.time())
             if is_train:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]

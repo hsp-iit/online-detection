@@ -90,7 +90,7 @@ for i in range(len(images_paths)):
         cv2.imshow('Predictions', predictions)
         cv2.waitKey(0)
     if args.write_outputs:
-        cv2.imwrite(os.path.join(output_dir, os.path.splitext(os.path.basename(images_paths[i]))[0])+'.jpg', predictions)
+        cv2.imwrite(os.path.join(output_dir, str(format(i,'05d'))+'_'+os.path.splitext(os.path.basename(images_paths[i]))[0])+'.jpg', predictions)
     if args.save_png_masks:
         if predictions_with_masks_values is not None:
             # Keep track of the instances of the same class

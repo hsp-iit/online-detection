@@ -83,7 +83,8 @@ model = torch.load(os.path.join(output_dir, 'classifier_detector'))
 models = torch.load(os.path.join(output_dir, 'regressor_detector'))
 stats = torch.load(os.path.join(output_dir, 'stats_detector'))
 
-lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
+#lambdas = [0.0000001, 0.000001, 0.00001, 0.0001, 0.001, 0.01]
+lambdas = [0.000001, 0.00001, 0.0001, 0.001, 0.01]
 sigmas = [1, 5, 10, 15, 20, 25, 30, 50, 100, 1000, 10000]
 #lambdas = [0.001]
 #sigmas = [50]
@@ -91,42 +92,45 @@ for lam in lambdas:
     for sigma in sigmas:
         print('---------------------------------------- Training with lambda %s and sigma %s ----------------------------------------' % (str(lam), str(sigma)))
 
-        # Manage all the cases in which features must be loaded
-        if args.load_segmentation_features or args.save_detector_features or args.load_detector_features or args.load_detector_models:
-            # Train segmentation classifiers
-            positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
-        if args.CPU:
-            training_device = 'cpu'
-        else:
-            training_device = 'cuda'
-        # Features can be extracted in a device that does not correspond to the one used for training.
-        # Convert them to the proper device.
-        for i in range(len(positives_segmentation)):
-            positives_segmentation[i] = positives_segmentation[i].to(training_device)
-            negatives_segmentation[i] = [negatives_segmentation[i].to(training_device)]
-        stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
-        # Per-pixel classifier initialization
-        classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
-        regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
-        model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'lam': lam, 'sigma': sigma},output_dir=output_dir))
+        try:
+            # Manage all the cases in which features must be loaded
+            if args.load_segmentation_features or args.save_detector_features or args.load_detector_features or args.load_detector_models:
+                # Train segmentation classifiers
+                positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
+            if args.CPU:
+                training_device = 'cpu'
+            else:
+                training_device = 'cuda'
+            # Features can be extracted in a device that does not correspond to the one used for training.
+            # Convert them to the proper device.
+            for i in range(len(positives_segmentation)):
+                positives_segmentation[i] = positives_segmentation[i].to(training_device)
+                negatives_segmentation[i] = [negatives_segmentation[i].to(training_device)]
+            stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
+            # Per-pixel classifier initialization
+            classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
+            regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
+            model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(opts={'lam': lam, 'sigma': sigma},output_dir=output_dir))
 
-        del positives_segmentation, negatives_segmentation, regionClassifier
-        torch.cuda.empty_cache()
+            del positives_segmentation, negatives_segmentation, regionClassifier
+            torch.cuda.empty_cache()
 
-        # Initialize feature extractor
-        accuracy_evaluator = AccuracyEvaluator(cfg_target_task, train_in_cpu=args.CPU)
+            # Initialize feature extractor
+            accuracy_evaluator = AccuracyEvaluator(cfg_target_task, train_in_cpu=args.CPU)
 
-        if args.load_RPN_models:
-            accuracy_evaluator.falkon_rpn_models = torch.load(os.path.join(output_dir, 'classifier_rpn'))
-            accuracy_evaluator.regressors_rpn_models = torch.load(os.path.join(output_dir, 'regressor_rpn'))
-            accuracy_evaluator.stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
+            if args.load_RPN_models:
+                accuracy_evaluator.falkon_rpn_models = torch.load(os.path.join(output_dir, 'classifier_rpn'))
+                accuracy_evaluator.regressors_rpn_models = torch.load(os.path.join(output_dir, 'regressor_rpn'))
+                accuracy_evaluator.stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
 
-        # Set detector models in the pipeline
-        accuracy_evaluator.falkon_detector_models = model
-        accuracy_evaluator.regressors_detector_models = models
-        accuracy_evaluator.stats_detector = stats
+            # Set detector models in the pipeline
+            accuracy_evaluator.falkon_detector_models = model
+            accuracy_evaluator.regressors_detector_models = models
+            accuracy_evaluator.stats_detector = stats
 
-        accuracy_evaluator.falkon_segmentation_models = model_segm
-        accuracy_evaluator.stats_segmentation = stats_segm
+            accuracy_evaluator.falkon_segmentation_models = model_segm
+            accuracy_evaluator.stats_segmentation = stats_segm
 
-        test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)
+            test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)
+        except:
+            continue

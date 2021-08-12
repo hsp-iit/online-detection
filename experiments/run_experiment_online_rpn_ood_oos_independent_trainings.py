@@ -17,6 +17,7 @@ from region_refiner import RegionRefiner
 
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
 import gc
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
@@ -310,6 +311,9 @@ if not args.load_segmentation_models:
         classifier.maxiter = args.maxiter_falkon_detection_segmentation
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+
+    torch.cuda.synchronize()
+    print('End of training:', time.time())
 
     del positives_segmentation, negatives_segmentation, regionClassifier
     torch.cuda.empty_cache()

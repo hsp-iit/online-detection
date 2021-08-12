@@ -23,7 +23,7 @@ class MaskRCNNC4Predictor(nn.Module):
         self.mask_fcn_logits = Conv2d(dim_reduced, num_classes, 1, 1, 0)
 
         # TODO decide how to set this param
-        self.parallel_inference = False
+        self.parallel_inference = True
 
         for name, param in self.named_parameters():
             if "bias" in name:

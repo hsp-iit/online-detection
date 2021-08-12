@@ -39,3 +39,7 @@ MINIBOOTSTRAP:
 
 DATALOADER:     #TODO check if it can be increased, error when loading the feature map with num_workers > 0
   NUM_WORKERS: 0
+
+EVALUATION:
+  IOU_THRESHOLDS: (0.5, 0.7)
+  USE_VOC07_METRIC: True

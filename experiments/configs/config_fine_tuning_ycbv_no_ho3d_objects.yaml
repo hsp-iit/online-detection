@@ -1,7 +1,7 @@
 OUTPUT_DIR: ""
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "/home/hsp-user/workspace/python-online-detection/experiments/full_train_ho3d/model_0020156.pth"
+  WEIGHT: "/home/hsp-user/workspace/python-online-detection/experiments/full_train_ho3d_tr1/model_0020156.pth"
   RPN:
     PRE_NMS_TOP_N_TRAIN: 1000
     POST_NMS_TOP_N_TRAIN: 300
@@ -28,7 +28,7 @@ SOLVER:
   BASE_LR: 0.0005
   WEIGHT_DECAY: 0.0001
   STEPS: (89216,)
-  MAX_ITER: 133824
+  MAX_ITER: 89216 # 8 epochs 133824
   TEST_PERIOD: 11152
   CHECKPOINT_PERIOD: 11152
 TEST:

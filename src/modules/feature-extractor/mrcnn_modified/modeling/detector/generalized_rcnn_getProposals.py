@@ -51,7 +51,7 @@ class GeneralizedRCNN(nn.Module):
         """
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        if False:    #TODO edit this
+        if False:    #Set to True to save features for YCBV fine tuning
             features_name = img_name.replace('rgb', 'feat').replace('.png', '.pth').replace('.jpg', '.pth')
             feat_path = os.path.dirname(features_name)
             if not os.path.exists(feat_path):
@@ -63,6 +63,23 @@ class GeneralizedRCNN(nn.Module):
             if not os.path.exists(targets_path):
                 os.makedirs(targets_path)
             torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
+
+        if False:    #Set to True to save features for ho3d fine tuning
+            features_name = img_name.replace('Images', 'Features').replace('.png', '.pth').replace('.jpg', '.pth')
+            feat_path = os.path.dirname(features_name)
+            print(feat_path, features_name)
+            if not os.path.exists(feat_path):
+                os.makedirs(feat_path)
+            torch.save(features, features_name)
+
+            targets_name = img_name.replace('Images', 'Targets').replace('.png', '.pth').replace('.jpg', '.pth')
+            targets_path = os.path.dirname(targets_name)
+            if not os.path.exists(targets_path):
+                os.makedirs(targets_path)
+            torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
+
+        if False:
+            print(len(gt_bbox))
 
 
 

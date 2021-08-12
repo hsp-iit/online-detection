@@ -105,7 +105,7 @@ class RPNHead(nn.Module):
             torch.nn.init.constant_(l.bias, 0)
 
         # TODO decide how to set this param
-        self.parallel_inference = False
+        self.parallel_inference = True
         # TODO: remove this, just for initial testing purposes
         self.check_times = False
 

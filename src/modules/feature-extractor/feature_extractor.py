@@ -21,15 +21,15 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
 
-    def extractRPNFeatures(self, is_train, output_dir=None, save_features=False):
+    def extractRPNFeatures(self, is_train, output_dir=None, save_features=False, cfg_options={}):
         from feature_extractor_RPN import FeatureExtractorRPN
         # call class to extract rpn features:
         feature_extractor = FeatureExtractorRPN(self.cfg_path_RPN)
-        features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features)
+        features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, cfg_options=cfg_options)
 
         return features
 
-    def extractFeatures(self, is_train, output_dir=None, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True):
+    def extractFeatures(self, is_train, output_dir=None, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True, cfg_options={}):
         from feature_extractor_detector import FeatureExtractorDetector
         # call class to extract detector features:
         feature_extractor = FeatureExtractorDetector(self.cfg_path_target_task)
@@ -41,7 +41,8 @@ class FeatureExtractor(FeatureExtractorAbstract):
         feature_extractor.stats_detector = self.stats_detector
         if self.regions_post_nms is not None:
             feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
-        features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection)
+        features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection,
+                                     cfg_options=cfg_options)
 
         return features
 

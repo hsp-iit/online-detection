@@ -35,7 +35,8 @@ parser.add_argument('--pos_fraction_feat_stats', action='store', type=float, def
 parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_segmentation_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_detection_segmentation_ycbv.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_detection_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
-
+parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
+parser.add_argument('--nystrom_centers_detection', action='store', type=int, help='Set the number of nystrom centers for detection.')
 
 args = parser.parse_args()
 
@@ -136,6 +137,8 @@ for lam in lambdas:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
+        if args.nystrom_centers_detection:
+            classifier.nyst_centers = args.nystrom_centers_detection
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
         # Train detector Region Classifier

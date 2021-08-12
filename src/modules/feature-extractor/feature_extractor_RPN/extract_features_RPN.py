@@ -30,6 +30,7 @@ try:
     from apex import amp
 except ImportError:
     raise ImportError('Use APEX for multi-precision via apex.amp')
+import time
 
 class FeatureExtractorRPN:
     def __init__(self, cfg_path_RPN=None, local_rank=0):
@@ -42,7 +43,7 @@ class FeatureExtractorRPN:
         self.cfg = cfg.clone()
         self.load_parameters()
 
-    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False):
+    def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, cfg_options={}):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_RPN = save_features
         if save_features:
@@ -53,6 +54,8 @@ class FeatureExtractorRPN:
             else:
                 print('Output directory must be specified. Quitting.')
                 quit()
+        if 'minibootstrap_iterations' in cfg_options:
+            self.cfg.MINIBOOTSTRAP.RPN.ITERATIONS = cfg_options['minibootstrap_iterations']
 
         return self.train(is_train, result_dir=output_dir)
 
@@ -139,6 +142,9 @@ class FeatureExtractorRPN:
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
+            torch.cuda.synchronize()
+            print('Start of RPN feature extraction:', time.time())
+
             feat_extraction_time = inference(self.cfg,
                                              model,
                                              data_loader,
