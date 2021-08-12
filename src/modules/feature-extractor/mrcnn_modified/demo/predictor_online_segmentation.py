@@ -120,6 +120,9 @@ class OnlineSegmentationDemo(object):
         fill_masks=False
     ):
         self.cfg = cfg.clone()
+        #Set here the confidence threshold to avoid useless computation
+        self.cfg.MODEL.ROI_HEADS.SCORE_THRESH = confidence_threshold
+
         if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
             print('SingleConvRPNHead_getProposals is not correct as RPN head, changed to OnlineRPNHead.')
             self.cfg.MODEL.RPN.RPN_HEAD = 'OnlineRPNHead'
@@ -222,6 +225,8 @@ class OnlineSegmentationDemo(object):
         predictions = self.compute_prediction(image)
         if predictions is not None:
             top_predictions = self.select_top_predictions(predictions)
+            if len(top_predictions) == 0:
+                return image.copy(), None, None
             result = image.copy()
         else:
             return image.copy(), None, None
@@ -307,6 +312,10 @@ class OnlineSegmentationDemo(object):
         """
         colors = labels[:, None] * self.palette
         colors = (colors % 255).numpy().astype("uint8")
+        # Create different colors, otherwise only "green" colors are used
+        for i in range(len(colors)):
+            np.random.seed(labels[i])
+            colors[i] = np.random.permutation(colors[i])
         return colors
 
     def overlay_boxes(self, image, predictions):
@@ -396,15 +405,25 @@ class OnlineSegmentationDemo(object):
             self.model.rpn.head.classifiers = models_rpn['classifiers']
             self.model.rpn.head.regressors = models_rpn['regressors']
             self.model.rpn.head.stats = models_rpn['stats']
+            if hasattr(self.model.rpn.head, 'nystrom_parallel'):
+                del self.model.rpn.head.nystrom_parallel
+            if hasattr(self.model.rpn.head, 'regressors_parallel'):
+                del self.model.rpn.head.regressors_parallel
 
         if models_detection:
             self.model.roi_heads.box.predictor.classifiers = models_detection['classifiers']
             self.model.roi_heads.box.predictor.regressors = models_detection['regressors']
             self.model.roi_heads.box.predictor.stats = models_detection['stats']
+            if hasattr(self.model.roi_heads.box.predictor, 'nystrom_parallel'):
+                del self.model.roi_heads.box.predictor.nystrom_parallel
+            if hasattr(self.model.roi_heads.box.predictor, 'regressors_parallel'):
+                del self.model.roi_heads.box.predictor.regressors_parallel
 
         if models_segmentation:
             self.model.roi_heads.mask.predictor.classifiers = models_segmentation['classifiers']
             self.model.roi_heads.mask.predictor.stats = models_segmentation['stats']
+            if hasattr(self.model.roi_heads.mask.predictor, 'nystrom_parallel'):
+                del self.model.roi_heads.mask.predictor.nystrom_parallel
 
         if categories:
             self.CATEGORIES = categories

@@ -1,4 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
+import time
+
 from torch import nn
 from torch.nn import functional as F
 
@@ -41,8 +43,9 @@ class MaskRCNNC4Predictor(nn.Module):
             x = x.permute(0,2,3,1).reshape(-1,x.size()[1])
             x = x - self.stats['mean']
             x = x * (20 / self.stats['mean_norm'])
+            # TODO use parallel inference only if there is more than one classifier
             if self.parallel_inference:
-                return self.predict_pixel_FALKON_parallel(x, feat_width)
+                return self.predict_pixel_FALKON_parallel_new(x, feat_width)
             else:
                 return self.predict_pixel_FALKON(x, feat_width)
         else:
@@ -59,10 +62,27 @@ class MaskRCNNC4Predictor(nn.Module):
             else:
                 predictions = classifier.predict(features)
             pixels_scores = torch.cat((pixels_scores, predictions), dim=1)
-
+        """
+        torch.cuda.synchronize()
+        tp = time.time()
         to_return = torch.empty((0, len(self.classifiers)+1, feat_width, feat_width), device='cuda')    #TODO maybe the loop can be optimized
         for i in range(int((len(predictions))/(feat_width**2))):
             to_return = torch.cat((to_return, pixels_scores[i*(feat_width**2):(i+1)*(feat_width**2)].T.reshape(1, len(self.classifiers)+1, feat_width, feat_width)))
+        torch.cuda.synchronize()
+        print('old', time.time()-tp)
+        torch.cuda.synchronize()
+        tp = time.time()
+        """
+        # Transpose and reshape the scores
+        # Map them
+        # Reshape them to the final dimension
+        to_return = pixels_scores\
+            .T.reshape(-1, feat_width ** 2)\
+            [torch.LongTensor([i%(len(self.classifiers)+1)*int((len(pixels_scores))/(feat_width**2))+int(i/(len(self.classifiers)+1)) for i in range(int((len(pixels_scores))/(feat_width**2))*(len(self.classifiers)+1))])]\
+            .reshape(-1, len(self.classifiers)+1, feat_width, feat_width)
+        #torch.cuda.synchronize()
+        #print('new', time.time()-tp)
+        #[i % (len(self.classifiers) + 1) * int((len(predictions)) / (feat_width ** 2)) + int(i / (len(self.classifiers) + 1)) for i in range(int((len(predictions)) / (feat_width ** 2)) * (len(self.classifiers) + 1))]
         return to_return
 
     def predict_pixel_FALKON_parallel(self, features, feat_width):
@@ -82,11 +102,48 @@ class MaskRCNNC4Predictor(nn.Module):
 
         features = features.repeat((len(self.classifiers), 1, 1))
         pixels_scores = batch_mmv.batch_fmmv_incore(features, self.nystrom_parallel, self.alpha_parallel, self.kernel)
-        pixels_scores = torch.cat((torch.full((features.size()[1], 1), -2, device='cuda'), torch.t(pixels_scores.squeeze())), dim=1)
-
+        pixels_scores = torch.cat((torch.full((features.size()[1], 1), -2, device='cuda'), torch.t(pixels_scores.squeeze(2))), dim=1)
+        """
         to_return = torch.empty((0, len(self.classifiers)+1, feat_width, feat_width), device='cuda')    #TODO maybe the loop can be optimized
         for i in range(int((len(pixels_scores))/(feat_width**2))):
             to_return = torch.cat((to_return, pixels_scores[i*(feat_width**2):(i+1)*(feat_width**2)].T.reshape(1, len(self.classifiers)+1, feat_width, feat_width)))
+        """
+        # Transpose and reshape the scores
+        # Map them
+        # Reshape them to the final dimension
+        to_return = pixels_scores\
+            .T.reshape(-1,feat_width**2)\
+            [torch.LongTensor([i%(len(self.classifiers)+1)*int((len(pixels_scores))/(feat_width**2))+int(i/(len(self.classifiers)+1)) for i in range(int((len(pixels_scores))/(feat_width**2))*(len(self.classifiers)+1))])]\
+            .reshape(-1, len(self.classifiers)+1, feat_width, feat_width)
+        return to_return
+
+    def predict_pixel_FALKON_parallel_new(self, features, feat_width):
+        if not hasattr(self, 'nystrom_parallel'):
+            self.kernel = None
+            self.max_nystrom_centers = 0
+            self.total_nystrom_centers = torch.sum(torch.tensor([self.classifiers[i].M if self.classifiers[i] else 0 for i in range(len(self.classifiers))]))
+            self.alpha_parallel = torch.zeros((self.total_nystrom_centers, len(self.classifiers)), device='cuda')
+            for i in range(len(self.classifiers)):
+                if self.classifiers[i]:
+                    self.max_nystrom_centers = max(self.max_nystrom_centers, self.classifiers[i].M)
+            current_nystrom_center_row = 0
+            for i in range(len(self.classifiers)):
+                if self.classifiers[i] and not self.kernel:
+                    self.kernel = self.classifiers[i].kernel
+                if self.classifiers[i]:
+                    self.alpha_parallel[current_nystrom_center_row:current_nystrom_center_row + self.classifiers[i].M, i] = self.classifiers[i].alpha_.squeeze()
+                    current_nystrom_center_row += self.classifiers[i].M
+            self.nystrom_parallel = torch.cat([self.classifiers[i].ny_points_ if self.classifiers[i] else torch.empty((0, self.feat_size), device='cuda') for i in range(len(self.classifiers))])
+
+        self.scores = self.kernel.mmv(features, self.nystrom_parallel, self.alpha_parallel)
+        pixels_scores = torch.cat((torch.full((features.size()[0], 1), -2, device='cuda'), self.scores), dim=1)
+        # Transpose and reshape the scores
+        # Map them
+        # Reshape them to the final dimension
+        to_return = pixels_scores\
+            .T.reshape(-1,feat_width**2)\
+            [torch.LongTensor([i%(len(self.classifiers)+1)*int((len(pixels_scores))/(feat_width**2))+int(i/(len(self.classifiers)+1)) for i in range(int((len(pixels_scores))/(feat_width**2))*(len(self.classifiers)+1))])]\
+            .reshape(-1, len(self.classifiers)+1, feat_width, feat_width)
         return to_return
 
 

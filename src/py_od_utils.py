@@ -65,7 +65,12 @@ def computeFeatStatistics_torch(positives, negatives, num_samples=4000, features
         neg_fraction = 1 - pos_fraction
     num_classes = len(positives)
     take_from_pos = math.ceil((num_samples/num_classes)*pos_fraction)
-    take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
+    nb = 0
+    for i in range(len(negatives)):
+        if len(negatives[i]) > nb:
+            nb = len(negatives[i])
+    #take_from_neg = math.ceil(((num_samples/num_classes)*neg_fraction)/len(negatives[0]))
+    take_from_neg = math.ceil(((num_samples / num_classes) * neg_fraction) / nb)
     sampled_X = torch.empty((0, features_dim), device=device)
     ns = torch.empty((0,1), device=device)
     for i in range(num_classes):

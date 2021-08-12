@@ -49,11 +49,15 @@ class ROIBoxHead(torch.nn.Module):
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
         self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES
+        # TODO set this from config file, set to true for the demo
+        self.incremental_train = False
         if self.compute_gt_positives:
             self.positives = []
         self.negatives = []
         self.current_batch = []
         self.current_batch_size = []
+        if self.incremental_train:
+            self.buffer_negatives =[]
         for i in range(self.num_classes):
             if self.compute_gt_positives:
                 self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
@@ -64,7 +68,11 @@ class ROIBoxHead(torch.nn.Module):
                 for j in range(self.iterations):
                     self.negatives[i].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
             else:
-                self.negatives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
+                if self.incremental_train:
+                    self.negatives.append([])
+                    self.buffer_negatives.append([])
+                else:
+                    self.negatives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
 
         self.negatives_to_pick = None
 
@@ -87,7 +95,7 @@ class ROIBoxHead(torch.nn.Module):
 
         self.test_boxes = []
 
-    def add_new_class(self):            #TODO it must be modified for the demo if we want to shuffle the negatives
+    def add_new_class(self):            #TODO it must be modified for the demo if we want to shuffle the negatives, check if it's still true
         self.still_to_complete.append(self.num_classes)
         self.num_classes += 1
         self.negatives.append([])
@@ -268,18 +276,23 @@ class ROIBoxHead(torch.nn.Module):
         else:
             for i in range(len(self.negatives)):
                 # Add random negatives, if there isn't a gt corresponding to that class
-                if i + 1 not in gt_labels_list:
+                if (i + 1 not in gt_labels_list) or self.incremental_train:
                     neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
+                if self.incremental_train:
+                    self.buffer_negatives[i].append(neg_i)
                 # Add random examples with iou < 0.3 otherwise
                 else:
                     neg_i = x[overlap[:, i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
                     if neg_i.size()[0] > 0:
                         neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
-
-                if self.training_device is 'cpu':
-                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i.cpu()))
+                # TODO edit this part to store buffers
+                if self.incremental_train:
+                    self.negatives[i].append(neg_i)
                 else:
-                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i))
+                    if self.training_device is 'cpu':
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i.cpu()))
+                    else:
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], neg_i))
                 if self.negatives[i][len(self.negatives[i]) - 1].size()[0] >= self.batch_size:
                     if self.save_features:
                         path_to_save = os.path.join(result_dir, 'features_detector', 'negatives_cl_{}_batch_{}'.format(i, len(self.negatives[i]) - 1))

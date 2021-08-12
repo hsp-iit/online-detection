@@ -162,6 +162,8 @@ class RPNModule(torch.nn.Module):
         self.pos_iou_thresh = self.cfg.MINIBOOTSTRAP.RPN.POS_IOU_THRESH
         self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES
 
+        # TODO read this param from file, set to true for the demo
+        self.keep_img_id = False
 
         self.diag_list=[torch.empty(0, dtype=torch.long, device='cuda')]
         for i in range(50):
@@ -240,7 +242,10 @@ class RPNModule(torch.nn.Module):
                     for j in range(self.iterations):
                         self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
                 else:
-                    self.negatives.append([torch.empty((0, self.feat_size), device=self.training_device)])
+                    if self.keep_img_id:
+                        self.negatives.append([])
+                    else:
+                        self.negatives.append([torch.empty((0, self.feat_size), device=self.training_device)])
 
             # Initialize tensors for box regression
             # Regressor features
@@ -336,18 +341,20 @@ class RPNModule(torch.nn.Module):
                     feat = feat[self.diag_list[ids_size]]
                 except:
                     feat = feat[list(range(0, ids_size ** 2 + ids_size - 1, ids_size + 1))]
-                # Add negative features for the i-th anchor to the i-th negatives list
-                if self.training_device is 'cpu':
-                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat.cpu()))
+                if self.keep_img_id:
+                    self.negatives[i].append(feat)
                 else:
-                    self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat))
+                    # Add negative features for the i-th anchor to the i-th negatives list
+                    if self.training_device is 'cpu':
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat.cpu()))
+                    else:
+                        self.negatives[i][len(self.negatives[i]) - 1] = torch.cat((self.negatives[i][len(self.negatives[i]) - 1], feat))
                 if self.negatives[i][len(self.negatives[i]) - 1].size()[0] >= self.batch_size:
                     if self.save_features:
                         path_to_save = os.path.join(result_dir, 'features_RPN', 'negatives_cl_{}_batch_{}'.format(i, len(self.negatives[i]) - 1))
                         torch.save(self.negatives[i][len(self.negatives[i]) - 1], path_to_save)
                         self.negatives[i][len(self.negatives[i]) - 1] = torch.empty((0, self.feat_size), device=self.training_device)
                     self.negatives[i].append(torch.empty((0, self.feat_size), device=self.training_device))
-
 
         # Select all the positives with iou with the gts > 0.7
         positive_anchors = anchors_to_return[anchors_to_return.get_field('overlap') > self.pos_iou_thresh]
@@ -439,6 +446,7 @@ class RPNModule(torch.nn.Module):
                 self.X.append(torch.empty((0, self.feat_size), dtype=torch.float32, device=self.training_device))
                 self.C.append(torch.empty((0), dtype=torch.float32, device=self.training_device))
                 self.Y.append(torch.empty((0, 4), dtype=torch.float32, device=self.training_device))
+
         if not propagate_rpn_boxes:
             return {}, {}, 0
         else:
@@ -447,6 +455,7 @@ class RPNModule(torch.nn.Module):
             with torch.no_grad():
                 boxes = self.box_selector_test(self.anchors_total, logits, bbox_reg)
             return boxes, {}, 0
+
 
 
 def build_rpn(cfg, in_channels):

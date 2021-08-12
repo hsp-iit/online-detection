@@ -31,7 +31,7 @@ class FastRCNNPredictor(nn.Module):
         self.normalize_features_regressors = False
 
         # TODO decide how to set this param
-        self.parallel_inference = False
+        self.parallel_inference = True
 
     def forward(self, x, proposals=None):
         x = self.avgpool(x)
@@ -41,7 +41,11 @@ class FastRCNNPredictor(nn.Module):
             if not self.normalize_features_regressors:
                 # Refine boxes
                 if self.parallel_inference:
-                    bbox_pred = self.refine_boxes_parallel(x)
+                    if self.regressors.shape[0] > 0:
+                        bbox_pred = self.refine_boxes_parallel(x)
+                    # If the regressors are empty, use the sequential inference
+                    else:
+                        bbox_pred = self.refine_boxes(x)
                 else:
                     bbox_pred = self.refine_boxes(x)
             if self.stats:
@@ -51,12 +55,21 @@ class FastRCNNPredictor(nn.Module):
             if self.normalize_features_regressors:
                 # Refine boxes
                 if self.parallel_inference:
-                    bbox_pred = self.refine_boxes_parallel(x)
+                    if self.regressors.shape[0] > 0:
+                        bbox_pred = self.refine_boxes_parallel(x)
+                    # If the regressors are empty, use the sequential inference
+                    else:
+                        bbox_pred = self.refine_boxes(x)
                 else:
                     bbox_pred = self.refine_boxes(x)
             # Compute scores with FALKON
             if self.parallel_inference:
-                cls_scores = self.predict_clss_FALKON_parallel(x)
+                #if self.classifiers:
+                if len(self.classifiers) > 1:
+                    cls_scores = self.predict_clss_FALKON_parallel_new(x)
+                # If the list of classifier is empty, use the sequential inference
+                else:
+                    cls_scores = self.predict_clss_FALKON(x)
             else:
                 cls_scores = self.predict_clss_FALKON(x)
             return cls_scores, bbox_pred
@@ -100,7 +113,6 @@ class FastRCNNPredictor(nn.Module):
                     # T_inv_parallel is a block diagonal matrix
                     T_inv_parallel[(j+1)*4:(j+2)*4, (j+1)*4:(j+2)*4] = self.regressors[j]['T_inv']
                     mu_parallel = torch.cat((mu_parallel, self.regressors[j]['mu'].view(1,4)), dim=1)
-
                 else:
                     weights = torch.zeros((4, features.size()[1] + 1), device='cuda')
                     mu_parallel = torch.cat((mu_parallel, torch.zeros((1, 4), device='cuda')), dim=1)
@@ -145,9 +157,30 @@ class FastRCNNPredictor(nn.Module):
 
         features = features.repeat((len(self.classifiers), 1, 1))
         objectness_scores = batch_mmv.batch_fmmv_incore(features, self.nystrom_parallel, self.alpha_parallel, self.kernel)
-        objectness_scores = torch.cat((torch.full((features.size()[1],1), -2, device='cuda'), torch.t(objectness_scores.squeeze())), dim=1)
+        objectness_scores = torch.cat((torch.full((features.size()[1],1), -2, device='cuda'), torch.t(objectness_scores.squeeze(2))), dim=1)
         return objectness_scores
 
+    def predict_clss_FALKON_parallel_new(self, features):
+        if not hasattr(self, 'nystrom_parallel'):
+            self.kernel = None
+            self.max_nystrom_centers = 0
+            self.total_nystrom_centers = torch.sum(torch.tensor([self.classifiers[i].M if self.classifiers[i] else 0 for i in range(len(self.classifiers))]))
+            self.alpha_parallel = torch.zeros((self.total_nystrom_centers, len(self.classifiers)), device='cuda')
+            for i in range(len(self.classifiers)):
+                if self.classifiers[i]:
+                    self.max_nystrom_centers = max(self.max_nystrom_centers, self.classifiers[i].M)
+            current_nystrom_center_row = 0
+            for i in range(len(self.classifiers)):
+                if self.classifiers[i] and not self.kernel:
+                    self.kernel = self.classifiers[i].kernel
+                if self.classifiers[i]:
+                    self.alpha_parallel[current_nystrom_center_row:current_nystrom_center_row+self.classifiers[i].M, i] = self.classifiers[i].alpha_.squeeze()
+                    current_nystrom_center_row += self.classifiers[i].M
+            self.nystrom_parallel = torch.cat([self.classifiers[i].ny_points_ if self.classifiers[i] else torch.empty((0, self.feat_size), device='cuda') for i in range(len(self.classifiers))])
+
+        self.scores = self.kernel.mmv(features, self.nystrom_parallel, self.alpha_parallel)
+        scores = torch.cat((torch.full((features.size()[0], 1), -2, device='cuda'), self.scores), dim=1)
+        return scores
 
 
 @registry.ROI_BOX_PREDICTOR.register("FPNPredictor")
