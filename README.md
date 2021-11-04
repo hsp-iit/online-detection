@@ -29,12 +29,15 @@ You can find the instructions to replicate experiments at this [link](https://gi
 If you use this code, please, cite the following works:
 
 ```
-@INPROCEEDINGS{maiettini2018,
-	author={E. Maiettini and G. Pasquale and L. Rosasco and L. Natale},
-	booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
-	title={Speeding-up Object Detection Training for Robotics with FALKON},
-	year={2018},
-	month={Oct},
+@INPROCEEDINGS{ceola2020oos,
+  author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
+  booktitle={2021 IEEE International Conference on Robotics and Automation (ICRA)}, 
+  title={Fast Object Segmentation Learning with Kernel-based Methods for Robotics}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={13581-13588},
+  doi={10.1109/ICRA48506.2021.9561758}
 }
 ```
 ```
@@ -54,18 +57,19 @@ If you use this code, please, cite the following works:
 }
 ```
 ```
+@INPROCEEDINGS{maiettini2018,
+	author={E. Maiettini and G. Pasquale and L. Rosasco and L. Natale},
+	booktitle={2018 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+	title={Speeding-up Object Detection Training for Robotics with FALKON},
+	year={2018},
+	month={Oct},
+}
+```
+```
 @article{ceola2020rpn,
   title={Fast region proposal learning for object detection for robotics},
   author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
   journal={arXiv preprint arXiv:2011.12790},
-  year={2020}
-}
-```
-```
-@article{ceola2020segm,
-  title={Fast Object Segmentation Learning with Kernel-based Methods for Robotics},
-  author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
-  journal={arXiv preprint arXiv:2011.12805},
   year={2020}
 }
 ```
