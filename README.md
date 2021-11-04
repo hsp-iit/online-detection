@@ -29,7 +29,7 @@ You can find the instructions to replicate experiments at this [link](https://gi
 If you use this code, please, cite the following works:
 
 ```
-@INPROCEEDINGS{ceola2020oos,
+@INPROCEEDINGS{ceola2021oos,
   author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Rosasco, Lorenzo and Natale, Lorenzo},
   booktitle={2021 IEEE International Conference on Robotics and Automation (ICRA)}, 
   title={Fast Object Segmentation Learning with Kernel-based Methods for Robotics}, 
