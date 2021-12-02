@@ -10,8 +10,6 @@ from .loss import make_roi_box_loss_evaluator
 import os
 import numpy as np
 
-import time
-
 from mrcnn_modified.utils.evaluations import compute_overlap_torch
 import math
 
@@ -105,8 +103,6 @@ class ROIBoxHead(torch.nn.Module):
             self.positives.append([torch.empty((0, self.feature_extractor.out_channels), device=self.training_device)])
         for j in range(self.iterations):
             self.negatives[len(self.negatives)-1].append(torch.empty((0, self.feature_extractor.out_channels), device=self.training_device))
-
-
 
     def forward(self, features, proposals, gt_bbox = None, gt_label = None, img_size= None, gt_labels_list=None, is_train = True, result_dir = None):
         if is_train:

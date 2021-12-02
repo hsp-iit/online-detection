@@ -96,8 +96,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         "061_foam_brick"
     )
 
-
-
     def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False, remove_images_without_annotations=True, ycbv_classes_not_in_ho3d=False):  #TODO edit
 
         self.root = data_dir
@@ -188,8 +186,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         return img, target, index
 
     def __len__(self):
-        #with open(self._imgsetpath) as f:
-        #    self.ids = f.readlines()
         return len(self.ids)
 
     def get_groundtruth(self, index):
@@ -198,9 +194,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         imgset_path = self._imgsetpath
         mask_dir = self._maskpath
 
-        #imset = open(imgset_path, "r")
-
-        #img_path = imset.readlines()[index].strip('\n').split()
         img_path = self.ids[index].split()
 
         filename_path = img_dir % (img_path[0], img_path[1])

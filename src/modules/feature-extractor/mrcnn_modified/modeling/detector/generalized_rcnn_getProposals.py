@@ -36,7 +36,7 @@ class GeneralizedRCNN(nn.Module):
 
         self.cfg = cfg.clone()
 
-    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False, img_name=None):  #TODO check if img_name must be added also in generalized rcnn for rpn
+    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False, img_name=None):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -51,7 +51,9 @@ class GeneralizedRCNN(nn.Module):
         """
         images = to_image_list(images)
         features = self.backbone(images.tensors)
-        if False:    #Set to True to save features for YCBV fine tuning
+
+        # Store backbone features for fine-tuning from backbone features for YCB-Video
+        if "Data/datasets/YCB-Video" in img_name and self.cfg.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES:
             features_name = img_name.replace('rgb', 'feat').replace('.png', '.pth').replace('.jpg', '.pth')
             feat_path = os.path.dirname(features_name)
             if not os.path.exists(feat_path):
@@ -64,7 +66,9 @@ class GeneralizedRCNN(nn.Module):
                 os.makedirs(targets_path)
             torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
 
-        if False:    #Set to True to save features for ho3d fine tuning
+            return None
+        # Store backbone features for fine-tuning from backbone features for HO-3D
+        if "Data/datasets/HO3D_V2_iCWT_format" in img_name and self.cfg.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES:
             features_name = img_name.replace('Images', 'Features').replace('.png', '.pth').replace('.jpg', '.pth')
             feat_path = os.path.dirname(features_name)
             print(feat_path, features_name)
@@ -78,10 +82,7 @@ class GeneralizedRCNN(nn.Module):
                 os.makedirs(targets_path)
             torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
 
-        if False:
-            print(len(gt_bbox))
-
-
+            return None
 
         if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
             proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN, propagate_rpn_boxes=True)

@@ -20,8 +20,6 @@ import xml.etree.ElementTree as ET
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.image_list import to_image_list
 
-import random
-
 OBJECTNAME_TO_ID = {
     "__background__":0,
         "flower2":1, "flower5":2, "flower7":3,
@@ -117,12 +115,7 @@ def build_transform(cfg):
 def compute_gts_icwt(dataset, i, icwt_21_objs = None):
     img_dir = dataset._imgpath
     anno_dir = dataset._annopath
-    imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
-
-    #imset = open(imgset_path, "r")
-
-    #img_path = imset.readlines()[i].strip('\n')
     img_path = dataset.ids[i]
 
     filename_path = img_dir % img_path
@@ -182,24 +175,15 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None):
         # this function will be extended according to annotations' format
         if mask is not None:
             masks.append(mask)
-    #imset.close()
+
     return image, gt_bboxes_list, masks, gt_labels, img_sizes, filename_path
 
 def compute_gts_ycbv(dataset, i, extract_features_segmentation):
 
     img_dir = dataset._imgpath
-    imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
-
-    imset = open(imgset_path, "r")
-
-    #img_path = imset.readlines()[i].strip('\n').split()
-
     img_path = dataset.ids[i].split()
-
     filename_path = img_dir % (img_path[0], img_path[1])
-
-    #filename_path = img_dir%(img_path[0], img_path[1])
 
     scene_gt = dataset.scene_gts[int(img_path[0])]
     scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
@@ -239,24 +223,12 @@ def compute_gts_ycbv(dataset, i, extract_features_segmentation):
         if extract_features_segmentation:
             masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
 
-        """
-        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
-        gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
-        if extract_features_segmentation:
-            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
-        """
-
     return image, gt_bboxes_list, masks, gt_labels, img_sizes, filename_path
-
-
 
 def extract_feature_proposals(cfg, dataset, model, transforms, icwt_21_objs=False, compute_average_recall_RPN = False, is_train = True, result_dir = None, extract_features_segmentation=False):
 
     model.eval()
     num_img = len(dataset.ids)
-
-    #TODO remove this, just for test purposes
-    #random.shuffle(dataset.ids)
 
     # Set the number of images that will be used to set minibootstrap parameters
     if hasattr(model, 'rpn'):

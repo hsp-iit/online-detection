@@ -522,3 +522,9 @@ _C.EVALUATION.USE_VOC07_METRIC = True
 # ---------------------------------------------------------------------------- #
 _C.INFERENCE = CN()
 _C.INFERENCE.PARALLEL_FALKON = True
+
+# ---------------------------------------------------------------------------- #
+# Fine-tuning parameters
+# ---------------------------------------------------------------------------- #
+_C.FINE_TUNING_OPTIONS = CN()
+_C.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES = False
