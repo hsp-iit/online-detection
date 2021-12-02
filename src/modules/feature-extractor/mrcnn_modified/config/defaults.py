@@ -516,3 +516,9 @@ _C.SEGMENTATION.FEATURES_DEVICE = 'cuda'
 _C.EVALUATION = CN()
 _C.EVALUATION.IOU_THRESHOLDS = (0.5,)
 _C.EVALUATION.USE_VOC07_METRIC = True
+
+# ---------------------------------------------------------------------------- #
+# Inference parameters
+# ---------------------------------------------------------------------------- #
+_C.INFERENCE = CN()
+_C.INFERENCE.PARALLEL_FALKON = True

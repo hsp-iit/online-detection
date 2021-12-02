@@ -12,13 +12,9 @@ from .inference import make_rpn_postprocessor
 
 from .average_recall import compute_average_recall
 
-from joblib import Parallel, delayed, parallel_backend
-import multiprocessing
-
 import falkon
 from falkon.mmv_ops import batch_mmv
 
-import time
 
 class RPNHeadConvRegressor(nn.Module):
     """
@@ -104,11 +100,7 @@ class RPNHead(nn.Module):
             torch.nn.init.normal_(l.weight, std=0.01)
             torch.nn.init.constant_(l.bias, 0)
 
-        # TODO decide how to set this param
-        self.parallel_inference = True
-        # TODO: remove this, just for initial testing purposes
-        self.check_times = False
-
+        self.parallel_inference = cfg.INFERENCE.PARALLEL_FALKON
         self.feat_size = None
         self.height = None
         self.width = None
@@ -136,57 +128,14 @@ class RPNHead(nn.Module):
                 # Compute objectness with FALKON
                 if self.parallel_inference:
                     logits.append(self.compute_objectness_FALKON_parallel_new(t))
-                else:
-                    logits.append(self.compute_objectness_FALKON(t))
-                # TODO: remove this, just for initial testing purposes
-                if self.check_times:
-                    torch.cuda.synchronize()
-                    t_p = time.time()
-                    a = self.compute_objectness_FALKON_parallel_new(t)
-                    torch.cuda.synchronize()
-                    print('parallel:', time.time()-t_p)
-                    torch.cuda.synchronize()
-                    t_s = time.time()
-                    b = self.compute_objectness_FALKON(t)
-                    torch.cuda.synchronize()
-                    print('serial:', time.time()-t_s)
-                    print(torch.max(a-b))
-
-                if self.parallel_inference:
                     bbox_reg.append(self.refine_boxes_parallel(t))
                 else:
+                    logits.append(self.compute_objectness_FALKON(t))
                     bbox_reg.append(self.refine_boxes(t))
-
-                # TODO: remove this, just for initial testing purposes
-                if self.check_times:
-                    torch.cuda.synchronize()
-                    t_p = time.time()
-                    a = self.refine_boxes_parallel(t)
-                    torch.cuda.synchronize()
-                    print('parallel:', time.time()-t_p)
-                    torch.cuda.synchronize()
-                    t_s = time.time()
-                    b = self.refine_boxes(t)
-                    torch.cuda.synchronize()
-                    print('serial:', time.time()-t_s)
-                    print(torch.max(a-b))
-
             # Else use pretrained weights
             else:
                 logits.append(self.cls_logits(t))
-                if self.check_times:
-                    torch.cuda.synchronize()
-                    t_p = time.time()
-                    a = self.cls_logits(t)
-                    torch.cuda.synchronize()
-                    print('conv:', time.time()-t_p)
                 bbox_reg.append(self.bbox_pred(t))
-                if self.check_times:
-                    torch.cuda.synchronize()
-                    t_p = time.time()
-                    a = self.bbox_pred(t)
-                    torch.cuda.synchronize()
-                    print('conv:', time.time()-t_p)
         return logits, bbox_reg
 
     def refine_boxes(self, features):
@@ -213,7 +162,7 @@ class RPNHead(nn.Module):
     def refine_boxes_parallel(self, features):
         if not hasattr(self, 'regressors_parallel'):
             weights_parallel = torch.empty((self.feat_size+1, 0), device='cuda')
-            T_inv_parallel = torch.zeros((self.num_clss*4, self.num_clss*4), device='cuda') #torch.empty((0, 4), device='cuda')
+            T_inv_parallel = torch.zeros((self.num_clss*4, self.num_clss*4), device='cuda')
             mu_parallel = torch.empty((1, 0), device='cuda')
             for j in range(self.num_clss):
                 # Refine boxes with RLS regressors
@@ -243,44 +192,14 @@ class RPNHead(nn.Module):
     
     def compute_objectness_FALKON(self, features):
         objectness_scores = torch.empty((1, 0, self.height, self.width), device='cuda')
-        #print('RPN inference, features size:', features.size()) #TODO remove this
-        #torch.cuda.synchronize()  # TODO remove this
-        #t_s = time.time()  # TODO remove this
         for classifier in self.classifiers:
             # If the classifier is not available, set the objectness to the default value -2 (which is smaller than all the other proposed values by trained FALKON classifiers)
             if classifier is None:
                 predictions = torch.full((self.area, 1), -2, device='cuda')
-            # Compute objectness with falkon classifier
+            # Compute objectness with FALKON classifier
             else:
                 predictions = classifier.predict(features)
             objectness_scores = torch.cat((objectness_scores, torch.t(predictions).reshape(1,1,self.height,self.width)), dim=1)
-        #torch.cuda.synchronize()  # TODO remove this
-        #t_e = time.time()  # TODO remove this
-        #print('Classifier time:', t_e - t_s)  # TODO remove this
-        #print('Classifier', classifier)  # TODO remove this
-        return objectness_scores
-
-    def compute_objectness_FALKON_parallel(self, features):
-        if not hasattr(self, 'nystrom_parallel'):
-            self.kernel = None
-            self.matrix_to_subtract = torch.zeros((1, 0, self.height, self.width), device='cuda')
-            self.max_nystrom_centers = 0
-            for i in range(len(self.classifiers)):
-                if self.classifiers[i]:
-                    self.max_nystrom_centers = max(self.max_nystrom_centers, self.classifiers[i].M)
-            for i in range(len(self.classifiers)):
-                if self.classifiers[i] and not self.kernel:
-                    self.kernel = self.classifiers[i].kernel
-                if self.classifiers[i]:
-                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.zeros((1, 1, self.height, self.width), device='cuda')), dim=1)
-                else:
-                    self.matrix_to_subtract = torch.cat((self.matrix_to_subtract, torch.full((1, 1, self.height, self.width), 2, device='cuda')), dim=1)
-            self.alpha_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].alpha_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].alpha_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, 1), device='cuda') for i in range(len(self.classifiers))])
-            self.nystrom_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].ny_points_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].ny_points_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, self.feat_size), device='cuda')  for i in range(len(self.classifiers))])
-
-        features = features.repeat((len(self.classifiers), 1, 1))
-        objectness_scores = batch_mmv.batch_fmmv_incore(features, self.nystrom_parallel, self.alpha_parallel, self.kernel).reshape(1,-1,self.height,self.width)
-        objectness_scores -= self.matrix_to_subtract
         return objectness_scores
 
     def compute_objectness_FALKON_parallel_new(self, features):
@@ -380,14 +299,6 @@ class RPNModule(torch.nn.Module):
                 boxes = self.box_selector_train(
                     anchors, objectness, rpn_box_regression, targets
                 )
-        #loss_objectness, loss_rpn_box_reg = self.loss_evaluator(
-        #    anchors, objectness, rpn_box_regression, targets
-        #)
-        #losses = {
-        #    "loss_objectness": loss_objectness,
-        #    "loss_rpn_box_reg": loss_rpn_box_reg,
-        #}
-        #return boxes, losses, 0
         return boxes, {}, 0
 
     def _forward_test(self, anchors, objectness, rpn_box_regression, targets = None, compute_average_recall_RPN = False):
@@ -414,4 +325,3 @@ def build_rpn(cfg, in_channels):
         return build_retinanet(cfg, in_channels)
 
     return RPNModule(cfg, in_channels)
-   
