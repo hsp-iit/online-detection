@@ -4,9 +4,6 @@ from mrcnn_modified.modeling import registry
 from torch import nn
 import torch
 
-import falkon
-from falkon.mmv_ops import batch_mmv
-
 @registry.ROI_BOX_PREDICTOR.register("OnlineDetectionBOXPredictor")
 class FastRCNNPredictor(nn.Module):
     def __init__(self, config, in_channels):
@@ -16,7 +13,7 @@ class FastRCNNPredictor(nn.Module):
         num_inputs = in_channels
 
         num_classes = config.MODEL.ROI_BOX_HEAD.NUM_CLASSES
-        #As below
+
         self.avgpool = nn.AdaptiveAvgPool2d(1)
         self.cls_score = nn.Linear(num_inputs, num_classes)
         num_bbox_reg_classes = 2 if config.MODEL.CLS_AGNOSTIC_BBOX_REG else num_classes
@@ -30,8 +27,7 @@ class FastRCNNPredictor(nn.Module):
 
         self.normalize_features_regressors = False
 
-        # TODO decide how to set this param
-        self.parallel_inference = True
+        self.parallel_inference = config.INFERENCE.PARALLEL_FALKON
 
     def forward(self, x, proposals=None):
         x = self.avgpool(x)
@@ -64,9 +60,8 @@ class FastRCNNPredictor(nn.Module):
                     bbox_pred = self.refine_boxes(x)
             # Compute scores with FALKON
             if self.parallel_inference:
-                #if self.classifiers:
                 if len(self.classifiers) > 1:
-                    cls_scores = self.predict_clss_FALKON_parallel_new(x)
+                    cls_scores = self.predict_clss_FALKON_parallel(x)
                 # If the list of classifier is empty, use the sequential inference
                 else:
                     cls_scores = self.predict_clss_FALKON(x)
@@ -102,7 +97,7 @@ class FastRCNNPredictor(nn.Module):
     def refine_boxes_parallel(self, features):
         if not hasattr(self, 'regressors_parallel'):
             weights_parallel = torch.zeros((features.size()[1] + 1, 4), device='cuda')
-            T_inv_parallel = torch.zeros(((len(self.regressors)+1)*4, (len(self.regressors)+1)*4), device='cuda') #torch.empty((0, 4), device='cuda')
+            T_inv_parallel = torch.zeros(((len(self.regressors)+1)*4, (len(self.regressors)+1)*4), device='cuda')
             mu_parallel = torch.zeros((1, 4), device='cuda')
             for j in range(len(self.regressors)):
                 # Refine boxes with RLS regressors
@@ -143,24 +138,6 @@ class FastRCNNPredictor(nn.Module):
         return objectness_scores
 
     def predict_clss_FALKON_parallel(self, features):
-        if not hasattr(self, 'nystrom_parallel'):
-            self.kernel = None
-            self.max_nystrom_centers = 0
-            for i in range(len(self.classifiers)):
-                if self.classifiers[i]:
-                    self.max_nystrom_centers = max(self.max_nystrom_centers, self.classifiers[i].M)
-            for i in range(len(self.classifiers)):
-                if self.classifiers[i] and not self.kernel:
-                    self.kernel = self.classifiers[i].kernel
-            self.alpha_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].alpha_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].alpha_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, 1), device='cuda') for i in range(len(self.classifiers))])
-            self.nystrom_parallel = torch.cat([torch.nn.functional.pad(self.classifiers[i].ny_points_, (0, 0, 0, self.max_nystrom_centers-len(self.classifiers[i].ny_points_))).unsqueeze(0) if self.classifiers[i] else torch.zeros((1, self.max_nystrom_centers, features.size()[1]), device='cuda')  for i in range(len(self.classifiers))])
-
-        features = features.repeat((len(self.classifiers), 1, 1))
-        objectness_scores = batch_mmv.batch_fmmv_incore(features, self.nystrom_parallel, self.alpha_parallel, self.kernel)
-        objectness_scores = torch.cat((torch.full((features.size()[1],1), -2, device='cuda'), torch.t(objectness_scores.squeeze(2))), dim=1)
-        return objectness_scores
-
-    def predict_clss_FALKON_parallel_new(self, features):
         if not hasattr(self, 'nystrom_parallel'):
             self.kernel = None
             self.max_nystrom_centers = 0

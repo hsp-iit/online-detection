@@ -12,10 +12,6 @@ from .inference import make_rpn_postprocessor
 
 from .average_recall import compute_average_recall
 
-import falkon
-from falkon.mmv_ops import batch_mmv
-
-
 class RPNHeadConvRegressor(nn.Module):
     """
     A simple RPN Head for classification and bbox regression
@@ -127,7 +123,7 @@ class RPNHead(nn.Module):
                 t = t * (20 / self.stats['mean_norm'])
                 # Compute objectness with FALKON
                 if self.parallel_inference:
-                    logits.append(self.compute_objectness_FALKON_parallel_new(t))
+                    logits.append(self.compute_objectness_FALKON_parallel(t))
                     bbox_reg.append(self.refine_boxes_parallel(t))
                 else:
                     logits.append(self.compute_objectness_FALKON(t))
@@ -202,7 +198,7 @@ class RPNHead(nn.Module):
             objectness_scores = torch.cat((objectness_scores, torch.t(predictions).reshape(1,1,self.height,self.width)), dim=1)
         return objectness_scores
 
-    def compute_objectness_FALKON_parallel_new(self, features):
+    def compute_objectness_FALKON_parallel(self, features):
         if not hasattr(self, 'nystrom_parallel'):
             self.kernel = None
             self.matrix_to_subtract = torch.zeros((1, 0, self.height, self.width), device='cuda')
