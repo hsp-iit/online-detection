@@ -15,8 +15,8 @@ MODEL:
     NMS: 0.3
   MASK_ON: True
 DATASETS:
-  TRAIN: ("ho3d_v2_train_icubworld_format_1_out_of_2",) #("ho3d_v2_train_icubworld_format_1_out_of_2_3_seq",) #("ho3d_v2_train_icubworld_format",)
-  TEST: ("ho3d_v2_test_icubworld_format_1_out_of_5",) #("ho3d_v2_val_icubworld_format_1_out_of_5",) #("ho3d_v2_test_icubworld_format",)
+  TRAIN: ("ho3d_v2_train_icubworld_format_1_out_of_2",)
+  TEST: ("ho3d_v2_test_icubworld_format_1_out_of_5",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333
@@ -28,7 +28,7 @@ SOLVER:
   BASE_LR: 0.0005
   WEIGHT_DECAY: 0.0001
   STEPS: (161248,)
-  MAX_ITER: 20156 #241872 1 epoch
+  MAX_ITER: 20156 #1 epoch
   TEST_PERIOD: 20156
   CHECKPOINT_PERIOD: 20156
 TEST:
