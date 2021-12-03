@@ -15,8 +15,8 @@ MODEL:
     SCORE_THRESH: -2.0
   MASK_ON: True
 DATASETS:
-  TRAIN: ("ho3d_v2_train_icubworld_format_1_out_of_2",) #("ho3d_v2_train_icubworld_format_1_out_of_2_3_seq",) #("ho3d_v2_train_icubworld_format",)
-  TEST: ("ho3d_v2_test_icubworld_format_1_out_of_5",) #("ho3d_v2_test_icubworld_format",)
+  TRAIN: ("ycb_video_train_real_1_out_of_10",)
+  TEST: ("ycb_video_test_keyframe",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333
@@ -28,7 +28,7 @@ TEST:
 
 MINIBOOTSTRAP:
   DETECTOR:
-    NUM_CLASSES: 9
+    NUM_CLASSES: 21
     ITERATIONS: 15
     BATCH_SIZE: 2000
     NEG_IOU_THRESH: 0.3
