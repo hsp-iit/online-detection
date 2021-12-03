@@ -267,7 +267,6 @@ class FeatureExtractorDetector:
                                 start_j_index = min(j * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
                                 end_j_index = min((j + 1) * self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE, len(shuffled_ids))
                                 model.roi_heads.box.negatives[i].append(total_negatives_i[shuffled_ids[start_j_index:end_j_index]])
-                                print('shuffling negatives')
                         if extract_features_segmentation:
                             if self.cfg.SEGMENTATION.FEATURES_DEVICE == 'cpu':
                                 model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1] = model.roi_heads.mask.negatives[i][len(model.roi_heads.mask.negatives[i])-1].to('cpu')
@@ -277,16 +276,16 @@ class FeatureExtractorDetector:
                             model.roi_heads.mask.positives[i] = torch.cat(model.roi_heads.mask.positives[i])
                     if extract_features_segmentation:
                         if use_only_gt_positives_detection:
-                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                            return model.roi_heads.box.negatives, model.roi_heads.box.positives, COXY, model.roi_heads.mask.negatives, model.roi_heads.mask.positives
                         else:
-                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY), copy.deepcopy(model.roi_heads.mask.negatives), copy.deepcopy(model.roi_heads.mask.positives)
+                            return model.roi_heads.box.negatives, None, COXY, model.roi_heads.mask.negatives, model.roi_heads.mask.positives
 
                     else:
                         if use_only_gt_positives_detection:
-                            return copy.deepcopy(model.roi_heads.box.negatives), copy.deepcopy(model.roi_heads.box.positives), copy.deepcopy(COXY)
+                            return model.roi_heads.box.negatives, model.roi_heads.box.positives, COXY
                         else:
-                            return copy.deepcopy(model.roi_heads.box.negatives), None, copy.deepcopy(COXY)
+                            return model.roi_heads.box.negatives, None, COXY
             else:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
-                return copy.deepcopy(model.roi_heads.box.test_boxes)
+                return model.roi_heads.box.test_boxes

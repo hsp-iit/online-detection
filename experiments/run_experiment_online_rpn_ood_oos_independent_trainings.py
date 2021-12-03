@@ -16,39 +16,25 @@ from accuracy_evaluator import AccuracyEvaluator
 from region_refiner import RegionRefiner
 
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
-import gc
 import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
-parser.add_argument('--save_RPN_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the RPN.')
-parser.add_argument('--save_detector_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the detector.')
-parser.add_argument('--save_segmentation_models', action='store_true', help='Save, in the output directory, FALKON models and features statistics of the segmentator.')
-parser.add_argument('--load_RPN_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the RPN.')
-parser.add_argument('--load_detector_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of the detector.')
-parser.add_argument('--load_segmentation_models', action='store_true', help='Load, from the output directory, FALKON models and features statistics of the segmentator.')
-parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
-parser.add_argument('--save_RPN_features', action='store_true', help='Save, in the features directory (in the output directory), RPN features.')
-parser.add_argument('--load_RPN_features', action='store_true', help='Load, from the features directory (in the output directory), RPN features.')
-parser.add_argument('--save_detector_features', action='store_true', help='Save, in the features directory (in the output directory), detector\'s features.')
-parser.add_argument('--load_detector_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
-parser.add_argument('--load_segmentation_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
-parser.add_argument('--eval_segm_with_gt_bboxes', action='store_true', help='Evaluate segmentation accuracy, supposing that gt_bboxes are available.')
+parser.add_argument('--save_RPN_detector_segmentation_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of on-line RPN, detection and segmentation.')
+parser.add_argument('--load_RPN_detector_segmentation_models', action='store_true', help='Load, from the output directory, FALKON models, regressors and features statistics of on-line RPN, detection and segmentation.')
+parser.add_argument('--save_RPN_detector_segmentation_features', action='store_true', help='Save, in the output directory, training features for on-line RPN, detection and segmentation.')
+parser.add_argument('--load_RPN_detector_segmentation_features', action='store_true', help='Load, from the output directory, training features for on-line RPN, detection and segmentation.')
 parser.add_argument('--use_only_gt_positives_detection', action='store_true', help='Consider only the ground truth bounding boxes as positive samples for the online detection.')
 parser.add_argument('--sampling_ratio_segmentation', action='store', type=float, default=0.3, help='Set the fraction of positives and negatives samples to be used to train the online segmentation head, when loading features from disk, supposing that all the features were previously saved.')
 parser.add_argument('--pos_fraction_feat_stats', action='store', type=float, default=0.8, help='Set the fraction of positives samples to be used to compute features statistics for data normalization')
-parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_segmentation_ycbv_with_rpn_independent_trainings.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
-parser.add_argument('--config_file_rpn', action='store', type=str, default="config_rpn_ycb.yaml", help='Manually set configuration file for feature extraction, by default it is config_rpn_ycb.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
-parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
-parser.add_argument('--only_ood', action='store_true', help='Run only the online-object-detection experiment, i.e. without updating the RPN.') #TODO rename this
-parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
 parser.add_argument('--sampling_ratio_positives_detection', action='store', type=float, default=1.0, help='Set the fraction of positives samples to be used to train the online detection head, when loading the positives from COXY.')
-parser.add_argument('--nystrom_centers_detection', action='store', type=int, help='Set the number of nystrom centers for detection.')
-parser.add_argument('--nystrom_centers_segmentation', action='store', type=int, help='Set the number of nystrom centers for segmentation.')
-parser.add_argument('--maxiter_falkon_detection_segmentation', action='store', type=int, help='Set the number of falkon training iterations both for detection and segmentation.')
+parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_segmentation_ycbv_with_rpn_independent_trainings.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file_online_rpn_detection_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml", help='Manually set configuration file for online rpn, detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection. Overvrites the value in the configuration file')
 
-
+# Check params below
+parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
 
 args = parser.parse_args()
 
@@ -66,15 +52,10 @@ if args.config_file_feature_extraction.startswith("/"):
 else:
     cfg_target_task = os.path.abspath(os.path.join(basedir, "configs", args.config_file_feature_extraction))
 
-if args.config_file_online_detection_online_segmentation.startswith("/"):
-    cfg_online_path = args.config_file_online_detection_online_segmentation
+if args.config_file_online_rpn_detection_segmentation.startswith("/"):
+    cfg_online_path = args.config_file_online_rpn_detection_segmentation
 else:
-    cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_detection_online_segmentation))
-
-if args.config_file_rpn.startswith("/"):
-    config_file_rpn = args.config_file_rpn
-else:
-    config_file_rpn = os.path.abspath(os.path.join(basedir, "configs", args.config_file_rpn))
+    cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_rpn_detection_segmentation))
 
 if args.pos_fraction_feat_stats <= 1 and args.pos_fraction_feat_stats >= 0:
     pos_fraction_feat_stats = args.pos_fraction_feat_stats
@@ -92,28 +73,27 @@ if not os.path.exists(output_dir):
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_target_task, train_in_cpu=args.CPU)
 
-# Train RPN
-if not args.only_ood and not args.load_RPN_models:
-    # Extract RPN features for the training set
-    #if not args.save_RPN_features and not args.load_RPN_features:
-    #    negatives, positives, COXY = feature_extractor.extractFeaturesRPN(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
-    #else:
-    #    if args.save_RPN_features:
-    #        feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
-    #    positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
-    cfg_options = {}
-    if args.minibootstrap_iterations:
-        cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
-    negatives_RPN, positives_RPN, COXY_RPN, negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeaturesRPNDetector(
-        is_train=True, output_dir=output_dir, save_features=args.save_detector_features,
-        extract_features_segmentation=True,
-        use_only_gt_positives_detection=args.use_only_gt_positives_detection,
-        cfg_options=cfg_options
-        )
+if not args.load_RPN_detector_segmentation_models:
 
-    del feature_extractor
-    torch.cuda.empty_cache()
+    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features:
+        # Extract features for the training set
+        cfg_options = {}
+        if args.minibootstrap_iterations:
+            cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
+        negatives_RPN, positives_RPN, COXY_RPN, negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeaturesRPNDetector(
+            is_train=True, output_dir=output_dir, save_features=args.save_RPN_detector_segmentation_features,
+            extract_features_segmentation=True,
+            use_only_gt_positives_detection=args.use_only_gt_positives_detection,
+            cfg_options=cfg_options
+            )
 
+        del feature_extractor
+        torch.cuda.empty_cache()
+
+    else:
+        positives_RPN, negatives_RPN = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+
+    # ---------------------------------------- On-line RPN training ----------------------------------------------------
     stats_rpn = computeFeatStatistics_torch(positives_RPN, negatives_RPN, features_dim=positives_RPN[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
 
     # RPN Region Classifier initialization
@@ -125,14 +105,15 @@ if not args.only_ood and not args.load_RPN_models:
 
     # RPN Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
-    if args.save_RPN_features or args.load_RPN_features:
+
+    if args.load_RPN_detector_segmentation_features:
         COXY_RPN = load_features_regressor(features_dir=os.path.join(output_dir, 'features_RPN'))
 
     # Train RPN region Refiner
     models_reg_rpn = region_refiner.trainRegionRefiner(normalize_COXY(COXY_RPN, stats_rpn, args.CPU), output_dir=output_dir)
 
     # Save RPN models, if requested
-    if args.save_RPN_models:
+    if args.save_RPN_detector_segmentation_models:
         torch.save(models_falkon_rpn, os.path.join(output_dir, 'classifier_rpn'))
         torch.save(models_reg_rpn, os.path.join(output_dir, 'regressor_rpn'))
         torch.save(stats_rpn, os.path.join(output_dir, 'stats_rpn'))
@@ -141,28 +122,8 @@ if not args.only_ood and not args.load_RPN_models:
     del negatives_RPN, positives_RPN, COXY_RPN, regionClassifier, region_refiner, classifier
     torch.cuda.empty_cache()
 
-# Load trained RPN models and set them in the pipeline, if requested
-elif not args.only_ood and args.load_RPN_models:
-    models_falkon_rpn = torch.load(os.path.join(output_dir, 'classifier_rpn'))
-    models_reg_rpn = torch.load(os.path.join(output_dir, 'regressor_rpn'))
-    stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
-
-elif args.only_ood and args.load_RPN_models:
-    print('Unconsistency! It is not possible to run only the online object detection experiment and to load RPN models. Quitting.')
-    quit()
-
-
-
-# Load detector models if requested, else train them
-if args.load_detector_models:
-    model = torch.load(os.path.join(output_dir, 'classifier_detector'))
-    models = torch.load(os.path.join(output_dir, 'regressor_detector'))
-    stats = torch.load(os.path.join(output_dir, 'stats_detector'))
-
-else:
-    # Extract detector features for the train set
-    if not args.save_detector_features and not args.load_detector_features:
-
+    # ---------------------------------------- On-line detection training ----------------------------------------------
+    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features:
         # Detector Region Refiner initialization
         region_refiner = RegionRefiner(cfg_online_path)
         if not args.normalize_features_regressor_detector:
@@ -184,10 +145,6 @@ else:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        if args.nystrom_centers_detection:
-            classifier.nyst_centers = args.nystrom_centers_detection
-        if args.maxiter_falkon_detection_segmentation:
-            classifier.maxiter = args.maxiter_falkon_detection_segmentation
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
         # Train detector Region Classifier
@@ -202,9 +159,7 @@ else:
 
             del region_refiner, COXY
             torch.cuda.empty_cache()
-
     else:
-
         if args.CPU:
             training_device = 'cpu'
         else:
@@ -236,7 +191,7 @@ else:
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:
-            positives = load_positives_from_COXY(COXY, samples_fraction=args.sampling_ratio_positives_detection)#, del_COXY=True)
+            positives = load_positives_from_COXY(COXY, samples_fraction=args.sampling_ratio_positives_detection)
             # If regressor's features normalization is not required, delete COXY
             if not args.normalize_features_regressor_detector:
                 del COXY
@@ -253,10 +208,6 @@ else:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        if args.nystrom_centers_detection:
-            classifier.nyst_centers = args.nystrom_centers_detection
-        if args.maxiter_falkon_detection_segmentation:
-            classifier.maxiter = args.maxiter_falkon_detection_segmentation
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
         # Train detector Region Classifier
@@ -280,17 +231,15 @@ else:
             models = region_refiner.trainRegionRefiner(normalize_COXY(COXY, stats, args.CPU), output_dir=output_dir)
             del region_refiner, COXY
             torch.cuda.empty_cache()
+    # Save detector models, if requested
+    if args.save_RPN_detector_segmentation_models:
+        torch.save(model, os.path.join(output_dir, 'classifier_detector'))
+        torch.save(models, os.path.join(output_dir, 'regressor_detector'))
+        torch.save(stats, os.path.join(output_dir, 'stats_detector'))
 
+    # ---------------------------------------- On-line segmentation training -------------------------------------------
 
-# Save detector models, if requested
-if args.save_detector_models:
-    torch.save(model, os.path.join(output_dir, 'classifier_detector'))
-    torch.save(models, os.path.join(output_dir, 'regressor_detector'))
-    torch.save(stats, os.path.join(output_dir, 'stats_detector'))
-
-if not args.load_segmentation_models:
-    # Manage all the cases in which features must be loaded
-    if args.load_segmentation_features or args.save_detector_features or args.load_detector_features or args.load_detector_models:
+    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features:
         # Train segmentation classifiers
         positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
     if args.CPU:
@@ -305,25 +254,30 @@ if not args.load_segmentation_models:
     stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
     # Per-pixel classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
-    if args.nystrom_centers_segmentation:
-        classifier.nyst_centers = args.nystrom_centers_segmentation
-    if args.maxiter_falkon_detection_segmentation:
-        classifier.maxiter = args.maxiter_falkon_detection_segmentation
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
 
-    torch.cuda.synchronize()
-    print('End of training:', time.time())
-
     del positives_segmentation, negatives_segmentation, regionClassifier
     torch.cuda.empty_cache()
+
+    # Save segmentation models, if requested
+    if args.save_RPN_detector_segmentation_models:
+        torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
+        torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
+
+    torch.cuda.synchronize()            #TODO Manage this
+    print('End of training:', time.time())
+
+# Load trained models and set them in the pipeline, if requested
 else:
+    models_falkon_rpn = torch.load(os.path.join(output_dir, 'classifier_rpn'))
+    models_reg_rpn = torch.load(os.path.join(output_dir, 'regressor_rpn'))
+    stats_rpn = torch.load(os.path.join(output_dir, 'stats_rpn'))
+    model = torch.load(os.path.join(output_dir, 'classifier_detector'))
+    models = torch.load(os.path.join(output_dir, 'regressor_detector'))
+    stats = torch.load(os.path.join(output_dir, 'stats_detector'))
     model_segm = torch.load(os.path.join(output_dir, 'classifier_segmentation'))
     stats_segm = torch.load(os.path.join(output_dir, 'stats_segmentation'))
-
-if args.save_segmentation_models:
-    torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
-    torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
 
 # Initialize feature extractor
 accuracy_evaluator = AccuracyEvaluator(cfg_target_task, train_in_cpu=args.CPU)
