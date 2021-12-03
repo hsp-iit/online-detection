@@ -43,6 +43,7 @@ class FeatureExtractorRPNDetector:
         self.local_rank = local_rank
         self.cfg = cfg.clone()
         self.load_parameters()
+        self.end_of_feature_extraction_time = None
 
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True, cfg_options={}):
@@ -158,9 +159,6 @@ class FeatureExtractorRPNDetector:
 
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
-        torch.cuda.synchronize()
-        print('Start of feature extraction:', time.time())
-
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             feat_extraction_time = inference(self.cfg,
                                              model,
@@ -180,8 +178,9 @@ class FeatureExtractorRPNDetector:
                 with open(os.path.join(result_dir, "result.txt"), "a") as fid:
                     fid.write("Detector's feature extraction time: {}min:{}s \n".format(int(feat_extraction_time/60), round(feat_extraction_time%60)))
 
-            synchronize()
-            print('End of feature extraction:', time.time())
+            torch.cuda.synchronize()
+            self.end_of_feature_extraction_time = time.time()
+
             if is_train:
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]

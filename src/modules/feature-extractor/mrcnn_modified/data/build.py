@@ -135,7 +135,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
         ), "SOLVER.IMS_PER_BATCH ({}) must be divisible by the number "
         "of GPUs ({}) used.".format(images_per_batch, num_gpus)
         images_per_gpu = images_per_batch // num_gpus
-        shuffle = True       #False # TODO edit this
+        shuffle = True
         num_iters = cfg.SOLVER.MAX_ITER
     else:
         images_per_batch = cfg.TEST.IMS_PER_BATCH
@@ -176,7 +176,7 @@ def make_data_loader(cfg, is_train=True, is_distributed=False, start_iter=0, is_
     dataset_list = cfg.DATASETS.TRAIN if is_train else cfg.DATASETS.TEST
 
     transforms = build_transforms(cfg, is_train)
-    ycbv_classes_not_in_ho3d = cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES == 12                                 #TODO   maybe redefine this param
+    ycbv_classes_not_in_ho3d = 'ycb_video' in cfg.DATASETS.TRAIN[0] and cfg.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES == 12
     datasets = build_dataset(dataset_list, transforms, DatasetCatalog, is_train, is_target_task, icwt_21_objs, ycbv_classes_not_in_ho3d)
 
     data_loaders = []

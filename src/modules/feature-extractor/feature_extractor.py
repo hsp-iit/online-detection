@@ -20,6 +20,7 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.stats_detector = None
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
+        self.end_of_feature_extraction_time = None
 
     def extractRPNFeatures(self, is_train, output_dir=None, save_features=False, cfg_options={}):
         from feature_extractor_RPN import FeatureExtractorRPN
@@ -36,7 +37,7 @@ class FeatureExtractor(FeatureExtractorAbstract):
         feature_extractor.falkon_rpn_models = self.falkon_rpn_models
         feature_extractor.regressors_rpn_models = self.regressors_rpn_models
         feature_extractor.stats_rpn = self.stats_rpn
-        feature_extractor.falkon_detector_models = self.falkon_detector_models          #TODO check if these are necessary
+        feature_extractor.falkon_detector_models = self.falkon_detector_models
         feature_extractor.regressors_detector_models = self.regressors_detector_models
         feature_extractor.stats_detector = self.stats_detector
         if self.regions_post_nms is not None:
@@ -57,8 +58,9 @@ class FeatureExtractor(FeatureExtractorAbstract):
                                      save_features=save_features, extract_features_segmentation=extract_features_segmentation,
                                      use_only_gt_positives_detection=use_only_gt_positives_detection,
                                      cfg_options=cfg_options)
-
+        self.end_of_feature_extraction_time = feature_extractor.end_of_feature_extraction_time
         return features
+
     def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False, use_backbone_features=False, training_seconds=None):
         from feature_extractor_trainer import TrainerFeatureTask
         # call class to train from scratch a model on the feature task

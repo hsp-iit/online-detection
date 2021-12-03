@@ -186,7 +186,6 @@ def do_train(
                             memory=torch.cuda.max_memory_allocated() / 1024.0 / 1024.0,
                         )
                     )
-                #checkpointer.save("model_{:07d}".format(iteration), **arguments)
                 break
 
 
@@ -247,7 +246,6 @@ def do_train(
                 )
                 if model_val:
                     #Restore the old model to restart the training
-                    # TODO to check if it works correctly
                     load_state_dict(checkpointer.model, checkpointer_val.model.state_dict())
                     model = checkpointer.model
             if iteration == max_iter:

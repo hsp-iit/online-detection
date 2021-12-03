@@ -16,8 +16,6 @@ parser.add_argument('--fine_tune_RPN', action='store_true', help='Fine-tune also
 parser.add_argument('--use_backbone_features', action='store_true', help='Load features extracted with the backbone instead of the images as input')
 parser.add_argument('--train_for_time', action='store', type=str, help='Train mask for the input training time. It must be in the format XXh:YYm:ZZs.')
 
-
-
 args = parser.parse_args()
 
 # Set and create output directory

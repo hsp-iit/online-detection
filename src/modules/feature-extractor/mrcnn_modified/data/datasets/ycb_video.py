@@ -96,7 +96,7 @@ class YCBVideoDataset(torch.utils.data.Dataset):
         "061_foam_brick"
     )
 
-    def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False, remove_images_without_annotations=True, ycbv_classes_not_in_ho3d=False):  #TODO edit
+    def __init__(self, data_dir, image_set, split, use_difficult=False, transforms=None, is_target_task=False, icwt_21_objs=False, remove_images_without_annotations=True, ycbv_classes_not_in_ho3d=False):
 
         self.root = data_dir
         self.image_set = image_set
@@ -155,7 +155,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
 
                 removed = False
                 for j in range(len(scene_gt[str(int(img_path[1]))])):
-                    #print(YCBVideoDataset.CLASSES[scene_gt[str(int(img_path[1]))][j]["obj_id"]])
                     bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
                     if YCBVideoDataset.CLASSES[scene_gt[str(int(img_path[1]))][j]["obj_id"]] not in YCBVideoDataset.CLASSES_HO3D and bbox != [-1, -1, -1, -1] and bbox[2] != 0 and bbox[3] != 0:
                         ids.append(self.ids[index])
@@ -165,7 +164,7 @@ class YCBVideoDataset(torch.utils.data.Dataset):
                 if not removed:
                     print("Image {} not used".format(self.ids[index]))
 
-            self.ids = ids      #TODO check that everything is correct
+            self.ids = ids
 
 
 
@@ -229,7 +228,6 @@ class YCBVideoDataset(torch.utils.data.Dataset):
             masks.append(T.ToTensor()(Image.open(masks_paths[j])))
             difficult_boxes.append(False)
 
-        #print(torch.tensor(gt_bboxes_list), img_path)
         target = BoxList(torch.tensor(gt_bboxes_list), (width, height), mode="xyxy")
         masks = SegmentationMask(torch.cat(masks), (width, height), mode="mask")
         target.add_field("labels", torch.tensor(gt_labels))

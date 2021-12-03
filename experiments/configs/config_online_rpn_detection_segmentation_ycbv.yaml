@@ -7,7 +7,7 @@ ONLINE_REGION_CLASSIFIER:
     CLASSIFIER:
         lambda: 0.00001
         sigma: 15
-        M: 2000
+        M: 1000
         kernel_type: 'gauss'
 
 REGION_REFINER:
@@ -21,7 +21,7 @@ ONLINE_SEGMENTATION:
     CLASSIFIER:
         lambda: 0.000001
         sigma: 10
-        M: 2000
+        M: 500
         kernel_type: 'gauss'
 
 EVALUATION:

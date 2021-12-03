@@ -15,8 +15,6 @@ from maskrcnn_benchmark.structures.bounding_box import BoxList
 from torchvision import transforms as T
 from maskrcnn_benchmark.structures.segmentation_mask import SegmentationMask
 
-
-
 def _has_only_empty_bbox(anno):
     try:
         v = anno["boxes"][:, 2:] <= 1
@@ -40,7 +38,6 @@ def has_valid_annotation(anno):
     target.add_field("difficult", anno["difficult"])
     target = target.clip_to_image(remove_empty=True)
     if len(target) == 0:
-        #print("Image id {} ({}) doesn't have annotations!".format(self.ids[index], target))
         return False
 
     return True

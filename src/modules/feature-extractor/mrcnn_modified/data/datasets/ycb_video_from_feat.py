@@ -52,14 +52,6 @@ class YCBVideoDatasetFromFeat(YCBVideoDataset):
 
         target_path = filename_path.replace('feat', 'targets')
         target = torch.load(target_path)
-        #target = self.get_groundtruth(index)
-        #target = target.clip_to_image(remove_empty=True)
-
-        #if len(target) == 0:
-        #    print("Image id {} ({}) doesn't have annotations!".format(self.ids[index], target))
-
-        #if self.transforms is not None:
-        #    img, target = self.transforms(img, target)
 
         return img, target, index
 
@@ -69,9 +61,6 @@ class YCBVideoDatasetFromFeat(YCBVideoDataset):
         imgset_path = self._imgsetpath
         mask_dir = self._maskpath
 
-        #imset = open(imgset_path, "r")
-
-        #img_path = imset.readlines()[index].strip('\n').split()
         img_path = self.ids[index].split()
 
         filename_path = img_dir % (img_path[0], img_path[1])

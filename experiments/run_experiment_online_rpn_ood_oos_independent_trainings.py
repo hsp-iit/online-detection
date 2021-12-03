@@ -29,8 +29,8 @@ parser.add_argument('--sampling_ratio_segmentation', action='store', type=float,
 parser.add_argument('--pos_fraction_feat_stats', action='store', type=float, default=0.8, help='Set the fraction of positives samples to be used to compute features statistics for data normalization')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--sampling_ratio_positives_detection', action='store', type=float, default=1.0, help='Set the fraction of positives samples to be used to train the online detection head, when loading the positives from COXY.')
-parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_segmentation_ycbv_with_rpn_independent_trainings.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
-parser.add_argument('--config_file_online_rpn_detection_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml", help='Manually set configuration file for online rpn, detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_online_rpn_det_segm_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file_online_rpn_detection_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv.yaml", help='Manually set configuration file for online rpn, detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection. Overvrites the value in the configuration file')
 
 # Check params below
@@ -86,6 +86,8 @@ if not args.load_RPN_detector_segmentation_models:
             use_only_gt_positives_detection=args.use_only_gt_positives_detection,
             cfg_options=cfg_options
             )
+
+        end_of_feature_extraction_time = feature_extractor.end_of_feature_extraction_time
 
         del feature_extractor
         torch.cuda.empty_cache()
@@ -239,7 +241,7 @@ if not args.load_RPN_detector_segmentation_models:
 
     # ---------------------------------------- On-line segmentation training -------------------------------------------
 
-    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features:
+    if args.load_RPN_detector_segmentation_features and args.save_RPN_detector_segmentation_features:
         # Train segmentation classifiers
         positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
     if args.CPU:
@@ -265,8 +267,10 @@ if not args.load_RPN_detector_segmentation_models:
         torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
         torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
 
-    torch.cuda.synchronize()            #TODO Manage this
-    print('End of training:', time.time())
+    torch.cuda.synchronize()
+    tr_time = time.time() - end_of_feature_extraction_time
+    with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+        fid.write("Training time for the online modules : {}min:{}s \n".format(int(tr_time/60), round(tr_time%60)))
 
 # Load trained models and set them in the pipeline, if requested
 else:
@@ -294,4 +298,4 @@ accuracy_evaluator.stats_detector = stats
 accuracy_evaluator.falkon_segmentation_models = model_segm
 accuracy_evaluator.stats_segmentation = stats_segm
 
-test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=args.eval_segm_with_gt_bboxes, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)
+test_boxes = accuracy_evaluator.evaluateAccuracyDetection(is_train=False, output_dir=output_dir, eval_segm_with_gt_bboxes=False, normalize_features_regressors=args.normalize_features_regressor_detector, evaluate_segmentation_icwt=True)
