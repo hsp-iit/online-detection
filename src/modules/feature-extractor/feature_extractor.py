@@ -20,13 +20,18 @@ class FeatureExtractor(FeatureExtractorAbstract):
         self.stats_detector = None
         self.regions_post_nms = None
         self.train_in_cpu = train_in_cpu
+        self.start_of_feature_extraction_time = None
         self.end_of_feature_extraction_time = None
+        self.start_of_feature_extraction_time_RPN = None
+        self.start_of_feature_extraction_time_detection = None
+
 
     def extractRPNFeatures(self, is_train, output_dir=None, save_features=False, cfg_options={}):
         from feature_extractor_RPN import FeatureExtractorRPN
         # call class to extract rpn features:
         feature_extractor = FeatureExtractorRPN(self.cfg_path_RPN)
         features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, cfg_options=cfg_options)
+        self.start_of_feature_extraction_time_RPN = feature_extractor.start_of_feature_extraction_time
 
         return features
 
@@ -44,6 +49,7 @@ class FeatureExtractor(FeatureExtractorAbstract):
             feature_extractor.cfg.MODEL.RPN.POST_NMS_TOP_N_TEST = self.regions_post_nms
         features = feature_extractor(is_train, output_dir=output_dir, train_in_cpu=self.train_in_cpu, save_features=save_features, extract_features_segmentation=extract_features_segmentation, use_only_gt_positives_detection=use_only_gt_positives_detection,
                                      cfg_options=cfg_options)
+        self.start_of_feature_extraction_time_detection = feature_extractor.start_of_feature_extraction_time
 
         return features
 
@@ -59,6 +65,7 @@ class FeatureExtractor(FeatureExtractorAbstract):
                                      use_only_gt_positives_detection=use_only_gt_positives_detection,
                                      cfg_options=cfg_options)
         self.end_of_feature_extraction_time = feature_extractor.end_of_feature_extraction_time
+        self.start_of_feature_extraction_time = feature_extractor.start_of_feature_extraction_time
         return features
 
     def trainFeatureExtractor(self, output_dir=None, fine_tune_last_layers=False, fine_tune_rpn=False, use_backbone_features=False, training_seconds=None):

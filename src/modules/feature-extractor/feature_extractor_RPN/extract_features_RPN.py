@@ -42,6 +42,7 @@ class FeatureExtractorRPN:
         self.local_rank = local_rank
         self.cfg = cfg.clone()
         self.load_parameters()
+        self.start_of_feature_extraction_time = None
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, cfg_options={}):
         self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
@@ -142,8 +143,9 @@ class FeatureExtractorRPN:
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
+
             torch.cuda.synchronize()
-            print('Start of RPN feature extraction:', time.time())
+            self.start_of_feature_extraction_time = time.time()
 
             feat_extraction_time = inference(self.cfg,
                                              model,

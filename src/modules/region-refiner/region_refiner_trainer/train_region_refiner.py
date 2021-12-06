@@ -14,7 +14,6 @@ class RegionRefinerTrainer():
     def __init__(self, cfg, lmbd, is_rpn):
         self.cfg = cfg
         self.lambd = lmbd
-        self.percentile = 0
         self.COXY = None
         self.is_rpn = is_rpn
 
@@ -70,15 +69,6 @@ class RegionRefinerTrainer():
 
 
             Beta = self.solve(Xi, Yi, self.lambd)
-
-            if self.percentile > 0:
-                indices = []
-                for elem in Beta:
-                    losses_i = Beta[elem]['losses']
-                    threshold_i = np.percentile(losses_i.cpu(), self.percentile)
-                    indices_i = torch.where(losses_i > threshold_i)[0]
-                    indices.append(indices_i)
-                Beta = self.solve(Xi, Yi, self.lambd, Xi_test, Yi_test, indices)
 
             models = np.append(models, {
                 'mu': mu.to("cuda").type(torch.float32),

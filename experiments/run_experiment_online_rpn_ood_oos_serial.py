@@ -16,6 +16,7 @@ from accuracy_evaluator import AccuracyEvaluator
 from region_refiner import RegionRefiner
 
 from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_models_to_cuda, load_features_classifier, load_features_regressor, load_positives_from_COXY
+import time
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
@@ -95,6 +96,7 @@ if not args.no_rpn and not args.load_RPN_models:
         if args.minibootstrap_iterations:
             cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
         negatives, positives, COXY = feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features, cfg_options=cfg_options)
+        start_of_feature_extraction_time_RPN = feature_extractor.start_of_feature_extraction_time_RPN
     else:
         if args.save_RPN_features:
             feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
@@ -165,10 +167,14 @@ if args.load_detector_models:
 else:
     # Extract detector features for the train set
     if not args.save_detector_segmentation_features and not args.load_detector_features:
+        torch.cuda.synchronize()
+        time_before_feat_extraction_det_segm = time.time()
+
         cfg_options = {}
         if args.minibootstrap_iterations:
             cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
         negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_segmentation_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection, cfg_options=cfg_options)
+        start_of_feature_extraction_time_detection = feature_extractor.start_of_feature_extraction_time_detection
         del feature_extractor
         torch.cuda.empty_cache()
 
@@ -312,6 +318,15 @@ if not args.load_segmentation_models:
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
+
+    torch.cuda.synchronize()
+    end_of_training_time = time.time()
+    if not args.save_detector_segmentation_features and not args.load_detector_features and not args.load_detector_models \
+            and not args.no_rpn and not args.load_RPN_models and not args.save_RPN_features and not args.load_RPN_features \
+            and not args.load_segmentation_features and not args.save_detector_segmentation_features:
+        total_training_time = end_of_training_time - start_of_feature_extraction_time_detection + time_before_feat_extraction_det_segm - start_of_feature_extraction_time_RPN
+        with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+            fid.write("Total training time: {}min:{}s \n".format(int(total_training_time / 60), round(total_training_time % 60)))
 
     del positives_segmentation, negatives_segmentation, regionClassifier
     torch.cuda.empty_cache()

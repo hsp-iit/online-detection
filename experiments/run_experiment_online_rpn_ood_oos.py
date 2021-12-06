@@ -87,6 +87,7 @@ if not args.load_RPN_detector_segmentation_models:
             cfg_options=cfg_options
             )
 
+        start_of_feature_extraction_time = feature_extractor.start_of_feature_extraction_time
         end_of_feature_extraction_time = feature_extractor.end_of_feature_extraction_time
 
         del feature_extractor
@@ -267,10 +268,15 @@ if not args.load_RPN_detector_segmentation_models:
         torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
         torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
 
-    torch.cuda.synchronize()
-    tr_time = time.time() - end_of_feature_extraction_time
-    with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-        fid.write("Training time for the online modules : {}min:{}s \n".format(int(tr_time/60), round(tr_time%60)))
+    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features and not args.load_RPN_detector_segmentation_models:
+        torch.cuda.synchronize()
+        current_time = time.time()
+        total_time = current_time - start_of_feature_extraction_time
+        with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+            fid.write("Total training time: {}min:{}s \n".format(int(total_time/60), round(total_time%60)))
+        tr_time = current_time - end_of_feature_extraction_time
+        with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+            fid.write("Training time for the online modules: {}min:{}s \n".format(int(tr_time/60), round(tr_time%60)))
 
 # Load trained models and set them in the pipeline, if requested
 else:

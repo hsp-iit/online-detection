@@ -270,7 +270,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
             self.normalized = True
 
         model = self.trainWithMinibootstrap(negatives, positives, output_dir=output_dir)
-        #model = self.trainWithMinibootstrapParallel(negatives, positives, output_dir=output_dir)
 
         if not self.return_caches:
             return model

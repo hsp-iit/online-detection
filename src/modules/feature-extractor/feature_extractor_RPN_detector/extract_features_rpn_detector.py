@@ -43,6 +43,7 @@ class FeatureExtractorRPNDetector:
         self.local_rank = local_rank
         self.cfg = cfg.clone()
         self.load_parameters()
+        self.start_of_feature_extraction_time = None
         self.end_of_feature_extraction_time = None
 
 
@@ -158,6 +159,9 @@ class FeatureExtractorRPNDetector:
                 output_folders[idx] = output_folder
 
         data_loaders = make_data_loader(self.cfg, is_train=is_train, is_distributed=self.distributed, is_final_test=True, is_target_task=self.is_target_task, icwt_21_objs=self.icwt_21_objs)
+
+        torch.cuda.synchronize()
+        self.start_of_feature_extraction_time = time.time()
 
         for output_folder, dataset_name, data_loader in zip(output_folders, dataset_names, data_loaders):
             feat_extraction_time = inference(self.cfg,
