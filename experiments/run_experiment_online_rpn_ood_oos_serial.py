@@ -326,7 +326,7 @@ if not args.load_segmentation_models:
             and not args.load_segmentation_features and not args.save_detector_segmentation_features:
         total_training_time = end_of_training_time - start_of_feature_extraction_time_detection + time_before_feat_extraction_det_segm - start_of_feature_extraction_time_RPN
         with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-            fid.write("Total training time: {}min:{}s \n".format(int(total_training_time / 60), round(total_training_time % 60)))
+            fid.write("\nTotal training time: {}min:{}s \n\n".format(int(total_training_time / 60), round(total_training_time % 60)))
 
     del positives_segmentation, negatives_segmentation, regionClassifier
     torch.cuda.empty_cache()

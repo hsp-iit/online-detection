@@ -75,7 +75,7 @@ feature_extractor = FeatureExtractor(cfg_target_task, train_in_cpu=args.CPU)
 
 if not args.load_RPN_detector_segmentation_models:
 
-    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features:
+    if not args.load_RPN_detector_segmentation_features:
         # Extract features for the training set
         cfg_options = {}
         if args.minibootstrap_iterations:
@@ -93,7 +93,7 @@ if not args.load_RPN_detector_segmentation_models:
         del feature_extractor
         torch.cuda.empty_cache()
 
-    else:
+    if args.load_RPN_detector_segmentation_features or args.save_RPN_detector_segmentation_features:
         positives_RPN, negatives_RPN = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
 
     # ---------------------------------------- On-line RPN training ----------------------------------------------------
@@ -242,7 +242,7 @@ if not args.load_RPN_detector_segmentation_models:
 
     # ---------------------------------------- On-line segmentation training -------------------------------------------
 
-    if args.load_RPN_detector_segmentation_features and args.save_RPN_detector_segmentation_features:
+    if args.load_RPN_detector_segmentation_features or args.save_RPN_detector_segmentation_features:
         # Train segmentation classifiers
         positives_segmentation, negatives_segmentation = load_features_classifier(features_dir=os.path.join(output_dir, 'features_segmentation'), is_segm=True, sample_ratio=args.sampling_ratio_segmentation)
     if args.CPU:
@@ -268,15 +268,15 @@ if not args.load_RPN_detector_segmentation_models:
         torch.save(model_segm, os.path.join(output_dir, 'classifier_segmentation'))
         torch.save(stats_segm, os.path.join(output_dir, 'stats_segmentation'))
 
-    if not args.load_RPN_detector_segmentation_features and not args.save_RPN_detector_segmentation_features and not args.load_RPN_detector_segmentation_models:
+    if not args.load_RPN_detector_segmentation_models and not args.load_RPN_detector_segmentation_features:
         torch.cuda.synchronize()
         current_time = time.time()
         total_time = current_time - start_of_feature_extraction_time
         with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-            fid.write("Total training time: {}min:{}s \n".format(int(total_time/60), round(total_time%60)))
+            fid.write("\nTotal training time: {}min:{}s \n".format(int(total_time/60), round(total_time%60)))
         tr_time = current_time - end_of_feature_extraction_time
         with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-            fid.write("Training time for the online modules: {}min:{}s \n".format(int(tr_time/60), round(tr_time%60)))
+            fid.write("Training time for the online modules: {}min:{}s \n\n".format(int(tr_time/60), round(tr_time%60)))
 
 # Load trained models and set them in the pipeline, if requested
 else:
