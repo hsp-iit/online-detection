@@ -6,18 +6,12 @@ sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir)))
 sys.path.append(os.path.abspath(os.path.join(basedir, os.path.pardir, os.path.pardir)))
 
 import RegionClassifierAbstract as rcA
-from py_od_utils import computeFeatStatistics
 import numpy as np
 import torch
 from maskrcnn_benchmark.structures.bounding_box import BoxList
 import time
 
 import yaml
-import copy
-
-from joblib import Parallel, delayed, parallel_backend
-import multiprocessing
-
 
 class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
 
@@ -87,7 +81,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if 'normalized' in opts:
             self.normalized = opts['normalized']
 
-
     def updateModel(self, cache):
         X_neg = cache['neg']
         X_pos = cache['pos']
@@ -102,7 +95,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         else:
             print('Updating model with default lambda and sigma')
             return self.classifier.train(X, y)
-
 
     def trainWithMinibootstrap(self, negatives, positives, output_dir=None):
         caches = []
@@ -166,92 +158,6 @@ class OnlineRegionClassifier(rcA.RegionClassifierAbstract):
         if self.return_caches:
             self.caches = caches
         return model
-
-    def updateModel_parallel(self, cache, classifier):
-        X_neg = cache['neg']
-        X_pos = cache['pos']
-        num_neg = len(X_neg)
-        num_pos = len(X_pos)
-        X = torch.cat((X_pos, X_neg), 0)
-        y = torch.cat((torch.transpose(torch.ones(num_pos, device='cuda'), 0, 0), -torch.transpose(torch.ones(num_neg, device='cuda'), 0, 0)), 0)
-
-        if self.sigma is not None and self.lam is not None:
-            print('Updating model with lambda: {} and sigma: {}'.format(self.lam, self.sigma))
-            return classifier.train(X, y, sigma=self.sigma, lam=self.lam)
-        else:
-            print('Updating model with default lambda and sigma')
-            return classifier.train(X, y)
-
-    def compute_model_parallel(self, negatives_i, positives_i, i, classifier):
-        caches_i ={}
-        model_i = None
-
-        if (len(positives_i) != 0) & (len(negatives_i) != 0):
-            print('---------------------- Training Class number {} ----------------------'.format(i))
-            first_time = True
-            for j in range(len(negatives_i)):
-                print(i, j, "!!!")
-                t_iter = time.time()
-                if first_time:
-                    caches_i['pos'] = positives_i
-                    caches_i['neg'] = negatives_i[j]
-                    print(first_time)
-                    first_time = False
-                else:
-                    t_hard = time.time()
-                    neg_pred = classifier.predict(model_i, negatives_i[j])
-                    hard_idx = torch.where(neg_pred > self.hard_tresh)[0]
-                    caches_i['neg'] = torch.cat((caches_i['neg'], negatives_i[j][hard_idx]), 0)
-                    print('Hard negatives selected in {} seconds'.format(time.time() - t_hard))
-                    print('Chosen {} hard negatives from the {}th batch'.format(len(hard_idx), j))
-
-                print('Traning with {} positives and {} negatives'.format(len(caches_i['pos']), len(caches_i['neg'])))
-                t_update = time.time()
-                model_i = self.updateModel_parallel(caches_i, classifier)
-                print('Model updated in {} seconds'.format(time.time() - t_update))
-
-                t_easy = time.time()
-                if len(caches_i['neg']) != 0 and not j == len(negatives_i) - 1:
-                    neg_pred = classifier.predict(model_i, caches_i['neg'])
-                    keep_idx = torch.where(neg_pred >= self.easy_tresh)[0]
-                    easy_idx = len(caches_i['neg']) - len(keep_idx)
-                    caches_i['neg'] = caches_i['neg'][keep_idx]
-                    print('Easy negatives selected in {} seconds'.format(time.time() - t_easy))
-                    print('Removed {} easy negatives. {} Remaining'.format(easy_idx, len(caches_i['neg'])))
-                    print('Iteration {}th done in {} seconds'.format(j, time.time() - t_iter))
-                # Delete cache of the i-th classifier if it is the last iteration to free memory
-                if j == len(negatives_i) - 1 and not self.return_caches:
-                    caches_i = None
-                    torch.cuda.empty_cache()
-
-        return model_i, caches_i
-
-    def trainWithMinibootstrapParallel(self, negatives, positives, output_dir=None):
-        caches = []
-        models = []
-        t = time.time()
-        classifier = copy.deepcopy(self.classifier)
-        #models, caches = Parallel(n_jobs=1, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
-        training_output = Parallel(n_jobs=2, prefer="threads", verbose=1)(delayed(self.compute_model_parallel)(negatives[i], positives[i], i, copy.deepcopy(classifier)) for i in range(self.num_classes-1))
-        for i in range(len(training_output)):
-            models.append(training_output[i][0])
-            caches.append(training_output[i][1])
-
-        training_time = time.time() - t
-        print('Online Classifier trained in {} seconds'.format(training_time))
-        if output_dir and self.is_rpn:
-            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-                fid.write("RPN's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
-        elif output_dir and self.is_segmentation:
-            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-                fid.write("Online Segmentation training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
-        elif output_dir and not self.is_rpn and not self.is_segmentation:
-            with open(os.path.join(output_dir, "result.txt"), "a") as fid:
-                fid.write("Detector's Online Classifier training time: {}min:{}s \n".format(int(training_time/60), round(training_time%60)))
-        if self.return_caches:
-            self.caches = caches
-        return models
-
 
     def trainRegionClassifier(self, opts=None, output_dir=None):
         if opts is not None:
