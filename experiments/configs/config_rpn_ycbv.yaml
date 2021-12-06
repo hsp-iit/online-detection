@@ -1,7 +1,7 @@
 OUTPUT_DIR: ""
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "catalog://Caffe2Detectron/COCO/35858791/e2e_mask_rcnn_R-50-C4_1x" #"model_final.pth"
+  WEIGHT: "catalog://Caffe2Detectron/COCO/35858791/e2e_mask_rcnn_R-50-C4_1x"
   RPN:
     RPN_HEAD: "SingleConvRPNHead_getProposals"
     PRE_NMS_TOP_N_TRAIN: 1000
@@ -15,8 +15,8 @@ MODEL:
     SCORE_THRESH: -2.0
   MASK_ON: True
 DATASETS:
-  TRAIN: ("ycb_video_train_real_1_out_of_10",) #("ycb_video_train_pbr",) #("ycb_video_train_pbr_1_out_of_3",) #("ycb_video_train_real_1_out_of_10",)
-  TEST: ("ycb_video_val",) #("ycb_video_test_keyframe",) #("ycb_video_test_1_out_of_10",)
+  TRAIN: ("ycb_video_train_real_1_out_of_10",)
+  TEST: ("ycb_video_test_keyframe",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333
@@ -27,11 +27,6 @@ TEST:
   IMS_PER_BATCH: 1
 
 MINIBOOTSTRAP:
-  DETECTOR:
-    NUM_CLASSES: 21
-    ITERATIONS: 15 #25 #10 #
-    BATCH_SIZE: 2000 #4000 #2000
-    NEG_IOU_THRESH: 0.3
   RPN:
     BATCH_SIZE: 2000
-    ITERATIONS: 15
+    ITERATIONS: 8

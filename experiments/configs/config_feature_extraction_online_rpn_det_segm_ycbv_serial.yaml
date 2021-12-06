@@ -16,7 +16,7 @@ MODEL:
   MASK_ON: True
 DATASETS:
   TRAIN: ("ycb_video_train_real_1_out_of_10",)
-  TEST: ("ycb_video_val",) #("ycb_video_test_keyframe",)
+  TEST: ("ycb_video_test_keyframe",)
 INPUT:
   HORIZONTAL_FLIP_PROB_TRAIN: 0.0
   MAX_SIZE_TEST: 1333
@@ -29,9 +29,12 @@ TEST:
 MINIBOOTSTRAP:
   DETECTOR:
     NUM_CLASSES: 21
-    ITERATIONS: 15
+    ITERATIONS: 8
     BATCH_SIZE: 2000
     NEG_IOU_THRESH: 0.3
+  RPN:
+    BATCH_SIZE: 2000
+    ITERATIONS: 8
 
 REGRESSORS:
   MIN_OVERLAP: 0.6
