@@ -146,9 +146,6 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None, evaluate_segmentation=Fals
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
 
-    #imset = open(imgset_path, "r")
-
-    #img_path = imset.readlines()[i].strip('\n')
     img_path = dataset.ids[i]
 
     filename_path = img_dir % img_path
@@ -208,67 +205,20 @@ def compute_gts_icwt(dataset, i, icwt_21_objs = None, evaluate_segmentation=Fals
         # this function will be extended according to annotations' format
         if mask is not None:
             masks.append(mask)
-    #imset.close()
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
-"""
-def compute_gts_ycbv(dataset, i, evaluate_segmentation=True):
-    img_dir = dataset._imgpath
-    imgset_path = dataset._imgsetpath
-    mask_dir = dataset._maskpath
 
-    imset = open(imgset_path, "r")
-
-    img_path = imset.readlines()[i].strip('\n').split()
-
-    filename_path = img_dir%(img_path[0], img_path[1])
-    scene_gt_path = dataset._scene_gt_path%img_path[0]
-
-    scene_gt = dataset.scene_gts[int(img_path[0])]
-    scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
-
-    print(filename_path)
-    img_RGB = Image.open(filename_path)
-    # get image size such that later the boxes can be resized to the correct size
-    width, height = img_RGB.size
-    img_sizes = [width, height]
-    # convert to BGR format
-    try:
-        image = np.array(img_RGB)[:, :, [2, 1, 0]]
-    except:
-        image = np.array(img_RGB.convert('RGB'))[:, :, [2, 1, 0]]
-    masks_paths = sorted(glob.glob(mask_dir%(img_path[0], img_path[1]+'*')))
-
-    gt_labels = []
-    gt_bboxes_list = []
-    masks = []
-    for j in range(len(masks_paths)):
-        bbox = scene_gt_info[str(int(img_path[1]))][j]["bbox_visib"]
-        if bbox == [-1, -1, -1, -1] or bbox[2] == 0 or bbox[3] == 0:
-            continue
-        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
-        gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
-        if evaluate_segmentation:
-            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
-
-    return image, gt_bboxes_list, masks, gt_labels, img_sizes
-"""
-
-def compute_gts_ycbv(dataset, i, evaluate_segmentation):    #TODO evaluate if filename_path must be returned, it shouldn't be necessary
+def compute_gts_ycbv(dataset, i, evaluate_segmentation):
 
     img_dir = dataset._imgpath
     imgset_path = dataset._imgsetpath
     mask_dir = dataset._maskpath
 
     imset = open(imgset_path, "r")
-
-    #img_path = imset.readlines()[i].strip('\n').split()
 
     img_path = dataset.ids[i].split()
 
     filename_path = img_dir % (img_path[0], img_path[1])
-
-    #filename_path = img_dir%(img_path[0], img_path[1])
 
     scene_gt = dataset.scene_gts[int(img_path[0])]
     scene_gt_info = dataset.scene_gt_infos[int(img_path[0])]
@@ -307,13 +257,6 @@ def compute_gts_ycbv(dataset, i, evaluate_segmentation):    #TODO evaluate if fi
         gt_labels.append(obj_id)
         if evaluate_segmentation:
             masks.append(T.ToTensor()(Image.open(masks_paths[j])))
-
-        """
-        gt_bboxes_list.append([bbox[0], bbox[1], bbox[0]+bbox[2]-1, bbox[1]+bbox[3]-1])
-        gt_labels.append(scene_gt[str(int(img_path[1]))][j]["obj_id"])
-        if extract_features_segmentation:
-            masks.append(T.ToTensor()(Image.open(masks_paths[j])).to('cuda'))
-        """
 
     return image, gt_bboxes_list, masks, gt_labels, img_sizes
 
