@@ -69,7 +69,7 @@ if args.train_for_time:
 if args.use_backbone_features and args.extract_backbone_features:
     # Initialize feature extractor
     feature_extractor = FeatureExtractor(cfg_feature_extraction)
-    _ = feature_extractor.extractFeaturesRPNDetector(is_train=True)
+    _ = feature_extractor.extractFeaturesRPNDetector(is_train=True, extract_features_segmentation=True)
 
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_path_feature_task=cfg_feature_task)
