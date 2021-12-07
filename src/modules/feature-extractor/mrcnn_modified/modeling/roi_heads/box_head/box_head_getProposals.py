@@ -275,7 +275,6 @@ class ROIBoxHead(torch.nn.Module):
                     neg_i = x[overlap[:, i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
                     if neg_i.size()[0] > 0:
                         neg_i = neg_i[torch.randint(neg_i.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
-                # TODO edit this part to store buffers
                 if self.incremental_train:
                     self.negatives[i].append(neg_i)
                 else:
