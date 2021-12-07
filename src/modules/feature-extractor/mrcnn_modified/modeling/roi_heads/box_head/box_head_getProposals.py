@@ -268,8 +268,8 @@ class ROIBoxHead(torch.nn.Module):
                 # Add random negatives, if there isn't a gt corresponding to that class
                 if (i + 1 not in gt_labels_list) or self.incremental_train:
                     neg_i = x[torch.randint(x.size()[0], (self.negatives_to_pick,))].view(-1, self.feature_extractor.out_channels)
-                if self.incremental_train:
-                    self.buffer_negatives[i].append(neg_i)
+                    if self.incremental_train:
+                        self.buffer_negatives[i].append(neg_i)
                 # Add random examples with iou < 0.3 otherwise
                 else:
                     neg_i = x[overlap[:, i] < self.neg_iou_thresh].view(-1, self.feature_extractor.out_channels)
