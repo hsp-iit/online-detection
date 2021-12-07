@@ -11,8 +11,10 @@ from feature_extractor import FeatureExtractor
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--output_dir', action='store', type=str, default='fine_tuning_ycbv', help='Set experiment\'s output directory.')
-parser.add_argument('--config_file', action='store', type=str, default="configs/config_fine_tuning_ycbv.yaml", help='Manually set configuration file, by default it is configs/config_full_train_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments directory')
+parser.add_argument('--config_file', action='store', type=str, default="configs/config_fine_tuning_ycbv.yaml", help='Manually set configuration file, by default it is configs/config_fine_tuning_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments directory')
+parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="configs/config_feature_extraction_backbone_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_backbone_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--fine_tune_RPN', action='store_true', help='Fine-tune also last RPN layers')
+parser.add_argument('--extract_backbone_features', action='store_true', help='Extract backbone features for fine-tuning.')
 parser.add_argument('--use_backbone_features', action='store_true', help='Load features extracted with the backbone instead of the images as input')
 parser.add_argument('--train_for_time', action='store', type=str, help='Train mask for the input training time. It must be in the format XXh:YYm:ZZs.')
 
@@ -32,6 +34,11 @@ if args.config_file.startswith("/"):
     cfg_feature_task = args.config_file
 else:
     cfg_feature_task = os.path.abspath(os.path.join(basedir, args.config_file))
+
+if args.config_file.startswith("/"):
+    cfg_feature_extraction = args.config_file_feature_extraction
+else:
+    cfg_feature_extraction = os.path.abspath(os.path.join(basedir, args.config_file_feature_extraction))
 
 training_seconds=None
 if args.train_for_time:
@@ -59,6 +66,10 @@ if args.train_for_time:
 
     training_seconds = seconds + 60*minutes + 3600*hours
 
+if args.use_backbone_features and args.extract_backbone_features:
+    # Initialize feature extractor
+    feature_extractor = FeatureExtractor(cfg_feature_extraction)
+    _ = feature_extractor.extractFeaturesRPNDetector(is_train=True)
 
 # Initialize feature extractor
 feature_extractor = FeatureExtractor(cfg_path_feature_task=cfg_feature_task)
