@@ -161,9 +161,7 @@ class RPNModule(torch.nn.Module):
         self.neg_iou_thresh = self.cfg.MINIBOOTSTRAP.RPN.NEG_IOU_THRESH
         self.pos_iou_thresh = self.cfg.MINIBOOTSTRAP.RPN.POS_IOU_THRESH
         self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES
-
-        # TODO read this param from file, set to true for the demo
-        self.keep_img_id = False
+        self.keep_img_id = self.cfg.DEMO.INCREMENTAL_TRAIN
 
         self.diag_list=[torch.empty(0, dtype=torch.long, device='cuda')]
         for i in range(50):
@@ -172,10 +170,8 @@ class RPNModule(torch.nn.Module):
             else:
                 self.diag_list.append(torch.arange(0,i**2, i+1, dtype=torch.long, device='cuda'))
         self.negatives_to_pick = None
-        try:
-            self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
-        except:
-            self.training_device = 'cuda'
+        self.training_device = self.cfg.MINIBOOTSTRAP.RPN.FEATURES_DEVICE
+
 
     def forward(self, images, features, gt_bbox=None, img_size=None, compute_average_recall_RPN=False, is_train=None, result_dir=None, propagate_rpn_boxes=False):
 

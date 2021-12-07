@@ -45,7 +45,8 @@ class FeatureExtractorRPN:
         self.start_of_feature_extraction_time = None
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, cfg_options={}):
-        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        if train_in_cpu:
+            self.cfg.MINIBOOTSTRAP.RPN.FEATURES_DEVICE = 'cpu'
         self.cfg.SAVE_FEATURES_RPN = save_features
         if save_features:
             if output_dir:

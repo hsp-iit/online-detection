@@ -48,11 +48,11 @@ class FeatureExtractorRPNDetector:
 
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, extract_features_segmentation=False, use_only_gt_positives_detection=True, cfg_options={}):
-        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        if train_in_cpu:
+            self.cfg.MINIBOOTSTRAP.RPN.FEATURES_DEVICE = 'cpu'
+            self.cfg.MINIBOOTSTRAP.DETECTOR.FEATURES_DEVICE = 'cpu'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = use_only_gt_positives_detection
-
-        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
         self.cfg.SAVE_FEATURES_RPN = save_features
 
         if 'minibootstrap_iterations' in cfg_options:

@@ -51,7 +51,9 @@ class AccuracyEvaluatorDetector:
 
 
     def __call__(self, is_train, output_dir=None, train_in_cpu=False, save_features=False, evaluate_segmentation=True, eval_segm_with_gt_bboxes=False, normalize_features_regressors=False, evaluate_segmentation_icwt=False):
-        self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE = 'cpu' if train_in_cpu else 'cuda'
+        if train_in_cpu:
+            self.cfg.MINIBOOTSTRAP.RPN.FEATURES_DEVICE = 'cpu'
+            self.cfg.MINIBOOTSTRAP.DETECTOR.FEATURES_DEVICE = 'cpu'
         self.cfg.SAVE_FEATURES_DETECTOR = save_features
         if save_features:
             if output_dir:

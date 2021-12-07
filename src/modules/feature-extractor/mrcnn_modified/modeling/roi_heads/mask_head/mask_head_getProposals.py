@@ -55,7 +55,6 @@ class ROIMaskHead(torch.nn.Module):
             cfg, self.feature_extractor.out_channels)
         self.post_processor = make_roi_mask_post_processor(cfg)
         self.loss_evaluator = make_roi_mask_loss_evaluator(cfg)
-        # TODO set these parameters in the default cfg file
         try:
             self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
         except:

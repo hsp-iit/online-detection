@@ -27,12 +27,7 @@ class ROIBoxHead(torch.nn.Module):
         self.post_processor = make_roi_box_post_processor(cfg)
         self.loss_evaluator = make_roi_box_loss_evaluator(cfg)
         self.cfg = cfg
-
-        # TODO set these parameters in the default cfg file
-        try:
-            self.training_device = self.cfg.TRAIN_FALKON_REGRESSORS_DEVICE
-        except:
-            self.training_device = 'cuda'
+        self.training_device = self.cfg.MINIBOOTSTRAP.DETECTOR.FEATURES_DEVICE
 
         try:
             self.save_features = self.cfg.SAVE_FEATURES_DETECTOR
@@ -47,8 +42,7 @@ class ROIBoxHead(torch.nn.Module):
         self.batch_size = self.cfg.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE
         self.compute_gt_positives = self.cfg.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES
         self.shuffle_negatives = self.cfg.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES
-        # TODO set this from config file, set to true for the demo
-        self.incremental_train = False
+        self.incremental_train = self.cfg.DEMO.INCREMENTAL_TRAIN
         if self.compute_gt_positives:
             self.positives = []
         self.negatives = []
@@ -93,7 +87,7 @@ class ROIBoxHead(torch.nn.Module):
 
         self.test_boxes = []
 
-    def add_new_class(self):            #TODO it must be modified for the demo if we want to shuffle the negatives, check if it's still true
+    def add_new_class(self):
         self.still_to_complete.append(self.num_classes)
         self.num_classes += 1
         self.negatives.append([])

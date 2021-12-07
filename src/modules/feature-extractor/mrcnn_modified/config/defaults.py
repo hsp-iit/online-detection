@@ -485,6 +485,8 @@ _C.MINIBOOTSTRAP.RPN.NUM_CLASSES = 15
 _C.MINIBOOTSTRAP.RPN.NEG_IOU_THRESH = 0.3
 _C.MINIBOOTSTRAP.RPN.POS_IOU_THRESH = 0.7
 _C.MINIBOOTSTRAP.RPN.SHUFFLE_NEGATIVES = False
+_C.MINIBOOTSTRAP.RPN.FEATURES_DEVICE = 'cuda'
+
 
 _C.MINIBOOTSTRAP.DETECTOR = CN()
 _C.MINIBOOTSTRAP.DETECTOR.BATCH_SIZE = 2000
@@ -494,6 +496,8 @@ _C.MINIBOOTSTRAP.DETECTOR.NUM_CLASSES = 21
 _C.MINIBOOTSTRAP.DETECTOR.NEG_IOU_THRESH = 0.3
 _C.MINIBOOTSTRAP.DETECTOR.EXTRACT_ONLY_GT_POSITIVES = True
 _C.MINIBOOTSTRAP.DETECTOR.SHUFFLE_NEGATIVES = False
+_C.MINIBOOTSTRAP.DETECTOR.FEATURES_DEVICE = 'cuda'
+
 
 
 # ---------------------------------------------------------------------------- #
@@ -528,3 +532,9 @@ _C.INFERENCE.PARALLEL_FALKON = True
 # ---------------------------------------------------------------------------- #
 _C.FINE_TUNING_OPTIONS = CN()
 _C.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES = False
+
+# ---------------------------------------------------------------------------- #
+# Demo parameters
+# ---------------------------------------------------------------------------- #
+_C.DEMO = CN()
+_C.DEMO.INCREMENTAL_TRAIN = False

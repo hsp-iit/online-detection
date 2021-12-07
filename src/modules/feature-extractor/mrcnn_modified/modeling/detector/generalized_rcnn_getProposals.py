@@ -36,7 +36,7 @@ class GeneralizedRCNN(nn.Module):
 
         self.cfg = cfg.clone()
 
-    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False, img_name=None):
+    def forward(self, images, gt_bbox = None, gt_label = None, img_size = [0,0], compute_average_recall_RPN=False, gt_labels_list = None, is_train = True, result_dir = None, extract_features_segmentation=False, img_name=''):
         """
         Arguments:
             images (list[Tensor] or ImageList): images to be processed
@@ -65,8 +65,8 @@ class GeneralizedRCNN(nn.Module):
             if not os.path.exists(targets_path):
                 os.makedirs(targets_path)
             torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
-
             return None
+
         # Store backbone features for fine-tuning from backbone features for HO-3D
         if "Data/datasets/HO3D_V2_iCWT_format" in img_name and self.cfg.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES:
             features_name = img_name.replace('Images', 'Features').replace('.png', '.pth').replace('.jpg', '.pth')
@@ -81,7 +81,6 @@ class GeneralizedRCNN(nn.Module):
             if not os.path.exists(targets_path):
                 os.makedirs(targets_path)
             torch.save(gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), targets_name)
-
             return None
 
         if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
