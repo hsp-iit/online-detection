@@ -37,8 +37,6 @@ parser.add_argument('--config_file_feature_extraction', action='store', type=str
 parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_detection_segmentation_ycbv.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_detection_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection.')
-parser.add_argument('--nystrom_centers_detection', action='store', type=int, help='Set the number of nystrom centers for detection.')
-parser.add_argument('--nystrom_centers_segmentation', action='store', type=int, help='Set the number of nystrom centers for segmentation.')
 
 args = parser.parse_args()
 
@@ -86,12 +84,11 @@ if args.load_detector_models:
 else:
     # Extract detector features for the train set
     if not args.save_detector_features and not args.load_detector_features:
-        torch.cuda.synchronize()
-        print('Before feature extraction det segm:', time.time())
         cfg_options = {}
         if args.minibootstrap_iterations:
             cfg_options['minibootstrap_iterations'] = args.minibootstrap_iterations
         negatives, positives, COXY, negatives_segmentation, positives_segmentation = feature_extractor.extractFeatures(is_train=True, output_dir=output_dir, save_features=args.save_detector_features, extract_features_segmentation=True, use_only_gt_positives_detection=args.use_only_gt_positives_detection, cfg_options=cfg_options)
+        start_of_feature_extraction_time_detection = feature_extractor.start_of_feature_extraction_time_detection
         del feature_extractor
         torch.cuda.empty_cache()
 
@@ -116,8 +113,6 @@ else:
 
         # Detector Region Classifier initialization
         classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path)
-        if args.nystrom_centers_detection:
-            classifier.nyst_centers = args.nystrom_centers_detection
         regionClassifier = ocr.OnlineRegionClassifier(classifier, positives, negatives, stats, cfg_path=cfg_online_path)
 
         # Train detector Region Classifier
@@ -235,13 +230,16 @@ if not args.load_segmentation_models:
     stats_segm = computeFeatStatistics_torch(positives_segmentation, negatives_segmentation, features_dim=positives_segmentation[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
     # Per-pixel classifier initialization
     classifier = falkon.FALKONWrapper(cfg_path=cfg_online_path, is_segmentation=True)
-    if args.nystrom_centers_segmentation:
-        classifier.nyst_centers = args.nystrom_centers_segmentation
     regionClassifier = ocr.OnlineRegionClassifier(classifier, positives_segmentation, negatives_segmentation, stats_segm, cfg_path=cfg_online_path, is_segmentation=True)
     model_segm = falkon_models_to_cuda(regionClassifier.trainRegionClassifier(output_dir=output_dir))
 
     torch.cuda.synchronize()
-    print('End of training:', time.time())
+    end_of_training_time = time.time()
+    if not args.save_detector_features and not args.load_detector_features and not args.load_detector_models and not args.load_segmentation_features and not args.load_segmentation_models:
+        total_training_time = end_of_training_time - start_of_feature_extraction_time_detection
+        with open(os.path.join(output_dir, "result.txt"), "a") as fid:
+            fid.write("\nTotal training time: {}min:{}s \n\n".format(int(total_training_time / 60),
+                                                                     round(total_training_time % 60)))
 
     del positives_segmentation, negatives_segmentation, regionClassifier
     torch.cuda.empty_cache()
