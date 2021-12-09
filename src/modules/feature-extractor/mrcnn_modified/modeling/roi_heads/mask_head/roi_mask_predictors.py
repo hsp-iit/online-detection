@@ -6,7 +6,7 @@ from torch.nn import functional as F
 
 from maskrcnn_benchmark.layers import Conv2d
 from maskrcnn_benchmark.layers import ConvTranspose2d
-from maskrcnn_benchmark.modeling import registry
+from mrcnn_modified.modeling import registry
 
 import torch
 

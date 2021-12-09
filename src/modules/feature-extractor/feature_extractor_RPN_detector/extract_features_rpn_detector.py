@@ -186,11 +186,11 @@ class FeatureExtractorRPNDetector:
             self.end_of_feature_extraction_time = time.time()
 
             if is_train:
-                if self.cfg.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES:
-                    return
-
                 logger = logging.getLogger("maskrcnn_benchmark")
                 logger.handlers=[]
+
+                if self.cfg.FINE_TUNING_OPTIONS.TRAIN_FROM_FEATURES:
+                    return
 
                 if self.cfg.SAVE_FEATURES_DETECTOR:
                     # Save features still not saved
