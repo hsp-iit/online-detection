@@ -161,7 +161,7 @@ else:
             del region_refiner, COXY
             torch.cuda.empty_cache()
 
-        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'))
+        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'), cfg_feature_extraction=cfg_target_task)
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:

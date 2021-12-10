@@ -100,7 +100,7 @@ if not args.no_rpn and not args.load_RPN_models:
     else:
         if args.save_RPN_features:
             feature_extractor.extractRPNFeatures(is_train=True, output_dir=output_dir, save_features=args.save_RPN_features)
-        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+        positives, negatives = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'), cfg_feature_extraction=config_file_rpn)
     stats_rpn = computeFeatStatistics_torch(positives, negatives, features_dim=positives[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
 
     # RPN Region Classifier initialization
@@ -247,7 +247,7 @@ else:
             del region_refiner, COXY
             torch.cuda.empty_cache()
 
-        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'))
+        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'), cfg_feature_extraction=cfg_target_task)
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:
