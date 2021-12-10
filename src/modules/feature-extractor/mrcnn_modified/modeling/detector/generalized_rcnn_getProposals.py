@@ -84,7 +84,7 @@ class GeneralizedRCNN(nn.Module):
             return None
 
         if self.cfg.MODEL.RPN.RPN_HEAD == 'SingleConvRPNHead_getProposals':
-            proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN, propagate_rpn_boxes=True)
+            proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN, propagate_rpn_boxes=True, result_dir = result_dir)
         else:
             proposals, proposal_losses, average_recall_RPN = self.rpn(images, features, gt_bbox.resize((images.image_sizes[0][1], images.image_sizes[0][0])), compute_average_recall_RPN=compute_average_recall_RPN)
         if gt_bbox is not None:

@@ -94,7 +94,7 @@ if not args.load_RPN_detector_segmentation_models:
         torch.cuda.empty_cache()
 
     if args.load_RPN_detector_segmentation_features or args.save_RPN_detector_segmentation_features:
-        positives_RPN, negatives_RPN = load_features_classifier(features_dir = os.path.join(output_dir, 'features_RPN'))
+        positives_RPN, negatives_RPN = load_features_classifier(features_dir=os.path.join(output_dir, 'features_RPN'), cfg_feature_extraction=cfg_target_task)
 
     # ---------------------------------------- On-line RPN training ----------------------------------------------------
     stats_rpn = computeFeatStatistics_torch(positives_RPN, negatives_RPN, features_dim=positives_RPN[0].size()[1], cpu_tensor=args.CPU, pos_fraction=pos_fraction_feat_stats)
@@ -109,7 +109,7 @@ if not args.load_RPN_detector_segmentation_models:
     # RPN Region Refiner initialization
     region_refiner = RegionRefiner(cfg_online_path, is_rpn=True)
 
-    if args.load_RPN_detector_segmentation_features:
+    if args.load_RPN_detector_segmentation_features or args.save_RPN_detector_segmentation_features:
         COXY_RPN = load_features_regressor(features_dir=os.path.join(output_dir, 'features_RPN'))
 
     # Train RPN region Refiner
@@ -190,7 +190,7 @@ if not args.load_RPN_detector_segmentation_models:
             del region_refiner, COXY
             torch.cuda.empty_cache()
 
-        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'))
+        positives, negatives = load_features_classifier(features_dir=os.path.join(output_dir, 'features_detector'), cfg_feature_extraction=cfg_target_task)
 
         # Load positives from COXY if required
         if not args.use_only_gt_positives_detection:

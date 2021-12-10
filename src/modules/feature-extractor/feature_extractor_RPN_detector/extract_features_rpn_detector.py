@@ -252,7 +252,17 @@ class FeatureExtractorRPNDetector:
                             path_to_save = os.path.join(result_dir, 'features_detector', 'reg_y_batch_{}'.format(i))
                             torch.save(model.roi_heads.box.Y[i], path_to_save)
                     if not self.cfg.SAVE_FEATURES_RPN:
-                        return
+                        if extract_features_segmentation:
+                            if use_only_gt_positives_detection:
+                                return None, None, None, None, None, None, None, None
+                            else:
+                                return None, None, None, None, None, None, None, None
+
+                        else:
+                            if use_only_gt_positives_detection:
+                                return None, None, None, None, None, None
+                            else:
+                                return None, None, None, None, None, None
 
                 if self.cfg.SAVE_FEATURES_RPN:
                     # Save features still not saved
@@ -287,6 +297,18 @@ class FeatureExtractorRPNDetector:
 
                             path_to_save = os.path.join(result_dir, 'features_RPN', 'reg_y_batch_{}'.format(i))
                             torch.save(model.rpn.Y[i], path_to_save)
+
+                    if extract_features_segmentation:
+                        if use_only_gt_positives_detection:
+                            return None, None, None, None, None, None, None, None
+                        else:
+                            return None, None, None, None, None, None, None, None
+
+                    else:
+                        if use_only_gt_positives_detection:
+                            return None, None, None, None, None, None
+                        else:
+                            return None, None, None, None, None, None
 
                 if not self.cfg.SAVE_FEATURES_RPN and not self.cfg.SAVE_FEATURES_DETECTOR:
 

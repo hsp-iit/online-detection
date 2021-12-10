@@ -3,6 +3,7 @@ import numpy as np
 import os
 import torch
 import glob
+import yaml
 
 def computeFeatStatistics(positives, negatives, feature_folder, is_rpn, num_samples=4000):
     basedir = os.path.dirname(__file__)
@@ -116,7 +117,7 @@ def falkon_models_to_cuda(models):
             models[i].alpha_ = models[i].alpha_.to('cuda')
     return models
 
-def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, sample_ratio=1):
+def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, sample_ratio=1, cfg_feature_extraction=None):
     positives_to_load = len(glob.glob(os.path.join(features_dir, 'positives_*')))
     positives_loaded = 0
     negatives_to_load = len(glob.glob(os.path.join(features_dir, 'negatives_*')))
@@ -124,6 +125,29 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
     positives = []
     negatives = []
     clss_id = 0
+    shuffle_features = False
+    # If features must be shuffled, the number of batches and the batch size must be specified
+    # Default parameters for the feature extraction cfg files
+    bs_shuffled = 2000
+    nb_shuffled = 2
+    if cfg_feature_extraction is not None:
+        feat_extraction_params_cfg_file = open(cfg_feature_extraction)
+        feat_extraction_params = yaml.load(feat_extraction_params_cfg_file, Loader=yaml.FullLoader)
+        if 'MINIBOOTSTRAP' in feat_extraction_params:
+            if 'RPN' in feat_extraction_params['MINIBOOTSTRAP'] and 'RPN' in features_dir:
+                if 'SHUFFLE_NEGATIVES' in feat_extraction_params['MINIBOOTSTRAP']['RPN']:
+                    shuffle_features = feat_extraction_params['MINIBOOTSTRAP']['RPN']['SHUFFLE_NEGATIVES']
+                if 'ITERATIONS' in feat_extraction_params['MINIBOOTSTRAP']['RPN']:
+                    nb_shuffled = feat_extraction_params['MINIBOOTSTRAP']['RPN']['ITERATIONS']
+                if 'BATCH_SIZE' in feat_extraction_params['MINIBOOTSTRAP']['RPN']:
+                    bs_shuffled = feat_extraction_params['MINIBOOTSTRAP']['RPN']['BATCH_SIZE']
+            if 'DETECTOR' in feat_extraction_params['MINIBOOTSTRAP'] and 'detector' in features_dir:
+                if 'SHUFFLE_NEGATIVES' in feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']:
+                    shuffle_features = feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']['SHUFFLE_NEGATIVES']
+                if 'ITERATIONS' in feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']:
+                    nb_shuffled = feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']['ITERATIONS']
+                if 'BATCH_SIZE' in feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']:
+                    bs_shuffled = feat_extraction_params['MINIBOOTSTRAP']['DETECTOR']['BATCH_SIZE']
     while positives_loaded < positives_to_load or negatives_loaded < negatives_to_load:
         # Load positives with class id clss_id
         positives_to_load_i = len(glob.glob(os.path.join(features_dir, 'positives_cl_{}_*'.format(clss_id))))
@@ -136,7 +160,6 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
             if not cpu_tensor:
                 to_append_pos_i = torch.cat(positives_i)
                 if sample_ratio < 1:
-                    #print(int(len(to_append_pos_i)*sample_ratio))
                     indices = torch.randint(len(to_append_pos_i), (int(len(to_append_pos_i)*sample_ratio),))
                     to_append_pos_i = to_append_pos_i[indices]
                 positives.append(to_append_pos_i)
@@ -171,6 +194,8 @@ def load_features_classifier(features_dir, is_segm=False, cpu_tensor=False, samp
                 negatives_loaded += 1
             negatives.append(negatives_i)
         clss_id += 1
+    if not is_segm and shuffle_features:
+        negatives = shuffle_negatives(negatives, batch_size=bs_shuffled, num_batches=nb_shuffled)
 
     return positives, negatives
 
@@ -248,15 +273,25 @@ def decode_boxes_detector(boxes, bbox_pred):
 
     return pred_boxes
 
-def shuffle_negatives(negatives):
-    print('Shuffling negatives')
+def shuffle_negatives(negatives, batch_size=None, num_batches=None):
+    negatives_to_return = []
     for i in range(len(negatives)):
-        bs = len(negatives[i][0])
-        neg_i = torch.cat(negatives[i])
-        ind_i = torch.randperm(len(neg_i))
-        neg_i = neg_i[ind_i]
-        negatives[i] = list(torch.split(neg_i, bs))
-    return negatives
+        if batch_size is None:
+            bs = len(negatives[i][0])
+        else:
+            bs = batch_size
+        total_negatives_i = torch.cat(negatives[i])
+        if num_batches is None:
+            nb = math.ceil(total_negatives_i/bs)
+        else:
+            nb = num_batches
+        shuffled_ids = torch.randperm(len(total_negatives_i))
+        negatives_to_return.append([])
+        for j in range(nb):
+            start_j_index = min(j * bs, len(shuffled_ids))
+            end_j_index = min((j + 1) * bs, len(shuffled_ids))
+            negatives_to_return[i].append(total_negatives_i[shuffled_ids[start_j_index:end_j_index]])
+    return negatives_to_return
 
 
 def mask_iou(mask_a, mask_b):

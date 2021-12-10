@@ -28,7 +28,7 @@ parser.add_argument('--load_segmentation_models', action='store_true', help='Loa
 parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
 parser.add_argument('--save_detector_features', action='store_true', help='Save, in the features directory (in the output directory), detector\'s features.')
 parser.add_argument('--load_detector_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
-parser.add_argument('--load_segmentation_features', action='store_true', help='Load, from the features directory (in the output directory), detector\'s features.')
+parser.add_argument('--load_segmentation_features', action='store_true', help='Load, from the features directory (in the output directory), segmentation features.')
 parser.add_argument('--eval_segm_with_gt_bboxes', action='store_true', help='Evaluate segmentation accuracy, supposing that gt_bboxes are available.')
 parser.add_argument('--use_only_gt_positives_detection', action='store_true', help='Consider only the ground truth bounding boxes as positive samples for the online detection.')
 parser.add_argument('--sampling_ratio_segmentation', action='store', type=float, default=0.3, help='Set the fraction of positives and negatives samples to be used to train the online segmentation head, when loading features from disk, supposing that all the features were previously saved.')
