@@ -19,7 +19,7 @@ from py_od_utils import computeFeatStatistics_torch, normalize_COXY, falkon_mode
 import time
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
+parser.add_argument('--output_dir', action='store', type=str, default='online_rpn_detection_segmentation_serial_experiment_ycbv', help='Set experiment\'s output directory. Default directory is segmentation_experiment_ycbv.')
 parser.add_argument('--save_RPN_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the RPN.')
 parser.add_argument('--save_detector_models', action='store_true', help='Save, in the output directory, FALKON models, regressors and features statistics of the detector.')
 parser.add_argument('--save_segmentation_models', action='store_true', help='Save, in the output directory, FALKON models and features statistics of the segmentator.')
@@ -37,12 +37,10 @@ parser.add_argument('--sampling_ratio_segmentation', action='store', type=float,
 parser.add_argument('--pos_fraction_feat_stats', action='store', type=float, default=0.8, help='Set the fraction of positives samples to be used to compute features statistics for data normalization')
 parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_online_rpn_det_segm_ycbv_serial.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_online_rpn_det_segm_ycbv_serial.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--config_file_rpn', action='store', type=str, default="config_rpn_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_rpn_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
-parser.add_argument('--config_file_online_detection_online_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_serial.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_serial.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file_online_rpn_detection_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv_serial.yaml", help='Manually set configuration file for online detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_serial.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--normalize_features_regressor_detector', action='store_true', help='Normalize features for bounding box regression of the online detection.')
 parser.add_argument('--no_rpn', action='store_true', help='Run only the online-object-segmentation experiment, i.e. without updating the RPN.')
 parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection. Overvrites the value in the configuration file')
-
-# Check params below
 parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
 
 
@@ -62,10 +60,10 @@ if args.config_file_feature_extraction.startswith("/"):
 else:
     cfg_target_task = os.path.abspath(os.path.join(basedir, "configs", args.config_file_feature_extraction))
 
-if args.config_file_online_detection_online_segmentation.startswith("/"):
-    cfg_online_path = args.config_file_online_detection_online_segmentation
+if args.config_file_online_rpn_detection_segmentation.startswith("/"):
+    cfg_online_path = args.config_file_online_rpn_detection_segmentation
 else:
-    cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_detection_online_segmentation))
+    cfg_online_path = os.path.abspath(os.path.join(basedir, "configs", args.config_file_online_rpn_detection_segmentation))
 
 if args.config_file_rpn.startswith("/"):
     config_file_rpn = args.config_file_rpn

@@ -23,7 +23,7 @@ parser.add_argument('--do_not_display_images', action='store_true', help='Run de
 parser.add_argument('--write_outputs', action='store_true', help='Write outputs on disk')
 parser.add_argument('--output_dir', action='store', type=str, default='test_masks_oos', help='Set where images will be saved, if the write_outputs option is True. Relative paths are relative to the experiments folder')
 parser.add_argument('--models_dir', action='store', type=str, help='Specify where models for online RPN, detection or segmentation are. Relative paths are relative to the experiments folder')
-parser.add_argument('--dataset', action='store', type=str, default='', help='Specify dataset to overlay on the image correct classes names. For the iCWT TARGET-TASK, the argument must be iCWT_TT. For YCB-Video ycbv')
+parser.add_argument('--dataset', action='store', type=str, default='ycbv', help='Specify dataset to overlay on the image correct classes names. For the iCWT TARGET-TASK, the argument must be iCWT_TT. For YCB-Video ycbv')
 parser.add_argument('--fill_masks', action='store_true', help='Set if masks must be filled in the visualization')
 parser.add_argument('--save_png_masks', action='store_true', help='Set if predicted masks must be saved on disk')
 parser.add_argument('--mask_rcnn_model', action='store_true', help='Set if running the demo on a fine-tuned or fully trained model of Mask R-CNN')
