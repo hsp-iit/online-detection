@@ -117,7 +117,8 @@ class OnlineSegmentationDemo(object):
         confidence_threshold,
         models_dir,
         dataset=None,
-        fill_masks=False
+        fill_masks=False,
+        mask_rcnn_model=False
     ):
         self.cfg = cfg.clone()
         #Set here the confidence threshold to avoid useless computation
@@ -148,7 +149,7 @@ class OnlineSegmentationDemo(object):
                 self.model.roi_heads.mask.predictor.stats = torch.load(os.path.join(models_dir, 'stats_segmentation'))
             except:
                 pass
-        else:
+        elif not mask_rcnn_model:
             self.model.roi_heads.box.predictor.classifiers = []
             self.model.roi_heads.box.predictor.regressors = np.empty((0))
             self.model.roi_heads.box.predictor.stats = None

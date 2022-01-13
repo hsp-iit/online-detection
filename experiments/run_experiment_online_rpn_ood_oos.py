@@ -31,7 +31,7 @@ parser.add_argument('--normalize_features_regressor_detector', action='store_tru
 parser.add_argument('--sampling_ratio_positives_detection', action='store', type=float, default=1.0, help='Set the fraction of positives samples to be used to train the online detection head, when loading the positives from COXY.')
 parser.add_argument('--config_file_feature_extraction', action='store', type=str, default="config_feature_extraction_online_rpn_det_segm_ycbv.yaml", help='Manually set configuration file for feature extraction, by default it is config_feature_extraction_segmentation_ycbv.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--config_file_online_rpn_detection_segmentation', action='store', type=str, default="config_online_rpn_detection_segmentation_ycbv.yaml", help='Manually set configuration file for online rpn, detection and segmentation, by default it is config_online_rpn_detection_segmentation_ycbv_independent_trainings.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
-parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection. Overvrites the value in the configuration file')
+parser.add_argument('--minibootstrap_iterations', action='store', type=int, help='Set the number of minibootstrap iterations both for rpn and detection. Overwrites the value in the configuration file')
 
 # Check params below
 parser.add_argument('--CPU', action='store_true', help='Run FALKON and bbox regressors training in CPU')
