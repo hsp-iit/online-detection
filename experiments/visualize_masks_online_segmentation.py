@@ -14,7 +14,7 @@ import argparse
 import numpy as np
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--config_file', action='store', type=str, default="config_segmentation_ycb_demo.yaml", help='Manually set configuration file, by default it is config_segmentation_ycb_demo.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
+parser.add_argument('--config_file', action='store', type=str, default="config_segmentation_visualizer.yaml", help='Manually set configuration file, by default it is config_segmentation_ycb_demo.yaml. If the specified path is not absolute, the config file will be searched in the experiments/configs directory')
 parser.add_argument('--image_path', action='store', type=str, default="Data/datasets/YCB-Video/test/000055/rgb/000588.png", help='Set image to be processed. If you do not pass an absolute path, it must be relative to the python-online-detection path')
 parser.add_argument('--confidence_threshold', action='store', type=float, default=0.2, help='Set detection score threshold')
 parser.add_argument('--images_paths_from_file', action='store_true', help='Read images paths from file')
