@@ -1,29 +1,33 @@
 
 
-# On-line Object Detection
+# On-line Object Detection and Instance Segmentation
 
-This repository contains the python version of the source code for the experiments carried out for the On-line Object Detection project.
+This repository contains the python version of the source code for the experiments carried out for the *On-line Object Detection and Instance Segmentation* project.
 
 ## Abstract
-Object detection is a fundamental ability for robots interacting within an environment. While stunningly effective, state-of-the-art deep learning methods require huge amounts of labeled images and hours of training which does not favour such scenarios. In this project, we aim at designing algorithmic solutions to alleviate these requirements for this task, while preserving the state-of-the-art precision and reliability.
+Object detection and instance segmentation are fundamental tasks for robots interacting within an environment. While stunningly effective, state-of-the-art deep learning methods require huge amounts of labeled images and long training sessions which does not favour such scenarios. In this project, we aim at designing algorithmic solutions to alleviate these requirements for this task, while preserving the state-of-the-art precision and reliability.
 The proposed methods are typically validated on both computer vision and robotics datasets. This repository allows to reproduce the main experiments of the proposed works and allows the user to test the pipeline with other datasets.
 
 ## Description
-![pipeline journal_0](https://user-images.githubusercontent.com/32268209/114162717-a8d25e80-9929-11eb-8d24-d9c24774097e.png)
 
-This picture presents the current architecture of the pipeline. The Feature Extraction Module relies on Mask R-CNN architecture and the proposed On-line RPN, to extract deep features and predict RoIs from each input image. The On-line Detection Module performs RoIs classification and refinement, providing as output the detections for the input image. The green blocks are trained off-line on the FEATURE-TASK, while the yellow blocks are trained on-line on the TARGET-TASK.
+![pipeline_orpn_oos_reviewed_2_compressed](https://user-images.githubusercontent.com/32268209/149495420-b84dfdcf-8263-4be3-b6a3-9e1dd7f7b3b5.png)
+
+This picture presents the current architecture of the pipeline. The *Feature Extraction Module* relies on the *Mask R-CNN* architecture and the proposed *On-line RPN*, to extract deep features and predict *RoIs* from each input image. The *On-line Detection Module* performs *RoIs* classification and refinement, providing as output the detections for the input image. The green blocks are trained off-line on the FEATURE-TASK, while the yellow blocks are trained on-line on the TARGET-TASK.
 
 ## Installation guide
-You can find the instructions for installation at this [link](https://github.com/robotology/online-detection/blob/master/INSTALLATION_GUIDE.md).
+You can find the instructions for installation at this [link](https://github.com/hsp-iit/online-detection/blob/master/INSTALLATION_GUIDE.md).
 
 ## Experiments
 We provide the links to instructions to reproduce the main experiments of the presented works.
 
-### Fast Region Proposal Learning for Object Detection for Robotics
-You can find the instructions to replicate experiments at this [link](https://github.com/robotology/online-detection/blob/master/ONLINE_RPN_EXP.md)
+### Learn Fast, Segment Well: Fast Object Segmentation Learning on the iCub Robot
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_DET_SEGM_EXP.md)
 
 ### Fast Object Segmentation Learning with Kernel-based Methods for Robotics
-You can find the instructions to replicate experiments at this [link](https://github.com/robotology/online-detection/blob/master/ONLINE_SEGMENTATION_EXP.md)
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_SEGMENTATION_EXP.md)
+
+### Fast Region Proposal Learning for Object Detection for Robotics
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_EXP.md)
 
 ## References
 If you use this code, please, cite the following works:
