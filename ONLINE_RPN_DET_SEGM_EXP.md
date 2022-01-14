@@ -32,42 +32,48 @@ rm -rf $HOME_DIR/Data/datasets/HO3D_V2
 Note: at the end of the installation, remember to `unset HOME_DIR`
 
 ## Usage
-By modifying the configuration files in the `experiments/configs` folder and by substituting the files with the proper ones for your data, this code allows you to run customized experiments. However, in this repository we provide you with the configuration files and scripts that are required to reproduce the main experiments in the presented paper. In the following commands, you need to replace *dataset* with *ycbv*, if you want to run the experiments on the YCB-Video dataset, or with *ho3d*, if you want to use HO-3D. Note that, if you do not specify the paths of the configuration files, the ones for YCB-Video are used by default. All the commands reported below must be run in the `experiments` folder. For all the experiments, we suggest to set a directory to store the output files with the parameter `--output_dir`.
+By modifying the configuration files in the `experiments/configs` folder and by substituting the files with the proper ones for your data, this code allows you to run customized experiments. However, in this repository we provide the configuration files and scripts that are required to reproduce the main experiments in the presented paper. In the following commands, you need to replace *\<dataset\>* with *ycbv*, if you want to run the experiments on the YCB-Video dataset, or with *ho3d*, if you want to use HO-3D. Note that, if you do not specify the paths of the configuration files, the ones for YCB-Video are used by default. All the commands reported below must be run in the `experiments` folder. For all the experiments, we suggest to set a directory to store the output files with the parameter `--output_dir`.
  
 To reproduce results of **Ours** you have to run the command:
 
-``python run_experiment_online_rpn_ood_oos.py --config_file_feature_extraction config_feature_extraction_online_rpn_det_segm_*dataset*.yaml
-    --config_file_online_rpn_detection_segmentation config_online_rpn_detection_segmentation_*dataset*.yaml``
+```
+python run_experiment_online_rpn_ood_oos.py --config_file_feature_extraction config_feature_extraction_online_rpn_det_segm_<dataset>.yaml --config_file_online_rpn_detection_segmentation config_online_rpn_detection_segmentation_<dataset>.yaml
+```
 
 To reproduce results of **Ours Serial** you have to run the command: 
 
-``python run_experiment_online_rpn_ood_oos_serial.py --config_file_feature_extraction config_feature_extraction_online_rpn_det_segm_*dataset*_serial.yaml
---config_file_rpn config_rpn_*dataset*.yaml
-    --config_file_online_rpn_detection_segmentation config_online_rpn_detection_segmentation_*dataset*_serial.yaml``
+```
+python run_experiment_online_rpn_ood_oos_serial.py --config_file_feature_extraction config_feature_extraction_online_rpn_det_segm_<dataset>_serial.yaml --config_file_rpn config_rpn_<dataset>.yaml --config_file_online_rpn_detection_segmentation config_online_rpn_detection_segmentation_<dataset>_serial.yaml
+```
 
 To reproduce results of **O-OS** you have to run the command: 
 
-``python run_experiment_segmentation.py --config_file_feature_extraction config_feature_extraction_segmentation_*dataset*_t_ro.yaml
-    --config_file_online_detection_online_segmentation config_online_detection_segmentation_*dataset*_t_ro.yaml``
+```
+python run_experiment_segmentation.py --config_file_feature_extraction config_feature_extraction_segmentation_<dataset>_t_ro.yaml --config_file_online_detection_online_segmentation config_online_detection_segmentation_<dataset>_t_ro.yaml
+```
 
 To train the *Mask R-CNN* baselines you have to run the following commands. Please consider using the parameter `--train_for_time`, if you want to set the total training time as in the experiments in Sec. VII of the paper.
 
 To reproduce results of **Mask R-CNN (full)** you have to run the command: 
 
-``python run_experiment_full_train.py --config_file configs/config_full_train_*dataset*.yaml``
+```
+python run_experiment_full_train.py --config_file configs/config_full_train_<dataset>.yaml
+```
 
 To reproduce results of **Mask R-CNN (output layers)** you have to run the command:
 
-``python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_*dataset*.yaml
---fine_tune_RPN``
+```
+python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_<dataset>.yaml
+--fine_tune_RPN
+```
 
 To reproduce results of **Mask R-CNN (store features)** you have to run the following command. The first time that you run this experiment, you need to set also the parameters `--config_file_feature_extraction` and `--extract_backbone_features` for backbone features computation.
 
-``python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_*dataset*_from_feat.yaml 
---fine_tune_RPN 
---use_backbone_features``
+```
+python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_<dataset>_from_feat.yaml --fine_tune_RPN --use_backbone_features
+```
 
-If you want to visualize qualitative results, you need to use the script `visualize_masks_online_segmentation.py`. To visualize results using models obtained with **Ours**, **Ours Serial** or **O-OS** you need to specify the directory where the models are stored with the parameter `--models_dir`. Instead, if you want to visualize results for the *Mask R-CNN* baselines, you need to use the parameter `--mask_rcnn_model`.  In both cases, you need to use the parameter `--dataset *dataset*` to specify the dataset used for training. 
+If you want to visualize qualitative results, you need to use the script `visualize_masks_online_segmentation.py`. To visualize results using models obtained with **Ours**, **Ours Serial** or **O-OS** you need to specify the directory where the models are stored with the parameter `--models_dir`. Instead, if you want to visualize results for the *Mask R-CNN* baselines, you need to use the parameter `--mask_rcnn_model`.  In both cases, you need to use the parameter `--dataset <dataset>` to specify the dataset used for training. 
 
 **Important**: if you have more than one GPU available, before running an experiment, you have to set the number of the GPU that you want to use (only one) with the command `export CUDA_VISIBLE_DEVICES=number_of_the_gpu`.
 
