@@ -21,13 +21,13 @@ You can find the instructions for installation at this [link](https://github.com
 We provide the links to instructions to reproduce the main experiments of the presented works.
 
 ### Learn Fast, Segment Well: Fast Object Segmentation Learning on the iCub Robot
-You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_DET_SEGM_EXP.md)
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_DET_SEGM_EXP.md).
 
 ### Fast Object Segmentation Learning with Kernel-based Methods for Robotics
-You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_SEGMENTATION_EXP.md)
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_SEGMENTATION_EXP.md).
 
 ### Fast Region Proposal Learning for Object Detection for Robotics
-You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_EXP.md)
+You can find the instructions to replicate experiments at this [link](https://github.com/hsp-iit/online-detection/blob/master/ONLINE_RPN_EXP.md).
 
 ## References
 If you use this code, please, cite the following works:
