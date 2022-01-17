@@ -63,8 +63,7 @@ python run_experiment_full_train.py --config_file configs/config_full_train_<dat
 To reproduce results of **Mask R-CNN (output layers)** you have to run the command:
 
 ```
-python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_<dataset>.yaml
---fine_tune_RPN
+python run_experiment_fine_tuning.py --config_file configs/config_fine_tuning_<dataset>.yaml --fine_tune_RPN
 ```
 
 To reproduce results of **Mask R-CNN (store features)** you have to run the following command. The first time that you run this experiment, you need to set also the parameters `--config_file_feature_extraction` and `--extract_backbone_features` for backbone features computation.
