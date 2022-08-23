@@ -33,12 +33,15 @@ You can find the instructions to replicate experiments at this [link](https://gi
 If you use this code, please, cite the following works:
 
 ```
-@article{ceola2022tro,
-  title={Learn Fast, Segment Well: Fast Object Segmentation Learning on the iCub Robot},
+@ARTICLE{ceola2022tro,
   author={Ceola, Federico and Maiettini, Elisa and Pasquale, Giulia and Meanti, Giacomo and Rosasco, Lorenzo and Natale, Lorenzo},
-  journal={arXiv preprint arXiv:2206.13462},
-  year={2022}
-}
+  journal={IEEE Transactions on Robotics}, 
+  title={Learn Fast, Segment Well: Fast Object Segmentation Learning on the iCub Robot}, 
+  year={2022},
+  volume={},
+  number={},
+  pages={1-19},
+  doi={10.1109/TRO.2022.3164331}}
 ```
 ```
 @INPROCEEDINGS{ceola2021oos,
