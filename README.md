@@ -38,9 +38,9 @@ If you use this code, please, cite the following works:
   journal={IEEE Transactions on Robotics}, 
   title={Learn Fast, Segment Well: Fast Object Segmentation Learning on the iCub Robot}, 
   year={2022},
-  volume={},
-  number={},
-  pages={1-19},
+  volume={38},
+  number={5},
+  pages={3154-3172},
   doi={10.1109/TRO.2022.3164331}}
 ```
 ```
