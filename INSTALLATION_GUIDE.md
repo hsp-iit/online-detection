@@ -51,6 +51,7 @@ python setup.py build_ext install
 ```
 cd $INSTALL_DIR
 git clone https://github.com/NVIDIA/apex.git
+git checkout 8cf5ae61beff5738c87150b6c4348603eeb159d5
 cd apex
 python setup.py install --cuda_ext --cpp_ext
 ```
