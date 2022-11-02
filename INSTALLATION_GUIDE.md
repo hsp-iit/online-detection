@@ -68,9 +68,10 @@ Note: at the end of the installation of Mask R-CNN source code, remember to `uns
 One of the dependencies of this code is the repository of FALKON [3]. The following instructions will guide you in the installation of the source code. 
 ```
 cd $HOME_DIR/external
-git clone --recurse-submodules https://github.com/FalkonML/falkon.git
+git clone https://github.com/FalkonML/falkon.git
 cd falkon
-git checkout --recurse-submodules 801e5f3d01b9ec5b3142f6376b18f18377c0dd37
+git reset --hard 0d96c685dbdff7048e7410e5ca419b21e337789d
+git submodule update --init --recursive
 pip install ./keops
 pip install .
 ```
