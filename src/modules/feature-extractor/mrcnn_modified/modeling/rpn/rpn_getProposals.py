@@ -145,6 +145,10 @@ class RPNModule(torch.nn.Module):
         self.box_selector_test = box_selector_test
         self.loss_evaluator = loss_evaluator
 
+        # Setting variables for speeding up RPN initialization in the demo
+        self.prev_classifiers = None
+        self.prev_feature_ids = None
+
         self.initialize_online_rpn_params()
 
     def initialize_online_rpn_params(self):
@@ -200,14 +204,20 @@ class RPNModule(torch.nn.Module):
             if propagate_rpn_boxes:
                 self.anchors_total = self.anchor_generator(images, features)
 
-            self.feature_ids = torch.empty((0, 2), dtype=torch.long, device='cuda')
-            self.classifiers = torch.empty(0, dtype=torch.uint8, device='cuda')
-            # Associate to each feature tensor an id, corresponding to its position and a classifier id corresponding to an anchor value
-            for ind in range(0, int(self.anchors.bbox.size()[0])):
-                feat_ij = [[int(int(ind/self.num_classes)/self.width), int(int(ind/self.num_classes)%self.width)]]
-                self.feature_ids = torch.cat((self.feature_ids, torch.tensor(feat_ij, dtype=torch.long, device='cuda')))
-                cls = [ind %self.num_classes]
-                self.classifiers = torch.cat((self.classifiers, torch.tensor(cls, dtype=torch.uint8, device='cuda')))
+            if self.prev_feature_ids is None:
+                self.feature_ids = torch.empty((0, 2), dtype=torch.long, device='cuda')
+                self.classifiers = torch.empty(0, dtype=torch.uint8, device='cuda')
+                # Associate to each feature tensor an id, corresponding to its position and a classifier id corresponding to an anchor value
+                for ind in range(0, int(self.anchors.bbox.size()[0])):
+                    feat_ij = [[int(int(ind/self.num_classes)/self.width), int(int(ind/self.num_classes)%self.width)]]
+                    self.feature_ids = torch.cat((self.feature_ids, torch.tensor(feat_ij, dtype=torch.long, device='cuda')))
+                    cls = [ind %self.num_classes]
+                    self.classifiers = torch.cat((self.classifiers, torch.tensor(cls, dtype=torch.uint8, device='cuda')))
+                self.prev_feature_ids = copy.deepcopy(self.feature_ids)
+                self.prev_classifiers = copy.deepcopy(self.classifiers)
+            else:
+                self.feature_ids = copy.deepcopy(self.prev_feature_ids)
+                self.classifiers = copy.deepcopy(self.prev_classifiers)
             self.anchors.add_field('feature_id', self.feature_ids)
             self.anchors.add_field('classifier', self.classifiers)
             # Remove features with borders external to the image
